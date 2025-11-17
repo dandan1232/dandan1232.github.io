@@ -1,249 +1,933 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  
-  
-  <title>Hexo</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Hexo">
-<meta property="og:url" content="http://example.com/index.html">
-<meta property="og:site_name" content="Hexo">
-<meta property="og:locale" content="en_US">
-<meta property="article:author" content="John Doe">
-<meta name="twitter:card" content="summary">
-  
-    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
-  
-  
-    <link rel="shortcut icon" href="/favicon.png">
-  
-  
-    
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+  <meta charset="UTF-8" />
+  <title>Echo Lin | AI Backend Engineer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AI 后端开发工程师 · LLM 应用 · 知识库 · 图数据库" />
+  <link rel="shortcut icon" href="https://github.githubassets.com/favicons/favicon.svg" />
 
-  
-  
-<link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 
-  
-    
-<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+  <style>
+    :root {
+      --bg-dark: #050816;
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.18);
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-subtle: rgba(148, 163, 184, 0.3);
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.85);
+      --radius-xl: 18px;
+      --transition-fast: 0.18s ease-out;
+    }
 
-  
-<meta name="generator" content="Hexo 6.3.0"></head>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+      background: radial-gradient(circle at top, #1e293b 0, #020617 40%, #000 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* 粒子背景层 */
+    #particles-js {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+    }
+
+    /* 顶部导航 */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: linear-gradient(to bottom, rgba(15,23,42,0.95), rgba(15,23,42,0.6), transparent);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .nav-container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      border: 1px solid rgba(56,189,248,0.7);
+      background: radial-gradient(circle at 30% 0%, #22d3ee, #0f172a 50%, #020617 100%);
+      box-shadow: 0 0 20px rgba(56,189,248,0.6);
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand-text strong {
+      font-size: 15px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .brand-text span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 18px;
+      font-size: 13px;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+    }
+
+    nav a:hover {
+      color: var(--text-main);
+      border-color: rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.9);
+      transform: translateY(-1px);
+    }
+
+    .nav-cta {
+      border-color: rgba(56,189,248,0.6);
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.22), rgba(15,23,42,0.96));
+      color: var(--accent);
+      box-shadow: 0 0 16px rgba(56,189,248,0.40);
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 36px 20px 80px;
+    }
+
+    section {
+      margin-bottom: 48px;
+      position: relative;
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-label::before {
+      content: "";
+      width: 26px;
+      height: 1px;
+      background: linear-gradient(to right, var(--accent), transparent);
+    }
+
+    .section-title {
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 640px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* 卡片通用 */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-soft);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: radial-gradient(circle at 10% 0%, rgba(56,189,248,0.28), transparent 55%);
+      opacity: 0;
+      transition: opacity 0.35s ease-out;
+      pointer-events: none;
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 1;
+      padding: 20px 22px;
+    }
+
+    /* Hero / About 区域 */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 880px) {
+      .hero-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .hero-title {
+      font-size: 30px;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    .hero-highlight {
+      background: linear-gradient(to right, #38bdf8, #a855f7);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero-tagline {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 18px;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .tag-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.8);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .btn {
+      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: rgba(15,23,42,0.95);
+      color: var(--text-main);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      border-color: rgba(56,189,248,0.7);
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.26), rgba(15,23,42,0.96));
+      color: var(--accent);
+      box-shadow: 0 0 18px rgba(56,189,248,0.55);
+    }
+
+    .btn-outline {
+      border-color: rgba(148,163,184,0.7);
+      color: var(--text-muted);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px) translateX(0.5px);
+      box-shadow: 0 12px 26px rgba(15,23,42,0.9);
+      border-color: rgba(56,189,248,0.9);
+      color: var(--accent);
+    }
+
+    .hero-right {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .hero-meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px dashed rgba(148,163,184,0.4);
+      padding-bottom: 8px;
+      margin-bottom: 2px;
+    }
+
+    .hero-meta-label {
+      color: var(--text-muted);
+    }
+
+    .hero-meta-value {
+      color: var(--accent);
+    }
+
+    /* 技术栈 */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .stack-group-title {
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+    }
+
+    .stack-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.9);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .badge-hot {
+      border-color: rgba(56,189,248,0.9);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    /* 项目卡片 */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .project-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-soft);
+      padding: 16px 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .project-card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: radial-gradient(circle at 0 0, rgba(56,189,248,0.32), transparent 55%);
+      opacity: 0;
+      transition: opacity 0.35s ease-out;
+      pointer-events: none;
+    }
+
+    .project-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 22px 50px rgba(15,23,42,0.9);
+      border-color: rgba(56,189,248,0.7);
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.18), rgba(15,23,42,0.98));
+    }
+
+    .project-card:hover::before {
+      opacity: 1;
+    }
+
+    .project-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .project-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .project-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .project-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      font-size: 10px;
+    }
+
+    .project-link a {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(56,189,248,0.6);
+      padding-bottom: 1px;
+    }
+
+    .project-link a:hover {
+      border-bottom-style: solid;
+    }
+
+    /* 博客占位 */
+    .blog-placeholder {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* 联系方式和社交 */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .contact-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .contact-list {
+      list-style: none;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .contact-list li {
+      margin-bottom: 6px;
+    }
+
+    .contact-list strong {
+      color: var(--text-main);
+      margin-right: 4px;
+    }
+
+    .social-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .social-links a {
+      font-size: 11px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.7);
+      background: rgba(15,23,42,0.95);
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all var(--transition-fast);
+    }
+
+    .social-links a:hover {
+      color: var(--accent);
+      border-color: rgba(56,189,248,0.9);
+      box-shadow: 0 12px 26px rgba(15,23,42,0.9);
+      transform: translateY(-1px);
+    }
+
+    footer {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 20px 24px;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* 小屏适配 */
+    @media (max-width: 640px) {
+      .hero-title {
+        font-size: 24px;
+      }
+      .section-title {
+        font-size: 20px;
+      }
+      .nav-container {
+        padding-inline: 14px;
+      }
+      nav ul {
+        gap: 10px;
+      }
+      nav li:nth-child(n+4) {
+        display: none; /* 特别窄的屏幕上收窄导航 */
+      }
+    }
+  </style>
+</head>
 <body>
-  <div id="container">
-    <div id="wrap">
-      <header id="header">
-  <div id="banner"></div>
-  <div id="header-outer" class="outer">
-    <div id="header-title" class="inner">
-      <h1 id="logo-wrap">
-        <a href="/" id="logo">Hexo</a>
-      </h1>
-      
-    </div>
-    <div id="header-inner" class="inner">
-      <nav id="main-nav">
-        <a id="main-nav-toggle" class="nav-icon"></a>
-        
-          <a class="main-nav-link" href="/">Home</a>
-        
-          <a class="main-nav-link" href="/archives">Archives</a>
-        
-      </nav>
-      <nav id="sub-nav">
-        
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
-        
-        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
-      </nav>
-      <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+  <!-- 粒子背景 -->
+  <div id="particles-js"></div>
+
+  <!-- 顶部导航 -->
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <div class="brand-avatar"></div>
+        <div class="brand-text">
+          <strong>Echo Lin</strong>
+          <span>AI Backend · LLM · Graph</span>
+        </div>
       </div>
+      <nav>
+        <ul>
+          <li><a href="#about">About</a></li>
+          <li><a href="#stack">Tech Stack</a></li>
+          <li><a href="#projects">Projects</a></li>
+          <li><a href="#blog">Blog</a></li>
+          <li><a href="#contact" class="nav-cta">Contact</a></li>
+        </ul>
+      </nav>
     </div>
-  </div>
-</header>
+  </header>
 
-      <div class="outer">
-        <section id="main">
-  
-    <article id="post-test-my-site" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2022/11/23/test-my-site/" class="article-date">
-  <time class="dt-published" datetime="2022-11-23T13:12:40.000Z" itemprop="datePublished">2022-11-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2022/11/23/test-my-site/">test_my_site</a>
-    </h1>
-  
+  <main>
+    <!-- About / Hero -->
+    <section id="about">
+      <div class="section-label">Profile · About Me</div>
+      <h2 class="section-title">你好，我是 <span class="hero-highlight">念安 / Echo</span></h2>
+      <p class="section-subtitle">
+<p class="section-subtitle">
+  欢迎你！！我的朋友~<br>
+  目前的我：专注企业内部知识库、图数据库与大语言模型应用。喜欢把「复杂系统」拆成可维护的模块，
+  用干净的代码和合适的架构让产品真的落地。
+</p>
 
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2022/11/23/test-my-site/" data-id="claus1xs700014cu2danxhx38" data-title="test_my_site" class="article-share-link">Share</a>
-      
-      
-      
-    </footer>
-  </div>
-  
-</article>
+      </p>
 
+      <div class="hero-grid">
+        <!-- 左侧介绍 -->
+        <div class="card">
+          <div class="card-inner">
+            <div class="hero-title">
+              构建 <span class="hero-highlight">可解释</span> 的 AI 系统，
+              而不只是一个聊天框。
+            </div>
+            <p class="hero-tagline">
+              日常在做的事情包括：将 PDF / 数据库 / 图谱统一进知识库，
+              为业务定制检索问答流程，把 FastGPT / LightRAG / Neo4j / PostgreSQL
+              这些组件串成真正能用的工具。
+            </p>
 
+            <div class="hero-tags">
+              <span class="tag-pill">AI 后端 · LLM 应用</span>
+              <span class="tag-pill">知识库 / GraphRAG</span>
+              <span class="tag-pill">Docker · Nginx · DevOps</span>
+              <span class="tag-pill">FastGPT / ChatGPT on WeChat</span>
+            </div>
 
-  
-    <article id="post-hello-world" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2022/11/23/hello-world/" class="article-date">
-  <time class="dt-published" datetime="2022-11-23T13:10:51.236Z" itemprop="datePublished">2022-11-23</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2022/11/23/hello-world/">Hello World</a>
-    </h1>
-  
+            <div class="hero-actions">
+              <a href="#projects" class="btn btn-primary">查看部分项目</a>
+              <a href="#contact" class="btn btn-outline">联系我</a>
+            </div>
+          </div>
+        </div>
 
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a target="_blank" rel="noopener" href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a target="_blank" rel="noopener" href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a target="_blank" rel="noopener" href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2022/11/23/hello-world/" data-id="claus1xrx00004cu2dg2m3cvw" data-title="Hello World" class="article-share-link">Share</a>
-      
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-
-
-</section>
-        
-          <aside id="sidebar">
-  
-    
-
-  
-    
-
-  
-    
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Archives</h3>
-    <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/11/">November 2022</a></li></ul>
-    </div>
-  </div>
-
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Recent Posts</h3>
-    <div class="widget">
-      <ul>
-        
-          <li>
-            <a href="/2022/11/23/test-my-site/">test_my_site</a>
-          </li>
-        
-          <li>
-            <a href="/2022/11/23/hello-world/">Hello World</a>
-          </li>
-        
-      </ul>
-    </div>
-  </div>
-
-  
-</aside>
-        
+        <!-- 右侧信息 -->
+        <div class="card">
+          <div class="card-inner hero-right">
+            <div class="hero-meta-row">
+              <span class="hero-meta-label">当前角色</span>
+              <span class="hero-meta-value">AI 后端开发工程师</span>
+            </div>
+            <div class="hero-meta-row">
+              <span class="hero-meta-label">关注方向</span>
+              <span class="hero-meta-value">RAG / GraphRAG / 知识库 / 自动化</span>
+            </div>
+            <div class="hero-meta-row">
+              <span class="hero-meta-label">常用技术</span>
+              <span class="hero-meta-value">Python · FastAPI · PostgreSQL · Neo4j</span>
+            </div>
+            <div class="hero-meta-row">
+              <span class="hero-meta-label">DevOps</span>
+              <span class="hero-meta-value">Docker · Nginx · WSL · Linux</span>
+            </div>
+            <p>
+              近期在折腾：<br>
+              · ChatGPT on WeChat 定制化 + 媒体处理<br>
+              · FastGPT 同步文档 + 图谱构建<br>
+              · PPT 自动清洗 / 审核工具链<br>
+              · 内部 AI 助手提示词 / 工作流设计
+            </p>
+          </div>
+        </div>
       </div>
-      <footer id="footer">
-  
-  <div class="outer">
-    <div id="footer-info" class="inner">
-      
-      &copy; 2022 John Doe<br>
-      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
-    </div>
-  </div>
-</footer>
+    </section>
 
-    </div>
-    <nav id="mobile-nav">
-  
-    <a href="/" class="mobile-nav-link">Home</a>
-  
-    <a href="/archives" class="mobile-nav-link">Archives</a>
-  
-</nav>
-    
+    <!-- Tech Stack -->
+    <section id="stack">
+      <div class="section-label">Tech · Stack</div>
+      <h2 class="section-title">技术栈</h2>
+      <p class="section-subtitle">
+        下面是我在实际项目中常用、并持续在打磨的技术栈。不追求「什么都会一点点」，更偏向把有限的栈用深用透。
+      </p>
 
+      <div class="card">
+        <div class="card-inner">
+          <div class="stack-grid">
+            <div>
+              <div class="stack-group-title">后端 · 核心</div>
+              <div class="stack-badges">
+                <span class="badge badge-hot">Python</span>
+                <span class="badge">Java</span>
+                <span class="badge badge-hot">FastAPI</span>
+                <span class="badge badge-hot">RESTful API 设计</span>
+                <span class="badge">Node.js</span>
+                <span class="badge">VUE</span>
+                <span class="badge">微信小程序</span>
+                <span class="badge">Android</span>
 
-<script src="/js/jquery-3.4.1.min.js"></script>
+              </div>
+            </div>
+            <div>
+              <div class="stack-group-title">数据 & 图谱</div>
+              <div class="stack-badges">
+                <span class="badge badge-hot">PostgreSQL</span>
+                <span class="badge badge-hot">Mongodb</span>
+                <span class="badge">MySQL</span>
+                <span class="badge badge-hot">Neo4j</span>
+                <span class="badge">向量数据库</span>
+              </div>
+            </div>
+            <div>
+              <div class="stack-group-title">AI / LLM</div>
+              <div class="stack-badges">
+                <span class="badge badge-hot">RAG / GraphRAG</span>
+                <span class="badge badge-hot">FastGPT</span>
+                <span class="badge badge-hot">Mineru</span>
+                <span class="badge badge-hot">LightRAG</span>
+                <span class="badge">OpenAI / GLM API</span>
+              </div>
+            </div>
+            <div>
+              <div class="stack-group-title">Infra · DevOps</div>
+              <div class="stack-badges">
+                <span class="badge badge-hot">Docker</span>
+                <span class="badge">Nginx 反向代理 / HTTPS</span>
+                <span class="badge">Linux / WSL</span>
+                <span class="badge badge-hot">Git / GitLab / CI</span>
+              </div>
+            </div>
+            <div>
+              <div class="stack-group-title">实用工具</div>
+              <div class="stack-badges">
+                <span class="badge">MinIO / 对象存储</span>
+                <span class="badge">Jenkins</span>
+                <span class="badge">PPTX / 文档处理</span>
+                <span class="badge">微信生态相关开发</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
+    <!-- Projects -->
+    <section id="projects">
+      <div class="section-label">Work · Projects</div>
+      <h2 class="section-title">部分项目</h2>
+      <p class="section-subtitle">
+        大部分项目与企业内部系统强绑定，这里只放简要介绍。真正有价值的部分往往在于「数据流设计 + LLM 流程编排 + 基础设施」的组合。
+      </p>
 
+      <div class="projects-grid">
+        <div class="project-card">
+          <div class="project-name">企业知识库 · GraphRAG 系统</div>
+          <div class="project-desc">
+            将 PDF、结构化数据库、图数据库统一接入，构建实体 / 关系 / 文本三层检索。
+            通过高低层关键词、GraphRAG 策略和 LLM 问答，支持复杂业务问答与追溯。
+          </div>
+          <div class="project-meta">
+            <div class="project-tags">
+              <span class="badge">FastAPI</span>
+              <span class="badge">PostgreSQL</span>
+              <span class="badge">Neo4j</span>
+              <span class="badge">GraphRAG</span>
+            </div>
+            <div class="project-link">
+              <a href="javascript:void(0)">内部项目 · 无公开链接</a>
+            </div>
+          </div>
+        </div>
 
-  
-<script src="/fancybox/jquery.fancybox.min.js"></script>
+        <div class="project-card">
+          <div class="project-name">ChatGPT on WeChat · 媒体增强版</div>
+          <div class="project-desc">
+            基于开源 chatgpt-on-wechat 定制，接入公司知识、MinIO 媒体库，自动识别并展示图片、视频，
+            支持压缩、转码、静默失败等逻辑，更贴合实际运营需求。
+          </div>
+          <div class="project-meta">
+            <div class="project-tags">
+              <span class="badge">Python</span>
+              <span class="badge">WeChat</span>
+              <span class="badge">MinIO</span>
+            </div>
+            <div class="project-link">
+              <a href="javascript:void(0)">正在内部运行</a>
+            </div>
+          </div>
+        </div>
 
+        <div class="project-card">
+          <div class="project-name">PPT 自动清洗 & 审核工具</div>
+          <div class="project-desc">
+            针对公司大量 PPT 素材，自动扫描并处理小图标、背景图、敏感元素，生成 JSON 报告，
+            为知识沉淀与对外展示做统一风格管理。
+          </div>
+          <div class="project-meta">
+            <div class="project-tags">
+              <span class="badge">Python</span>
+              <span class="badge">PPTX</span>
+              <span class="badge">自动化</span>
+            </div>
+            <div class="project-link">
+              <a href="javascript:void(0)">内部工具链</a>
+            </div>
+          </div>
+        </div>
 
+        <div class="project-card">
+          <div class="project-name">企业内部 AI 助手 · Prompt & Workflow 设计</div>
+          <div class="project-desc">
+            为内部助手设计提示词规范、对话结构、知识域划分和工作流节点，
+            兼顾专业性、合规性与实际业务场景，减少幻觉，提高可控性。
+          </div>
+          <div class="project-meta">
+            <div class="project-tags">
+              <span class="badge">Prompt Engineering</span>
+              <span class="badge">FastGPT</span>
+              <span class="badge">Workflow</span>
+            </div>
+            <div class="project-link">
+              <a href="javascript:void(0)">场景持续扩展中</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
+    <!-- Blog -->
+    <section id="blog">
+      <div class="section-label">Blog · Notes</div>
+      <h2 class="section-title">博客 / 笔记（预留区域）</h2>
+      <p class="section-subtitle">
+        目前这里还只是一个占位区块，太懒啦~~ 笔记都是随笔随用而记，都是不能见人的状态
+      </p>
+      <div class="card">
+        <div class="card-inner blog-placeholder">
+          <p>
+            预告：
+          </p>
+          <ul style="margin-top: 8px; padding-left: 18px;">
+            <li>把日常踩坑（Nginx / Docker / MinIO / FastGPT）整理成短篇笔记</li>
+            <li>记录一些 GraphRAG 实战中的小技巧与反模式</li>
+            <li>写写「如何把 AI 助手做得更像工具而不是聊天机器人」</li>
+          </ul>
+          <p style="margin-top: 10px;">
+            等你哪天想看，我再拿出来给你瞅瞅。
+          </p>
+        </div>
+      </div>
+    </section>
 
-<script src="/js/script.js"></script>
+    <!-- Contact -->
+    <section id="contact">
+      <div class="section-label">Contact · Links</div>
+      <h2 class="section-title">联系与社交</h2>
+      <p class="section-subtitle">
+        如果你对企业知识库、LLM 应用、内部 AI 助手、自动化工具链等方向有想法，或是对我感兴趣，欢迎随时交流。
+      </p>
 
+      <div class="card">
+        <div class="card-inner">
+          <div class="contact-grid">
+            <div>
+              <ul class="contact-list">
+                <li><strong>Email：</strong><span>waitu1232@gmail.com</span></li>
+                <li><strong>GitHub：</strong><span>github.com/dandan1232</span></li>
+                <li><strong>Location：</strong><span>China / SuZhou </span></li>
+                <li><strong>Preferred topics：</strong><span>RAG / GraphRAG / 知识库 / AI 工具落地</span></li>
+              </ul>
+            </div>
+            <div>
+              <div class="stack-group-title" style="margin-bottom: 6px;">Social Links</div>
+              <div class="social-links">
+                <a href="https://github.com/dandan1232" target="_blank">GitHub</a>
+                <a href="https://blog.csdn.net/weixin_45092728?spm=1000.2115.3001.10640">CSDN</a>
+                <a href="javascript:void(0)">Other...</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
+  <footer>
+    <div>© <span id="year"></span> Echo Lin · 念安</div>
+    <div>Built with pure HTML · CSS · particles.js · Hosted on GitHub Pages</div>
+  </footer>
 
+  <!-- 粒子背景库 -->
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script>
+    // 年份
+    document.getElementById("year").textContent = new Date().getFullYear();
 
+    // 粒子背景配置
+    particlesJS("particles-js", {
+      particles: {
+        number: { value: 80, density: { enable: true, value_area: 900 } },
+        color: { value: "#38bdf8" },
+        shape: {
+          type: "circle",
+          stroke: { width: 0, color: "#000000" }
+        },
+        opacity: {
+          value: 0.6,
+          random: false,
+          anim: { enable: false, speed: 1, opacity_min: 0.1, sync: false }
+        },
+        size: {
+          value: 3,
+          random: true,
+          anim: { enable: false, speed: 20, size_min: 0.1, sync: false }
+        },
+        line_linked: {
+          enable: true,
+          distance: 140,
+          color: "#38bdf8",
+          opacity: 0.35,
+          width: 1
+        },
+        move: {
+          enable: true,
+          speed: 1.4,
+          direction: "none",
+          random: false,
+          straight: false,
+          out_mode: "out",
+          bounce: false,
+          attract: { enable: false, rotateX: 600, rotateY: 1200 }
+        }
+      },
+      interactivity: {
+        detect_on: "canvas",
+        events: {
+          onhover: { enable: false, mode: "repulse" },
+          onclick: { enable: true, mode: "push" },
+          resize: true
+        },
+        modes: {
+          repulse: { distance: 160, duration: 0.4 },
+          push: { particles_nb: 4 }
+        }
+      },
+      retina_detect: true
+    });
 
-  </div>
+    (function () {
+      if (!window.pJSDom || !pJSDom.length) return;
+
+      var pJS = pJSDom[0].pJS;
+      var canvas = document.querySelector("#particles-js canvas");
+      if (!canvas || !pJS || !pJS.particles || !pJS.particles.array) return;
+
+      var HOLE_RADIUS = 110;
+      var RING_THICKNESS = 18;
+
+      canvas.addEventListener("mousemove", function (event) {
+        var rect = canvas.getBoundingClientRect();
+        var mouseX = event.clientX - rect.left;
+        var mouseY = event.clientY - rect.top;
+        var particles = pJS.particles.array;
+
+        for (var i = 0; i < particles.length; i++) {
+          var p = particles[i];
+          var dx = p.x - mouseX;
+          var dy = p.y - mouseY;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < HOLE_RADIUS && dist > 0) {
+            var angle = Math.atan2(dy, dx);
+            var targetDist = HOLE_RADIUS + Math.random() * RING_THICKNESS;
+            p.x = mouseX + Math.cos(angle) * targetDist;
+            p.y = mouseY + Math.sin(angle) * targetDist;
+          }
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
