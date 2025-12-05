@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Echo Lin | AI Backend Engineer</title>
+  <title>Echo Lin | Full-Stack Developer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="AI 后端开发工程师 · LLM 应用 · 知识库 · 图数据库" />
+  <meta name="description" content="全栈开发工程师 · AI 应用 · 创新项目" />
   <link rel="shortcut icon" href="https://github.githubassets.com/favicons/favicon.svg" />
 
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
       --border-subtle: rgba(148, 163, 184, 0.3);
       --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.85);
       --radius-xl: 18px;
-      --transition-fast: 0.18s ease-out;
+      --transition-fast: 0.2s ease-out;
     }
 
     * {
@@ -141,7 +141,24 @@
       margin-bottom: 48px;
       position: relative;
     }
+    
+    /* 入场动画 */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
+    .card, .project-card {
+        animation: fadeInUp 0.6s ease-out forwards;
+        opacity: 0; /* 初始状态 */
+    }
+    
     .section-label {
       font-size: 11px;
       text-transform: uppercase;
@@ -181,6 +198,7 @@
       box-shadow: var(--shadow-soft);
       position: relative;
       overflow: hidden;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
     }
 
     .card::before {
@@ -193,6 +211,11 @@
       pointer-events: none;
     }
 
+    .card:hover {
+        border-color: rgba(56, 189, 248, 0.7);
+        background: radial-gradient(circle at top left, rgba(56,189,248,0.1), rgba(15,23,42,0.98));
+    }
+    
     .card:hover::before {
       opacity: 1;
     }
@@ -536,8 +559,8 @@
       <div class="nav-left">
         <div class="brand-avatar"></div>
         <div class="brand-text">
-          <strong>Echo Lin</strong>
-          <span>AI Backend · LLM · Graph</span>
+          <strong>Echo / 念安</strong>
+          <span>Full-Stack · AI · Innovation</span>
         </div>
       </div>
       <nav>
@@ -558,12 +581,8 @@
       <div class="section-label">Profile · About Me</div>
       <h2 class="section-title">你好，我是 <span class="hero-highlight">念安 / Echo</span></h2>
       <p class="section-subtitle">
-<p class="section-subtitle">
-  欢迎你！！我的朋友~<br>
-  目前的我：专注企业内部知识库、图数据库与大语言模型应用。喜欢把「复杂系统」拆成可维护的模块，
-  用干净的代码和合适的架构让产品真的落地。
-</p>
-
+        Hi! 很高兴认识你！我是一名驻扎在苏州的全栈开发者。<br>
+        对 AI、数字生活和各类创新项目充满热情，享受在代码的世界里探索、创造和解决问题。
       </p>
 
       <div class="hero-grid">
@@ -571,24 +590,23 @@
         <div class="card">
           <div class="card-inner">
             <div class="hero-title">
-              构建 <span class="hero-highlight">可解释</span> 的 AI 系统，
-              而不只是一个聊天框。
+              构建<span class="hero-highlight">创意驱动</span>的全栈应用，
+              用代码探索数字生活的边界。
             </div>
             <p class="hero-tagline">
-              日常在做的事情包括：将 PDF / 数据库 / 图谱统一进知识库，
-              为业务定制检索问答流程，把 FastGPT / LightRAG / Neo4j / PostgreSQL
-              这些组件串成真正能用的工具。
+              热衷于将前端的交互美学与后端AI的强大能力相结合，打造从用户界面到智能核心的完整、有趣的产品。
             </p>
 
             <div class="hero-tags">
-              <span class="tag-pill">AI 后端 · LLM 应用</span>
-              <span class="tag-pill">知识库 / GraphRAG</span>
-              <span class="tag-pill">Docker · Nginx · DevOps</span>
-              <span class="tag-pill">FastGPT / ChatGPT on WeChat</span>
+              <span class="tag-pill">全栈开发 · AI 应用</span>
+              <span class="tag-pill">Vue.js / React</span>
+              <span class="tag-pill">FastAPI / Spring Boot</span>
+              <span class="tag-pill">RAG / 知识图谱</span>
+              <span class="tag-pill">DevOps</span>
             </div>
 
             <div class="hero-actions">
-              <a href="#projects" class="btn btn-primary">查看部分项目</a>
+              <a href="#projects" class="btn btn-primary">查看我的项目</a>
               <a href="#contact" class="btn btn-outline">联系我</a>
             </div>
           </div>
@@ -599,26 +617,26 @@
           <div class="card-inner hero-right">
             <div class="hero-meta-row">
               <span class="hero-meta-label">当前角色</span>
-              <span class="hero-meta-value">AI 后端开发工程师</span>
+              <span class="hero-meta-value">全栈开发工程师</span>
             </div>
             <div class="hero-meta-row">
               <span class="hero-meta-label">关注方向</span>
-              <span class="hero-meta-value">RAG / GraphRAG / 知识库 / 自动化</span>
+              <span class="hero-meta-value">AI 应用 / 系统设计 / RAG</span>
             </div>
             <div class="hero-meta-row">
-              <span class="hero-meta-label">常用技术</span>
-              <span class="hero-meta-value">Python · FastAPI · PostgreSQL · Neo4j</span>
+              <span class="hero-meta-label">核心技术</span>
+              <span class="hero-meta-value">Python · JS/TS · Vue · FastAPI</span>
             </div>
             <div class="hero-meta-row">
-              <span class="hero-meta-label">DevOps</span>
-              <span class="hero-meta-value">Docker · Nginx · WSL · Linux</span>
+              <span class="hero-meta-label">工作地点</span>
+              <span class="hero-meta-value">中国 / 苏州</span>
             </div>
             <p>
-              近期在折腾：<br>
-              · ChatGPT on WeChat 定制化 + 媒体处理<br>
-              · FastGPT 同步文档 + 图谱构建<br>
-              · PPT 自动清洗 / 审核工具链<br>
-              · 内部 AI 助手提示词 / 工作流设计
+              近期目标：<br>
+              · 深入探索 AI + 知识图谱 + RAG<br>
+              · 提升系统设计与分布式架构能力<br>
+              · 探索所有有意思的事情<br>
+              · ...
             </p>
           </div>
         </div>
@@ -630,62 +648,63 @@
       <div class="section-label">Tech · Stack</div>
       <h2 class="section-title">技术栈</h2>
       <p class="section-subtitle">
-        下面是我在实际项目中常用、并持续在打磨的技术栈。不追求「什么都会一点点」，更偏向把有限的栈用深用透。
+        这是我常用且持续学习的技术集合。我相信深度优于广度，专注于将合适的工具用深用透，打造可靠且高效的解决方案。
       </p>
 
       <div class="card">
         <div class="card-inner">
           <div class="stack-grid">
             <div>
-              <div class="stack-group-title">后端 · 核心</div>
+                <div class="stack-group-title">语言</div>
+                <div class="stack-badges">
+                  <span class="badge badge-hot">Python</span>
+                  <span class="badge badge-hot">JavaScript/TypeScript</span>
+                  <span class="badge">Java</span>
+                </div>
+            </div>
+            <div>
+              <div class="stack-group-title">前端 & 框架</div>
               <div class="stack-badges">
-                <span class="badge badge-hot">Python</span>
-                <span class="badge">Java</span>
-                <span class="badge badge-hot">FastAPI</span>
-                <span class="badge badge-hot">RESTful API 设计</span>
+                <span class="badge badge-hot">Vue.js</span>
+                <span class="badge badge-hot">React</span>
                 <span class="badge">Node.js</span>
-                <span class="badge">VUE</span>
                 <span class="badge">微信小程序</span>
-                <span class="badge">Android</span>
-
               </div>
             </div>
             <div>
-              <div class="stack-group-title">数据 & 图谱</div>
+                <div class="stack-group-title">后端 & 平台</div>
+                <div class="stack-badges">
+                  <span class="badge badge-hot">FastAPI</span>
+                  <span class="badge">Spring Boot</span>
+                  <span class="badge">RESTful API</span>
+                </div>
+            </div>
+            <div>
+              <div class="stack-group-title">数据库</div>
               <div class="stack-badges">
                 <span class="badge badge-hot">PostgreSQL</span>
-                <span class="badge badge-hot">Mongodb</span>
-                <span class="badge">MySQL</span>
                 <span class="badge badge-hot">Neo4j</span>
+                <span class="badge">MySQL</span>
+                <span class="badge">OceanBase</span>
                 <span class="badge">向量数据库</span>
               </div>
             </div>
             <div>
-              <div class="stack-group-title">AI / LLM</div>
+              <div class="stack-group-title">AI & 工具</div>
               <div class="stack-badges">
-                <span class="badge badge-hot">RAG / GraphRAG</span>
+                <span class="badge badge-hot">RAG / LangChain</span>
                 <span class="badge badge-hot">FastGPT</span>
-                <span class="badge badge-hot">Mineru</span>
-                <span class="badge badge-hot">LightRAG</span>
+                <span class="badge">NLP (SpaCy, etc.)</span>
                 <span class="badge">OpenAI / GLM API</span>
               </div>
             </div>
             <div>
-              <div class="stack-group-title">Infra · DevOps</div>
+              <div class="stack-group-title">DevOps & 其他</div>
               <div class="stack-badges">
-                <span class="badge badge-hot">Docker</span>
-                <span class="badge">Nginx 反向代理 / HTTPS</span>
+                <span class="badge badge-hot">Docker / Docker Compose</span>
+                <span class="badge">Git / GitHub Actions</span>
                 <span class="badge">Linux / WSL</span>
-                <span class="badge badge-hot">Git / GitLab / CI</span>
-              </div>
-            </div>
-            <div>
-              <div class="stack-group-title">实用工具</div>
-              <div class="stack-badges">
-                <span class="badge">MinIO / 对象存储</span>
-                <span class="badge">Jenkins</span>
-                <span class="badge">PPTX / 文档处理</span>
-                <span class="badge">微信生态相关开发</span>
+                <span class="badge">MinIO</span>
               </div>
             </div>
           </div>
@@ -716,7 +735,7 @@
               <span class="badge">GraphRAG</span>
             </div>
             <div class="project-link">
-              <a href="javascript:void(0)">内部项目 · 无公开链接</a>
+              <a href="javascript:void(0)">内部项目</a>
             </div>
           </div>
         </div>
@@ -724,7 +743,7 @@
         <div class="project-card">
           <div class="project-name">ChatGPT on WeChat · 媒体增强版</div>
           <div class="project-desc">
-            基于开源 chatgpt-on-wechat 定制，接入公司知识、MinIO 媒体库，自动识别并展示图片、视频，
+            基于开源项目定制，接入公司知识、MinIO 媒体库，自动识别并展示图片、视频，
             支持压缩、转码、静默失败等逻辑，更贴合实际运营需求。
           </div>
           <div class="project-meta">
@@ -734,7 +753,7 @@
               <span class="badge">MinIO</span>
             </div>
             <div class="project-link">
-              <a href="javascript:void(0)">正在内部运行</a>
+              <a href="javascript:void(0)">内部运行中</a>
             </div>
           </div>
         </div>
@@ -758,7 +777,7 @@
         </div>
 
         <div class="project-card">
-          <div class="project-name">企业内部 AI 助手 · Prompt & Workflow 设计</div>
+          <div class="project-name">内部 AI 助手 · Workflow 设计</div>
           <div class="project-desc">
             为内部助手设计提示词规范、对话结构、知识域划分和工作流节点，
             兼顾专业性、合规性与实际业务场景，减少幻觉，提高可控性。
@@ -770,7 +789,7 @@
               <span class="badge">Workflow</span>
             </div>
             <div class="project-link">
-              <a href="javascript:void(0)">场景持续扩展中</a>
+              <a href="javascript:void(0)">持续扩展中</a>
             </div>
           </div>
         </div>
@@ -780,23 +799,21 @@
     <!-- Blog -->
     <section id="blog">
       <div class="section-label">Blog · Notes</div>
-      <h2 class="section-title">博客 / 笔记（预留区域）</h2>
+      <h2 class="section-title">博客 / 笔记（施工中...）</h2>
       <p class="section-subtitle">
-        目前这里还只是一个占位区块，太懒啦~~ 笔记都是随笔随用而记，都是不能见人的状态
+        我更喜欢在实践中记录和思考，笔记散落在各处。这里是未来的整理区，敬请期待！
       </p>
       <div class="card">
         <div class="card-inner blog-placeholder">
           <p>
-            预告：
+            未来可能会分享：
           </p>
           <ul style="margin-top: 8px; padding-left: 18px;">
-            <li>把日常踩坑（Nginx / Docker / MinIO / FastGPT）整理成短篇笔记</li>
-            <li>记录一些 GraphRAG 实战中的小技巧与反模式</li>
-            <li>写写「如何把 AI 助手做得更像工具而不是聊天机器人」</li>
+            <li>全栈开发中的 AI 落地心得</li>
+            <li>一些 GraphRAG 实战中的小技巧与反模式</li>
+            <li>如何把 AI 助手做得更像“工具”而不是“玩具”</li>
+            <li>Nginx / Docker / MinIO 的踩坑实录</li>
           </ul>
-          <p style="margin-top: 10px;">
-            等你哪天想看，我再拿出来给你瞅瞅。
-          </p>
         </div>
       </div>
     </section>
@@ -806,7 +823,7 @@
       <div class="section-label">Contact · Links</div>
       <h2 class="section-title">联系与社交</h2>
       <p class="section-subtitle">
-        如果你对企业知识库、LLM 应用、内部 AI 助手、自动化工具链等方向有想法，或是对我感兴趣，欢迎随时交流。
+        如果你对我的项目感兴趣，或是在 AI 应用、全栈开发、自动化工具链等方向有任何想法，都非常欢迎与我交流！
       </p>
 
       <div class="card">
@@ -814,10 +831,10 @@
           <div class="contact-grid">
             <div>
               <ul class="contact-list">
-                <li><strong>Email：</strong><span>danbao1108@foxmail.com</span></li>  
+                <li><strong>WeChat：</strong><span>waitu1232</span> (Recommend)</li>
+                <li><strong>Email：</strong><span>danbao1108@foxmail.com</span></li>
                 <li><strong>GitHub：</strong><span>github.com/dandan1232</span></li>
                 <li><strong>Location：</strong><span>China / SuZhou </span></li>
-                <li><strong>Preferred topics：</strong><span>RAG / GraphRAG / 知识库 / AI 工具落地</span></li>
               </ul>
             </div>
             <div>
@@ -825,7 +842,7 @@
               <div class="social-links">
                 <a href="https://github.com/dandan1232" target="_blank">GitHub</a>
                 <a href="https://blog.csdn.net/weixin_45092728?spm=1000.2115.3001.10640">CSDN</a>
-                <a href="javascript:void(0)">Other...</a>
+                <a href="javascript:alert('微信号: waitu1232（添加请注明来意）');">WeChat</a>
               </div>
             </div>
           </div>
@@ -839,7 +856,7 @@
     <div>Built with pure HTML · CSS · particles.js · Hosted on GitHub Pages</div>
   </footer>
 
-  <!-- 粒子背景库 -->
+    <!-- 粒子背景库 -->
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script>
     // 年份
@@ -856,8 +873,8 @@
         },
         opacity: {
           value: 0.6,
-          random: false,
-          anim: { enable: false, speed: 1, opacity_min: 0.1, sync: false }
+          random: true,
+          anim: { enable: true, speed: 0.8, opacity_min: 0.1, sync: false }
         },
         size: {
           value: 3,
@@ -875,7 +892,7 @@
           enable: true,
           speed: 1.4,
           direction: "none",
-          random: false,
+          random: true,
           straight: false,
           out_mode: "out",
           bounce: false,
@@ -883,52 +900,20 @@
         }
       },
       interactivity: {
-        detect_on: "canvas",
+        detect_on: "window", 
         events: {
-          onhover: { enable: false, mode: "repulse" },
+          onhover: { enable: true, mode: "repulse" },
           onclick: { enable: true, mode: "push" },
           resize: true
         },
         modes: {
-          repulse: { distance: 160, duration: 0.4 },
+          repulse: { distance: 100, duration: 0.4 },
           push: { particles_nb: 4 }
         }
       },
       retina_detect: true
     });
-
-    (function () {
-      if (!window.pJSDom || !pJSDom.length) return;
-
-      var pJS = pJSDom[0].pJS;
-      var canvas = document.querySelector("#particles-js canvas");
-      if (!canvas || !pJS || !pJS.particles || !pJS.particles.array) return;
-
-      var HOLE_RADIUS = 110;
-      var RING_THICKNESS = 18;
-
-      canvas.addEventListener("mousemove", function (event) {
-        var rect = canvas.getBoundingClientRect();
-        var mouseX = event.clientX - rect.left;
-        var mouseY = event.clientY - rect.top;
-        var particles = pJS.particles.array;
-
-        for (var i = 0; i < particles.length; i++) {
-          var p = particles[i];
-          var dx = p.x - mouseX;
-          var dy = p.y - mouseY;
-          var dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < HOLE_RADIUS && dist > 0) {
-            var angle = Math.atan2(dy, dx);
-            var targetDist = HOLE_RADIUS + Math.random() * RING_THICKNESS;
-            p.x = mouseX + Math.cos(angle) * targetDist;
-            p.y = mouseY + Math.sin(angle) * targetDist;
-          }
-        }
-      });
-    })();
   </script>
+
 </body>
 </html>
-
