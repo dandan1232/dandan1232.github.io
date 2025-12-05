@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <title>Echo Lin | Full-Stack Developer</title>
@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 
   <style>
+    /* --- 默认 (科技蓝) 主题变量 --- */
     :root {
       --bg-dark: #050816;
       --bg-card: rgba(15, 23, 42, 0.85);
@@ -20,7 +21,26 @@
       --border-subtle: rgba(148, 163, 184, 0.3);
       --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.85);
       --radius-xl: 18px;
-      --transition-fast: 0.2s ease-out;
+      --transition-fast: 0.25s ease-out;
+      --hero-gradient: linear-gradient(to right, #38bdf8, #a855f7);
+      --card-hover-gradient: radial-gradient(circle at top left, rgba(56,189,248,0.1), rgba(15,23,42,0.98));
+      --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(56,189,248,0.28), transparent 55%);
+      --btn-primary-gradient: radial-gradient(circle at top left, rgba(56,189,248,0.26), rgba(15,23,42,0.96));
+    }
+
+    /* --- 纯粉色泡泡 主题变量 --- */
+    [data-theme="pink"] {
+      --bg-dark: #38132f; /* 深玫瑰红/暗粉色 */
+      --bg-card: rgba(76, 35, 62, 0.85); /* 基于背景的半透明卡片色 */
+      --accent: #f3dff0; /* 亮粉色 */
+      --accent-soft: rgba(244, 114, 182, 0.15);
+      --text-main: #FCE7F3; /* 极浅粉 */
+      --text-muted: #E5A8C8; /* 柔和的灰粉色 */
+      --border-subtle: rgba(244, 114, 182, 0.3);
+      --hero-gradient: linear-gradient(to right, #F472B6, #FCC5E4); /* 亮粉到樱花粉 */
+      --card-hover-gradient: radial-gradient(circle at top left, rgba(244, 114, 182, 0.12), rgba(76,35,62,0.98));
+      --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(244, 114, 182, 0.3), transparent 55%);
+      --btn-primary-gradient: radial-gradient(circle at top left, rgba(244, 114, 182, 0.22), rgba(76,35,62,0.96));
     }
 
     * {
@@ -29,891 +49,223 @@
       box-sizing: border-box;
     }
 
-    html {
-      scroll-behavior: smooth;
-    }
+    html { scroll-behavior: smooth; }
 
     body {
       font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text-main);
-      background: radial-gradient(circle at top, #1e293b 0, #020617 40%, #000 100%);
+      background-color: var(--bg-dark);
+      transition: background-color var(--transition-fast);
       min-height: 100vh;
       overflow-x: hidden;
       position: relative;
     }
 
-    /* 粒子背景层 */
     #particles-js {
       position: fixed;
       inset: 0;
       z-index: -1;
-      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+      background-color: var(--bg-dark);
+      transition: background-color var(--transition-fast);
     }
 
-    /* 顶部导航 */
     header {
       position: sticky;
       top: 0;
       z-index: 20;
       backdrop-filter: blur(18px);
       background: linear-gradient(to bottom, rgba(15,23,42,0.95), rgba(15,23,42,0.6), transparent);
-      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: border-color var(--transition-fast);
+    }
+    [data-theme="pink"] header {
+       background: linear-gradient(to bottom, rgba(56,19,42,0.95), rgba(56,19,42,0.6), transparent);
     }
 
-    .nav-container {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .nav-container { max-width: 1120px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-left { display: flex; align-items: center; gap: 10px; }
+    .nav-right { display: flex; align-items: center; gap: 18px; }
 
     .brand-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 999px;
-      border: 1px solid rgba(56,189,248,0.7);
-      background: radial-gradient(circle at 30% 0%, #22d3ee, #0f172a 50%, #020617 100%);
-      box-shadow: 0 0 20px rgba(56,189,248,0.6);
+      width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--accent);
+      box-shadow: 0 0 20px var(--accent);
+      transition: all var(--transition-fast);
     }
+    .brand-text strong { font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .brand-text span { font-size: 11px; color: var(--text-muted); transition: color var(--transition-fast); }
 
-    .brand-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .brand-text strong {
-      font-size: 15px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .brand-text span {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    nav ul {
-      list-style: none;
-      display: flex;
-      gap: 18px;
-      font-size: 13px;
-    }
-
+    nav ul { list-style: none; display: flex; gap: 18px; font-size: 13px; }
     nav a {
-      color: var(--text-muted);
-      text-decoration: none;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid transparent;
+      color: var(--text-muted); text-decoration: none; padding: 6px 10px; border-radius: 999px; border: 1px solid transparent;
       transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
     }
-
-    nav a:hover {
-      color: var(--text-main);
-      border-color: rgba(148,163,184,0.6);
-      background: rgba(15,23,42,0.9);
-      transform: translateY(-1px);
-    }
-
+    nav a:hover { color: var(--text-main); border-color: var(--accent); background: var(--bg-card); transform: translateY(-1px); }
     .nav-cta {
-      border-color: rgba(56,189,248,0.6);
-      background: radial-gradient(circle at top left, rgba(56,189,248,0.22), rgba(15,23,42,0.96));
-      color: var(--accent);
-      box-shadow: 0 0 16px rgba(56,189,248,0.40);
+      border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+      box-shadow: 0 0 16px var(--accent); transition: all var(--transition-fast);
     }
 
-    main {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 36px 20px 80px;
+    .theme-switcher button {
+        background: transparent; border: 1px solid var(--border-subtle); color: var(--text-muted);
+        width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px;
+        display: grid; place-items: center; transition: all var(--transition-fast);
     }
+    .theme-switcher button:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px) rotate(15deg); }
 
-    section {
-      margin-bottom: 48px;
-      position: relative;
-    }
+    main { max-width: 1120px; margin: 0 auto; padding: 36px 20px 80px; }
+    section { margin-bottom: 48px; position: relative; }
     
-    /* 入场动画 */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .card, .project-card {
-        animation: fadeInUp 0.6s ease-out forwards;
-        opacity: 0; /* 初始状态 */
-    }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .card, .project-card { animation: fadeInUp 0.6s ease-out forwards; opacity: 0; }
     
     .section-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: var(--accent);
-      margin-bottom: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--accent);
+      margin-bottom: 8px; display: inline-flex; align-items: center; gap: 6px; transition: color var(--transition-fast);
     }
-
     .section-label::before {
-      content: "";
-      width: 26px;
-      height: 1px;
-      background: linear-gradient(to right, var(--accent), transparent);
+      content: ""; width: 26px; height: 1px; background: linear-gradient(to right, var(--accent), transparent);
+      transition: background var(--transition-fast);
     }
+    .section-title { font-size: 24px; margin-bottom: 16px; }
+    .section-subtitle { font-size: 13px; color: var(--text-muted); max-width: 640px; line-height: 1.6; margin-bottom: 20px; transition: color var(--transition-fast); }
 
-    .section-title {
-      font-size: 24px;
-      margin-bottom: 16px;
-    }
-
-    .section-subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-      max-width: 640px;
-      line-height: 1.6;
-      margin-bottom: 20px;
-    }
-
-    /* 卡片通用 */
     .card {
-      background: var(--bg-card);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--border-subtle);
-      box-shadow: var(--shadow-soft);
-      position: relative;
-      overflow: hidden;
+      background: var(--bg-card); border-radius: var(--radius-xl); border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-soft); position: relative; overflow: hidden;
       transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
     }
-
     .card::before {
-      content: "";
-      position: absolute;
-      inset: -40%;
-      background: radial-gradient(circle at 10% 0%, rgba(56,189,248,0.28), transparent 55%);
-      opacity: 0;
-      transition: opacity 0.35s ease-out;
-      pointer-events: none;
+      content: ""; position: absolute; inset: -40%; background: var(--card-before-gradient);
+      opacity: 0; transition: opacity 0.35s ease-out, background var(--transition-fast); pointer-events: none;
     }
+    .card:hover { border-color: var(--accent); background: var(--card-hover-gradient); }
+    .card:hover::before { opacity: 1; }
+    .card-inner { position: relative; z-index: 1; padding: 20px 22px; }
 
-    .card:hover {
-        border-color: rgba(56, 189, 248, 0.7);
-        background: radial-gradient(circle at top left, rgba(56,189,248,0.1), rgba(15,23,42,0.98));
-    }
-    
-    .card:hover::before {
-      opacity: 1;
-    }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr); gap: 22px; align-items: stretch; }
+    @media (max-width: 880px) { .hero-grid { grid-template-columns: minmax(0, 1fr); } }
 
-    .card-inner {
-      position: relative;
-      z-index: 1;
-      padding: 20px 22px;
-    }
-
-    /* Hero / About 区域 */
-    .hero-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
-      gap: 22px;
-      align-items: stretch;
-    }
-
-    @media (max-width: 880px) {
-      .hero-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .hero-title {
-      font-size: 30px;
-      line-height: 1.2;
-      margin-bottom: 10px;
-    }
-
-    .hero-highlight {
-      background: linear-gradient(to right, #38bdf8, #a855f7);
-      -webkit-background-clip: text;
-      color: transparent;
-    }
-
-    .hero-tagline {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.7;
-      margin-bottom: 18px;
-    }
-
-    .hero-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 18px;
-    }
+    .hero-title { font-size: 30px; line-height: 1.2; margin-bottom: 10px; }
+    .hero-highlight { background: var(--hero-gradient); -webkit-background-clip: text; color: transparent; transition: background var(--transition-fast); }
+    .hero-tagline { font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-bottom: 18px; transition: color var(--transition-fast); }
+    .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 
     .tag-pill {
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,0.6);
-      background: rgba(15,23,42,0.8);
-      color: var(--text-muted);
-      white-space: nowrap;
+      font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-subtle);
+      background: var(--bg-card); color: var(--text-muted); white-space: nowrap; transition: all var(--transition-fast);
     }
 
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 6px;
-    }
-
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
     .btn {
-      font-size: 13px;
-      padding: 8px 14px;
-      border-radius: 999px;
-      border: 1px solid transparent;
-      background: rgba(15,23,42,0.95);
-      color: var(--text-main);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all var(--transition-fast);
-      cursor: pointer;
+      font-size: 13px; padding: 8px 14px; border-radius: 999px; border: 1px solid transparent; background: transparent;
+      color: var(--text-main); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+      transition: all var(--transition-fast); cursor: pointer;
     }
+    .btn-primary { border-color: var(--accent); background: var(--btn-primary-gradient); color: var(--accent); box-shadow: 0 0 18px var(--accent); }
+    .btn-outline { border-color: var(--border-subtle); color: var(--text-muted); }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0,0,0,0.4); border-color: var(--accent); color: var(--accent); }
 
-    .btn-primary {
-      border-color: rgba(56,189,248,0.7);
-      background: radial-gradient(circle at top left, rgba(56,189,248,0.26), rgba(15,23,42,0.96));
-      color: var(--accent);
-      box-shadow: 0 0 18px rgba(56,189,248,0.55);
-    }
+    .hero-right { display: flex; flex-direction: column; gap: 12px; font-size: 12px; color: var(--text-muted); }
+    .hero-meta-row { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--border-subtle); padding-bottom: 8px; margin-bottom: 2px; transition: border-color var(--transition-fast); }
+    .hero-meta-label { color: var(--text-muted); transition: color var(--transition-fast); }
+    .hero-meta-value { color: var(--accent); transition: color var(--transition-fast); }
 
-    .btn-outline {
-      border-color: rgba(148,163,184,0.7);
-      color: var(--text-muted);
-    }
-
-    .btn:hover {
-      transform: translateY(-1px) translateX(0.5px);
-      box-shadow: 0 12px 26px rgba(15,23,42,0.9);
-      border-color: rgba(56,189,248,0.9);
-      color: var(--accent);
-    }
-
-    .hero-right {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .hero-meta-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      border-bottom: 1px dashed rgba(148,163,184,0.4);
-      padding-bottom: 8px;
-      margin-bottom: 2px;
-    }
-
-    .hero-meta-label {
-      color: var(--text-muted);
-    }
-
-    .hero-meta-value {
-      color: var(--accent);
-    }
-
-    /* 技术栈 */
-    .stack-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 10px;
-    }
-
-    .stack-group-title {
-      font-size: 13px;
-      margin-bottom: 8px;
-      color: var(--text-muted);
-    }
-
-    .stack-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
+    .stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .stack-group-title { font-size: 13px; margin-bottom: 8px; color: var(--text-muted); transition: color var(--transition-fast); }
+    .stack-badges { display: flex; flex-wrap: wrap; gap: 6px; }
     .badge {
-      font-size: 11px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,0.6);
-      background: rgba(15,23,42,0.9);
-      color: var(--text-main);
-      white-space: nowrap;
+      font-size: 11px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border-subtle);
+      background: var(--bg-card); color: var(--text-main); white-space: nowrap; transition: all var(--transition-fast);
     }
+    .badge-hot { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
-    .badge-hot {
-      border-color: rgba(56,189,248,0.9);
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-
-    /* 项目卡片 */
-    .projects-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-    }
-
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
     .project-card {
-      background: var(--bg-card);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--border-subtle);
-      box-shadow: var(--shadow-soft);
-      padding: 16px 18px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      position: relative;
-      overflow: hidden;
-      cursor: default;
+      background: var(--bg-card); border-radius: var(--radius-xl); border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-soft); padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 8px;
+      position: relative; overflow: hidden; cursor: default;
       transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
     }
-
     .project-card::before {
-      content: "";
-      position: absolute;
-      inset: -40%;
-      background: radial-gradient(circle at 0 0, rgba(56,189,248,0.32), transparent 55%);
-      opacity: 0;
-      transition: opacity 0.35s ease-out;
-      pointer-events: none;
+      content: ""; position: absolute; inset: -40%; background: var(--card-before-gradient);
+      opacity: 0; transition: opacity 0.35s ease-out, background var(--transition-fast); pointer-events: none;
     }
-
-    .project-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 22px 50px rgba(15,23,42,0.9);
-      border-color: rgba(56,189,248,0.7);
-      background: radial-gradient(circle at top left, rgba(56,189,248,0.18), rgba(15,23,42,0.98));
-    }
-
-    .project-card:hover::before {
-      opacity: 1;
-    }
-
-    .project-name {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .project-desc {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
-
-    .project-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    .project-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      font-size: 10px;
-    }
-
-    .project-link a {
-      font-size: 11px;
-      color: var(--accent);
-      text-decoration: none;
-      border-bottom: 1px dashed rgba(56,189,248,0.6);
-      padding-bottom: 1px;
-    }
-
-    .project-link a:hover {
-      border-bottom-style: solid;
-    }
-
-    /* 博客占位 */
-    .blog-placeholder {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.7;
-    }
-
-    /* 联系方式和社交 */
-    .contact-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-      gap: 14px;
-    }
-
-    @media (max-width: 720px) {
-      .contact-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .contact-list {
-      list-style: none;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .contact-list li {
-      margin-bottom: 6px;
-    }
-
-    .contact-list strong {
-      color: var(--text-main);
-      margin-right: 4px;
-    }
-
-    .social-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
+    .project-card:hover { transform: translateY(-4px); box-shadow: 0 22px 50px rgba(0,0,0,0.5); border-color: var(--accent); background: var(--card-hover-gradient); }
+    .project-card:hover::before { opacity: 1; }
+    .project-name { font-size: 14px; font-weight: 600; }
+    .project-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; transition: color var(--transition-fast); }
+    .project-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 4px; }
+    .project-tags { display: flex; flex-wrap: wrap; gap: 4px; font-size: 10px; }
+    .project-link a { font-size: 11px; color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); padding-bottom: 1px; transition: all var(--transition-fast); }
+    .project-link a:hover { border-bottom-style: solid; }
+    
+    .contact-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+    @media (max-width: 720px) { .contact-grid { grid-template-columns: minmax(0, 1fr); } }
+    .contact-list { list-style: none; font-size: 12px; color: var(--text-muted); }
+    .contact-list li { margin-bottom: 6px; }
+    .contact-list strong { color: var(--text-main); margin-right: 4px; }
+    .social-links { display: flex; flex-wrap: wrap; gap: 8px; }
     .social-links a {
-      font-size: 11px;
-      padding: 5px 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,0.7);
-      background: rgba(15,23,42,0.95);
-      color: var(--text-muted);
-      text-decoration: none;
-      transition: all var(--transition-fast);
+      font-size: 11px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-subtle);
+      background: var(--bg-card); color: var(--text-muted); text-decoration: none; transition: all var(--transition-fast);
     }
+    .social-links a:hover { color: var(--accent); border-color: var(--accent); box-shadow: 0 12px 26px rgba(0,0,0,0.4); transform: translateY(-1px); }
 
-    .social-links a:hover {
-      color: var(--accent);
-      border-color: rgba(56,189,248,0.9);
-      box-shadow: 0 12px 26px rgba(15,23,42,0.9);
-      transform: translateY(-1px);
-    }
-
-    footer {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 0 20px 24px;
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    /* 小屏适配 */
+    footer { max-width: 1120px; margin: 0 auto; padding: 0 20px 24px; font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
     @media (max-width: 640px) {
-      .hero-title {
-        font-size: 24px;
-      }
-      .section-title {
-        font-size: 20px;
-      }
-      .nav-container {
-        padding-inline: 14px;
-      }
-      nav ul {
-        gap: 10px;
-      }
-      nav li:nth-child(n+4) {
-        display: none; /* 特别窄的屏幕上收窄导航 */
-      }
+      .hero-title { font-size: 24px; } .section-title { font-size: 20px; }
+      .nav-container { padding-inline: 14px; } nav ul { gap: 10px; } nav li:nth-child(n+4) { display: none; }
     }
   </style>
 </head>
 <body>
-  <!-- 粒子背景 -->
   <div id="particles-js"></div>
-
-  <!-- 顶部导航 -->
   <header>
     <div class="nav-container">
       <div class="nav-left">
         <div class="brand-avatar"></div>
-        <div class="brand-text">
-          <strong>Echo / 念安</strong>
-          <span>Full-Stack · AI · Innovation</span>
-        </div>
+        <div class="brand-text"><strong>Echo / 念安</strong><span>Full-Stack · AI · Innovation</span></div>
       </div>
-      <nav>
-        <ul>
-          <li><a href="#about">About</a></li>
-          <li><a href="#stack">Tech Stack</a></li>
-          <li><a href="#projects">Projects</a></li>
-          <li><a href="#blog">Blog</a></li>
-          <li><a href="#contact" class="nav-cta">Contact</a></li>
-        </ul>
-      </nav>
+      <div class="nav-right">
+        <nav><ul><li><a href="#about">About</a></li><li><a href="#stack">Tech Stack</a></li><li><a href="#projects">Projects</a></li><li><a href="#blog">Blog</a></li><li><a href="#contact" class="nav-cta">Contact</a></li></ul></nav>
+        <div class="theme-switcher"><button id="theme-toggle-btn" title="切换主题">🎨</button></div>
+      </div>
     </div>
   </header>
-
   <main>
-    <!-- About / Hero -->
-    <section id="about">
-      <div class="section-label">Profile · About Me</div>
-      <h2 class="section-title">你好，我是 <span class="hero-highlight">念安 / Echo</span></h2>
-      <p class="section-subtitle">
-        Hi! 很高兴认识你！我是一名驻扎在苏州的全栈开发者。<br>
-        对 AI、数字生活和各类创新项目充满热情，享受在代码的世界里探索、创造和解决问题。
-      </p>
-
-      <div class="hero-grid">
-        <!-- 左侧介绍 -->
-        <div class="card">
-          <div class="card-inner">
-            <div class="hero-title">
-              构建<span class="hero-highlight">创意驱动</span>的全栈应用，
-              用代码探索数字生活的边界。
-            </div>
-            <p class="hero-tagline">
-              热衷于将前端的交互美学与后端AI的强大能力相结合，打造从用户界面到智能核心的完整、有趣的产品。
-            </p>
-
-            <div class="hero-tags">
-              <span class="tag-pill">全栈开发 · AI 应用</span>
-              <span class="tag-pill">Vue.js / React</span>
-              <span class="tag-pill">FastAPI / Spring Boot</span>
-              <span class="tag-pill">RAG / 知识图谱</span>
-              <span class="tag-pill">DevOps</span>
-            </div>
-
-            <div class="hero-actions">
-              <a href="#projects" class="btn btn-primary">查看我的项目</a>
-              <a href="#contact" class="btn btn-outline">联系我</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- 右侧信息 -->
-        <div class="card">
-          <div class="card-inner hero-right">
-            <div class="hero-meta-row">
-              <span class="hero-meta-label">当前角色</span>
-              <span class="hero-meta-value">全栈开发工程师</span>
-            </div>
-            <div class="hero-meta-row">
-              <span class="hero-meta-label">关注方向</span>
-              <span class="hero-meta-value">AI 应用 / 系统设计 / RAG</span>
-            </div>
-            <div class="hero-meta-row">
-              <span class="hero-meta-label">核心技术</span>
-              <span class="hero-meta-value">Python · JS/TS · Vue · FastAPI</span>
-            </div>
-            <div class="hero-meta-row">
-              <span class="hero-meta-label">工作地点</span>
-              <span class="hero-meta-value">中国 / 苏州</span>
-            </div>
-            <p>
-              近期目标：<br>
-              · 深入探索 AI + 知识图谱 + RAG<br>
-              · 提升系统设计与分布式架构能力<br>
-              · 探索所有有意思的事情<br>
-              · ...
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Tech Stack -->
-    <section id="stack">
-      <div class="section-label">Tech · Stack</div>
-      <h2 class="section-title">技术栈</h2>
-      <p class="section-subtitle">
-        这是我常用且持续学习的技术集合。我相信深度优于广度，专注于将合适的工具用深用透，打造可靠且高效的解决方案。
-      </p>
-
-      <div class="card">
-        <div class="card-inner">
-          <div class="stack-grid">
-            <div>
-                <div class="stack-group-title">语言</div>
-                <div class="stack-badges">
-                  <span class="badge badge-hot">Python</span>
-                  <span class="badge badge-hot">JavaScript/TypeScript</span>
-                  <span class="badge">Java</span>
-                </div>
-            </div>
-            <div>
-              <div class="stack-group-title">前端 & 框架</div>
-              <div class="stack-badges">
-                <span class="badge badge-hot">Vue.js</span>
-                <span class="badge badge-hot">React</span>
-                <span class="badge">Node.js</span>
-                <span class="badge">微信小程序</span>
-              </div>
-            </div>
-            <div>
-                <div class="stack-group-title">后端 & 平台</div>
-                <div class="stack-badges">
-                  <span class="badge badge-hot">FastAPI</span>
-                  <span class="badge">Spring Boot</span>
-                  <span class="badge">RESTful API</span>
-                </div>
-            </div>
-            <div>
-              <div class="stack-group-title">数据库</div>
-              <div class="stack-badges">
-                <span class="badge badge-hot">PostgreSQL</span>
-                <span class="badge badge-hot">Neo4j</span>
-                <span class="badge">MySQL</span>
-                <span class="badge">OceanBase</span>
-                <span class="badge">向量数据库</span>
-              </div>
-            </div>
-            <div>
-              <div class="stack-group-title">AI & 工具</div>
-              <div class="stack-badges">
-                <span class="badge badge-hot">RAG / LangChain</span>
-                <span class="badge badge-hot">FastGPT</span>
-                <span class="badge">NLP (SpaCy, etc.)</span>
-                <span class="badge">OpenAI / GLM API</span>
-              </div>
-            </div>
-            <div>
-              <div class="stack-group-title">DevOps & 其他</div>
-              <div class="stack-badges">
-                <span class="badge badge-hot">Docker / Docker Compose</span>
-                <span class="badge">Git / GitHub Actions</span>
-                <span class="badge">Linux / WSL</span>
-                <span class="badge">MinIO</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Projects -->
-    <section id="projects">
-      <div class="section-label">Work · Projects</div>
-      <h2 class="section-title">部分项目</h2>
-      <p class="section-subtitle">
-        大部分项目与企业内部系统强绑定，这里只放简要介绍。真正有价值的部分往往在于「数据流设计 + LLM 流程编排 + 基础设施」的组合。
-      </p>
-
-      <div class="projects-grid">
-        <div class="project-card">
-          <div class="project-name">企业知识库 · GraphRAG 系统</div>
-          <div class="project-desc">
-            将 PDF、结构化数据库、图数据库统一接入，构建实体 / 关系 / 文本三层检索。
-            通过高低层关键词、GraphRAG 策略和 LLM 问答，支持复杂业务问答与追溯。
-          </div>
-          <div class="project-meta">
-            <div class="project-tags">
-              <span class="badge">FastAPI</span>
-              <span class="badge">PostgreSQL</span>
-              <span class="badge">Neo4j</span>
-              <span class="badge">GraphRAG</span>
-            </div>
-            <div class="project-link">
-              <a href="javascript:void(0)">内部项目</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="project-card">
-          <div class="project-name">ChatGPT on WeChat · 媒体增强版</div>
-          <div class="project-desc">
-            基于开源项目定制，接入公司知识、MinIO 媒体库，自动识别并展示图片、视频，
-            支持压缩、转码、静默失败等逻辑，更贴合实际运营需求。
-          </div>
-          <div class="project-meta">
-            <div class="project-tags">
-              <span class="badge">Python</span>
-              <span class="badge">WeChat</span>
-              <span class="badge">MinIO</span>
-            </div>
-            <div class="project-link">
-              <a href="javascript:void(0)">内部运行中</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="project-card">
-          <div class="project-name">PPT 自动清洗 & 审核工具</div>
-          <div class="project-desc">
-            针对公司大量 PPT 素材，自动扫描并处理小图标、背景图、敏感元素，生成 JSON 报告，
-            为知识沉淀与对外展示做统一风格管理。
-          </div>
-          <div class="project-meta">
-            <div class="project-tags">
-              <span class="badge">Python</span>
-              <span class="badge">PPTX</span>
-              <span class="badge">自动化</span>
-            </div>
-            <div class="project-link">
-              <a href="javascript:void(0)">内部工具链</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="project-card">
-          <div class="project-name">内部 AI 助手 · Workflow 设计</div>
-          <div class="project-desc">
-            为内部助手设计提示词规范、对话结构、知识域划分和工作流节点，
-            兼顾专业性、合规性与实际业务场景，减少幻觉，提高可控性。
-          </div>
-          <div class="project-meta">
-            <div class="project-tags">
-              <span class="badge">Prompt Engineering</span>
-              <span class="badge">FastGPT</span>
-              <span class="badge">Workflow</span>
-            </div>
-            <div class="project-link">
-              <a href="javascript:void(0)">持续扩展中</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Blog -->
-    <section id="blog">
-      <div class="section-label">Blog · Notes</div>
-      <h2 class="section-title">博客 / 笔记（施工中...）</h2>
-      <p class="section-subtitle">
-        我更喜欢在实践中记录和思考，笔记散落在各处。这里是未来的整理区，敬请期待！
-      </p>
-      <div class="card">
-        <div class="card-inner blog-placeholder">
-          <p>
-            未来可能会分享：
-          </p>
-          <ul style="margin-top: 8px; padding-left: 18px;">
-            <li>全栈开发中的 AI 落地心得</li>
-            <li>一些 GraphRAG 实战中的小技巧与反模式</li>
-            <li>如何把 AI 助手做得更像“工具”而不是“玩具”</li>
-            <li>Nginx / Docker / MinIO 的踩坑实录</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- Contact -->
-    <section id="contact">
-      <div class="section-label">Contact · Links</div>
-      <h2 class="section-title">联系与社交</h2>
-      <p class="section-subtitle">
-        如果你对我的项目感兴趣，或是在 AI 应用、全栈开发、自动化工具链等方向有任何想法，都非常欢迎与我交流！
-      </p>
-
-      <div class="card">
-        <div class="card-inner">
-          <div class="contact-grid">
-            <div>
-              <ul class="contact-list">
-                <li><strong>WeChat：</strong><span>waitu1232</span> (Recommend)</li>
-                <li><strong>Email：</strong><span>danbao1108@foxmail.com</span></li>
-                <li><strong>GitHub：</strong><span>github.com/dandan1232</span></li>
-                <li><strong>Location：</strong><span>China / SuZhou </span></li>
-              </ul>
-            </div>
-            <div>
-              <div class="stack-group-title" style="margin-bottom: 6px;">Social Links</div>
-              <div class="social-links">
-                <a href="https://github.com/dandan1232" target="_blank">GitHub</a>
-                <a href="https://blog.csdn.net/weixin_45092728?spm=1000.2115.3001.10640">CSDN</a>
-                <a href="javascript:alert('微信号: waitu1232（添加请注明来意）');">WeChat</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    <section id="about"><div class="section-label">Profile · About Me</div><h2 class="section-title">你好，我是 <span class="hero-highlight">念安 / Echo</span></h2><p class="section-subtitle">Hi! 很高兴认识你！我是一名驻扎在苏州的全栈开发者。<br>对 AI、数字生活和各类创新项目充满热情，享受在代码的世界里探索、创造和解决问题。</p><div class="hero-grid"><div class="card"><div class="card-inner"><div class="hero-title">构建<span class="hero-highlight">创意驱动</span>的全栈应用， 用代码探索数字生活的边界。</div><p class="hero-tagline">热衷于将前端的交互美学与后端AI的强大能力相结合，打造从用户界面到智能核心的完整、有趣的产品。</p><div class="hero-tags"><span class="tag-pill">全栈开发 · AI 应用</span> <span class="tag-pill">Vue.js / React</span> <span class="tag-pill">FastAPI / Spring Boot</span> <span class="tag-pill">RAG / 知识图谱</span> <span class="tag-pill">DevOps</span></div><div class="hero-actions"><a href="#projects" class="btn btn-primary">查看我的项目</a><a href="#contact" class="btn btn-outline">联系我</a></div></div></div><div class="card"><div class="card-inner hero-right"><div class="hero-meta-row"><span class="hero-meta-label">当前角色</span><span class="hero-meta-value">全栈开发工程师</span></div><div class="hero-meta-row"><span class="hero-meta-label">关注方向</span><span class="hero-meta-value">AI 应用 / 系统设计 / RAG</span></div><div class="hero-meta-row"><span class="hero-meta-label">核心技术</span><span class="hero-meta-value">Python · JS/TS · Vue · FastAPI</span></div><div class="hero-meta-row"><span class="hero-meta-label">工作地点</span><span class="hero-meta-value">中国 / 苏州</span></div><p>近期目标：<br>· 深入探索 AI + 知识图谱 + RAG<br>· 提升系统设计与分布式架构能力<br>· 发现新鲜事儿<br>· 充实自己</p></div></div></div></section>
+    <section id="stack"><div class="section-label">Tech · Stack</div><h2 class="section-title">技术栈</h2><p class="section-subtitle">这是我常用且持续学习的技术集合。我相信深度优于广度，专注于将合适的工具用深用透，打造可靠且高效的解决方案。</p><div class="card"><div class="card-inner"><div class="stack-grid"><div><div class="stack-group-title">语言</div><div class="stack-badges"><span class="badge badge-hot">Python</span><span class="badge badge-hot">JavaScript/TypeScript</span><span class="badge">Java</span></div></div><div><div class="stack-group-title">前端 & 框架</div><div class="stack-badges"><span class="badge badge-hot">Vue.js</span><span class="badge badge-hot">React</span><span class="badge">Node.js</span><span class="badge">微信小程序</span></div></div><div><div class="stack-group-title">后端 & 平台</div><div class="stack-badges"><span class="badge badge-hot">FastAPI</span><span class="badge">Spring Boot</span><span class="badge">RESTful API</span></div></div><div><div class="stack-group-title">数据库</div><div class="stack-badges"><span class="badge badge-hot">PostgreSQL</span><span class="badge badge-hot">Neo4j</span><span class="badge">MySQL</span><span class="badge">OceanBase</span><span class="badge">向量数据库</span></div></div><div><div class="stack-group-title">AI & 工具</div><div class="stack-badges"><span class="badge badge-hot">RAG / LangChain</span><span class="badge badge-hot">FastGPT</span><span class="badge">NLP (SpaCy, etc.)</span><span class="badge">OpenAI / GLM API</span></div></div><div><div class="stack-group-title">DevOps & 其他</div><div class="stack-badges"><span class="badge badge-hot">Docker / Docker Compose</span><span class="badge">Git / GitHub Actions</span><span class="badge">Linux / WSL</span><span class="badge">MinIO</span></div></div></div></div></div></section>
+    <section id="projects"><div class="section-label">Work · Projects</div><h2 class="section-title">部分项目</h2><p class="section-subtitle">大部分项目与企业内部系统强绑定，这里只放简要介绍。真正有价值的部分往往在于「数据流设计 + LLM 流程编排 + 基础设施」的组合。</p><div class="projects-grid"><div class="project-card"><div class="project-name">企业知识库 · GraphRAG 系统</div><div class="project-desc">将 PDF、结构化数据库、图数据库统一接入，构建实体 / 关系 / 文本三层检索。 通过高低层关键词、GraphRAG 策略和 LLM 问答，支持复杂业务问答与追溯。</div><div class="project-meta"><div class="project-tags"><span class="badge">FastAPI</span><span class="badge">PostgreSQL</span><span class="badge">Neo4j</span><span class="badge">GraphRAG</span></div><div class="project-link"><a href="javascript:void(0)">内部项目</a></div></div></div><div class="project-card"><div class="project-name">ChatGPT on WeChat · 媒体增强版</div><div class="project-desc">基于开源项目定制，接入公司知识、MinIO 媒体库，自动识别并展示图片、视频， 支持压缩、转码、静默失败等逻辑，更贴合实际运营需求。</div><div class="project-meta"><div class="project-tags"><span class="badge">Python</span><span class="badge">WeChat</span><span class="badge">MinIO</span></div><div class="project-link"><a href="javascript:void(0)">内部运行中</a></div></div></div><div class="project-card"><div class="project-name">PPT 自动清洗 & 审核工具</div><div class="project-desc">针对公司大量 PPT 素材，自动扫描并处理小图标、背景图、敏感元素，生成 JSON 报告， 为知识沉淀与对外展示做统一风格管理。</div><div class="project-meta"><div class="project-tags"><span class="badge">Python</span><span class="badge">PPTX</span><span class="badge">自动化</span></div><div class="project-link"><a href="javascript:void(0)">内部工具链</a></div></div></div><div class="project-card"><div class="project-name">内部 AI 助手 · Workflow 设计</div><div class="project-desc">为内部助手设计提示词规范、对话结构、知识域划分和工作流节点， 兼顾专业性、合规性与实际业务场景，减少幻觉，提高可控性。</div><div class="project-meta"><div class="project-tags"><span class="badge">Prompt Engineering</span><span class="badge">FastGPT</span><span class="badge">Workflow</span></div><div class="project-link"><a href="javascript:void(0)">持续扩展中</a></div></div></div></div></section>
+    <section id="blog"><div class="section-label">Blog · Notes</div><h2 class="section-title">博客 / 笔记（施工中...）</h2><p class="section-subtitle">我更喜欢在实践中记录和思考，笔记散落在各处。这里是未来的整理区，敬请期待！</p><div class="card"><div class="card-inner blog-placeholder"><p>未来可能会分享：</p><ul style="margin-top: 8px; padding-left: 18px;"><li>全栈开发中的 AI 落地心得</li><li>一些 GraphRAG 实战中的小技巧与反模式</li><li>如何把 AI 助手做得更像“工具”而不是“玩具”</li><li>Nginx / Docker / MinIO 的踩坑实录</li></ul></div></div></section>
+    <section id="contact"><div class="section-label">Contact · Links</div><h2 class="section-title">联系与社交</h2><p class="section-subtitle">如果你对我的项目感兴趣，或是在 AI 应用、全栈开发、自动化工具链等方向有任何想法，都非常欢迎与我交流！</p><div class="card"><div class="card-inner"><div class="contact-grid"><div><ul class="contact-list"><li><strong>WeChat：</strong><span>waitu1232</span> (Recommend)</li><li><strong>Email：</strong><span>danbao1108@foxmail.com</span></li><li><strong>GitHub：</strong><span>github.com/dandan1232</span></li><li><strong>Location：</strong><span>China / SuZhou </span></li></ul></div><div><div class="stack-group-title" style="margin-bottom: 6px;">Social Links</div><div class="social-links"><a href="https://github.com/dandan1232" target="_blank">GitHub</a><a href="https://blog.csdn.net/weixin_45092728?spm=1000.2115.3001.10640">CSDN</a><a href="javascript:alert('微信号: waitu1232（添加请注明来意~）');">WeChat</a></div></div></div></div></div></section>
   </main>
-
-  <footer>
-    <div>© <span id="year"></span> Echo Lin · 念安</div>
-    <div>Built with pure HTML · CSS · particles.js · Hosted on GitHub Pages</div>
-  </footer>
-
-    <!-- 粒子背景库 -->
+  <footer><div>© <span id="year"></span> Echo Lin · 念安</div><div>Built with pure HTML · CSS · particles.js · Hosted on GitHub Pages</div></footer>
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script>
-    // 年份
     document.getElementById("year").textContent = new Date().getFullYear();
+    const toggleBtn = document.getElementById('theme-toggle-btn');
+    const htmlEl = document.documentElement;
 
-    // 粒子背景配置
-    particlesJS("particles-js", {
-      particles: {
-        number: { value: 80, density: { enable: true, value_area: 900 } },
-        color: { value: "#38bdf8" },
-        shape: {
-          type: "circle",
-          stroke: { width: 0, color: "#000000" }
-        },
-        opacity: {
-          value: 0.6,
-          random: true,
-          anim: { enable: true, speed: 0.8, opacity_min: 0.1, sync: false }
-        },
-        size: {
-          value: 3,
-          random: true,
-          anim: { enable: false, speed: 20, size_min: 0.1, sync: false }
-        },
-        line_linked: {
-          enable: true,
-          distance: 140,
-          color: "#38bdf8",
-          opacity: 0.35,
-          width: 1
-        },
-        move: {
-          enable: true,
-          speed: 1.4,
-          direction: "none",
-          random: true,
-          straight: false,
-          out_mode: "out",
-          bounce: false,
-          attract: { enable: false, rotateX: 600, rotateY: 1200 }
-        }
-      },
-      interactivity: {
-        detect_on: "window", 
-        events: {
-          onhover: { enable: true, mode: "repulse" },
-          onclick: { enable: true, mode: "push" },
-          resize: true
-        },
-        modes: {
-          repulse: { distance: 100, duration: 0.4 },
-          push: { particles_nb: 4 }
-        }
-      },
-      retina_detect: true
+    const darkThemeConfig = { particles: { number: { value: 80, density: { enable: true, value_area: 900 } }, color: { value: "#38bdf8" }, shape: { type: "circle" }, opacity: { value: 0.6, random: true, anim: { enable: true, speed: 0.8, opacity_min: 0.1, sync: false } }, size: { value: 3, random: true }, line_linked: { enable: true, distance: 140, color: "#38bdf8", opacity: 0.35, width: 1 }, move: { enable: true, speed: 1.4, direction: "none", random: true, out_mode: "out" } }, interactivity: { detect_on: "window", events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true }, modes: { repulse: { distance: 100, duration: 0.4 }, push: { particles_nb: 4 } } }, retina_detect: true };
+    const pinkThemeConfig = { particles: { number: { value: 40, density: { enable: true, value_area: 800 } }, color: { value: "#f472b6" }, shape: { type: "circle" }, opacity: { value: 0.7, random: true, anim: { enable: true, speed: 1, opacity_min: 0.2, sync: false } }, size: { value: 5, random: true, anim: { enable: true, speed: 2, size_min: 1, sync: false } }, line_linked: { enable: false }, move: { enable: true, speed: 1, direction: "top", random: true, straight: false, out_mode: "out", bounce: false } }, interactivity: { detect_on: "window", events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true }, modes: { repulse: { distance: 120, duration: 0.4 }, push: { particles_nb: 4 } } }, retina_detect: true };
+
+    function applyTheme(theme) {
+      if (window.pJSDom && window.pJSDom[0]) { window.pJSDom[0].pJS.fn.vendors.destroypJS(); window.pJSDom = []; }
+      htmlEl.dataset.theme = theme;
+      const config = theme === 'pink' ? pinkThemeConfig : darkThemeConfig;
+      particlesJS("particles-js", config);
+      localStorage.setItem('theme', theme);
+    }
+    
+    toggleBtn.addEventListener('click', () => {
+      const newTheme = htmlEl.dataset.theme === 'dark' ? 'pink' : 'dark';
+      applyTheme(newTheme);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(savedTheme);
     });
   </script>
-
 </body>
 </html>
