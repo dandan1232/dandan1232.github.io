@@ -239,6 +239,29 @@ code {
   font-size: 12px;
 }
 
+.article-media {
+  margin: 12px 0 16px;
+}
+
+.article-media + .article-media {
+  margin-top: 10px;
+}
+
+.article-media img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+
+.article-media figcaption {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 /* Notes detail sidebar */
 body.notes-detail .wrap {
   max-width: 980px;
