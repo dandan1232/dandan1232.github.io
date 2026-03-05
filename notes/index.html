@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Echo Notes | 笔记专栏</title>
+  <meta name="description" content="Echo 的技术笔记专栏，记录真实项目复盘与可复用经验。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050816;
+      --card: rgba(15, 23, 42, 0.88);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --border: rgba(148, 163, 184, 0.3);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      background: radial-gradient(circle at 20% 0%, rgba(56,189,248,0.16), transparent 45%), var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .title { font-size: 28px; }
+    .sub { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+    .btn {
+      display: inline-flex; align-items: center; text-decoration: none; color: var(--accent);
+      border: 1px solid var(--accent); padding: 8px 14px; border-radius: 999px; font-size: 13px;
+      background: rgba(56,189,248,0.12);
+    }
+    .card {
+      margin-top: 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+    .note-title a {
+      color: var(--text);
+      text-decoration: none;
+      border-bottom: 1px dashed var(--accent);
+      padding-bottom: 2px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .desc { color: var(--muted); font-size: 13px; line-height: 1.7; margin-top: 10px; }
+    .tags { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      font-size: 11px; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topbar">
+      <div>
+        <h1 class="title">博客 / 笔记专栏</h1>
+        <p class="sub">集中沉淀项目问题复盘、架构决策和工程化经验。</p>
+      </div>
+      <a class="btn" href="../index.html">返回首页</a>
+    </div>
+
+    <article class="card">
+      <p class="meta">2026-03-05 · 复盘</p>
+      <h2 class="note-title">
+        <a href="./digital-human-repeat-playback.html">数字人重复播放问题复盘：会话隔离 + 互斥锁 + 幂等去重</a>
+      </h2>
+      <p class="desc">从“同一段播报多次触发”的线上问题出发，梳理了播放链路中的并发与事件生命周期问题，并给出可复用的修复模式。</p>
+      <div class="tags">
+        <span class="tag">数字人</span>
+        <span class="tag">音视频</span>
+        <span class="tag">幂等</span>
+        <span class="tag">工程复盘</span>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

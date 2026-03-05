@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数字人重复播放问题复盘 | Echo Notes</title>
+  <meta name="description" content="数字人重复播放问题复盘：根因分析、修复方案与验证结果。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050816;
+      --card: rgba(15, 23, 42, 0.9);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --border: rgba(148, 163, 184, 0.3);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      background: radial-gradient(circle at 80% 0%, rgba(56,189,248,0.18), transparent 42%), var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 64px; }
+    .topbar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; text-decoration: none; color: var(--accent);
+      border: 1px solid var(--accent); padding: 8px 14px; border-radius: 999px; font-size: 13px;
+      background: rgba(56,189,248,0.12);
+    }
+    .article {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      line-height: 1.8;
+    }
+    h1 { font-size: 30px; line-height: 1.3; margin-bottom: 8px; }
+    .meta { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+    h2 { margin-top: 16px; margin-bottom: 6px; font-size: 20px; }
+    p, li { font-size: 14px; color: var(--text); }
+    ul { padding-left: 18px; margin-top: 6px; }
+    code {
+      background: rgba(56,189,248,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(56,189,248,0.35);
+      border-radius: 8px;
+      padding: 1px 6px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topbar">
+      <a class="btn" href="./index.html">返回笔记专栏</a>
+      <a class="btn" href="../index.html">返回首页</a>
+    </div>
+
+    <article class="article">
+      <h1>数字人重复播放问题复盘</h1>
+      <p class="meta">发布于 2026-03-05</p>
+
+      <h2>问题现象</h2>
+      <ul>
+        <li>同一段播报内容被触发多次，出现连续重复播放。</li>
+        <li>在网络抖动或快速连续触发时，重复概率明显上升。</li>
+      </ul>
+
+      <h2>根因分析</h2>
+      <ul>
+        <li>播放状态未串行化：新请求到来时，旧播放流程还未完全结束。</li>
+        <li>事件回调重复绑定：<code>ended</code> 或消息监听器重复注册，导致后续逻辑被重复触发。</li>
+        <li>消息缺少幂等控制：同一任务在重试/重连后被再次消费。</li>
+      </ul>
+
+      <h2>解决方案</h2>
+      <ul>
+        <li>引入播放会话标识 <code>playSessionId</code>，回调执行前校验会话号，不匹配直接丢弃。</li>
+        <li>增加互斥控制 <code>isPlaying + isSwitching</code>，确保同一时刻只有一个有效播放流程。</li>
+        <li>监听器只初始化一次，切换或销毁时显式清理，避免重复绑定。</li>
+        <li>基于 <code>messageId</code>（或内容哈希）做幂等去重，防止重复入队。</li>
+      </ul>
+
+      <h2>验证结果</h2>
+      <ul>
+        <li>连续触发、重连恢复、弱网重试场景下，重复播放问题消失。</li>
+        <li>播放链路行为稳定，只保留“最新会话”的有效输出。</li>
+      </ul>
+
+      <h2>经验总结</h2>
+      <p>音视频播放链路应同时具备会话隔离、流程互斥、事件生命周期管理和消息幂等控制，缺一不可。</p>
+    </article>
+  </main>
+</body>
+</html>
