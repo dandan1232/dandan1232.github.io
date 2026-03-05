@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 接入微信公众号 | Echo Notes</title>
+  <meta name="description" content="AI 接入微信公众号：消息链路、媒体处理、容错与运营实践。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article">
+      <h1>AI 接入微信公众号</h1>
+      <p class="meta">发布于 2026-03-05</p>
+
+      <h2>接入目标</h2>
+      <ul>
+        <li>实现公众号文本、图片、语音消息的 AI 自动处理。</li>
+        <li>兼顾运营稳定性：高峰时不丢消息，异常时可降级。</li>
+      </ul>
+
+      <h2>链路设计</h2>
+      <ul>
+        <li>入口层：微信回调签名校验 + 基础参数校验。</li>
+        <li>队列层：入队异步处理，避免同步阻塞导致超时。</li>
+        <li>AI 层：根据用户意图路由到知识库问答或通用对话。</li>
+        <li>回传层：文本直回，媒体先上传再回传 media_id。</li>
+      </ul>
+
+      <h2>关键工程点</h2>
+      <ul>
+        <li>去重：基于 <code>msgId + fromUser + timestamp window</code> 去重。</li>
+        <li>限流：账号维度和全局维度双限流，避免雪崩。</li>
+        <li>降级：AI 不可用时回退到 FAQ 或人工引导文案。</li>
+        <li>观测：记录请求链路 ID、模型耗时、失败码分布。</li>
+      </ul>
+
+      <h2>媒体处理经验</h2>
+      <ul>
+        <li>图片先做压缩和格式兜底，减少上传失败。</li>
+        <li>视频处理加入转码和超时策略，避免阻塞消息回路。</li>
+        <li>失败静默不等于吞错，必须有监控和补偿任务。</li>
+      </ul>
+
+      <h2>结论</h2>
+      <p>公众号 AI 接入的核心不是“能答”，而是“稳定答、可观测、可恢复”。</p>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>

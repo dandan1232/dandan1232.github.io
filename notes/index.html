@@ -1,69 +1,27 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Echo Notes | 笔记专栏</title>
   <meta name="description" content="Echo 的技术笔记专栏，记录真实项目复盘与可复用经验。" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #050816;
-      --card: rgba(15, 23, 42, 0.88);
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #38bdf8;
-      --border: rgba(148, 163, 184, 0.3);
-      --radius: 16px;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Space Grotesk", system-ui, sans-serif;
-      background: radial-gradient(circle at 20% 0%, rgba(56,189,248,0.16), transparent 45%), var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
-    .title { font-size: 28px; }
-    .sub { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
-    .btn {
-      display: inline-flex; align-items: center; text-decoration: none; color: var(--accent);
-      border: 1px solid var(--accent); padding: 8px 14px; border-radius: 999px; font-size: 13px;
-      background: rgba(56,189,248,0.12);
-    }
-    .card {
-      margin-top: 14px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px;
-    }
-    .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-    .note-title a {
-      color: var(--text);
-      text-decoration: none;
-      border-bottom: 1px dashed var(--accent);
-      padding-bottom: 2px;
-      font-size: 18px;
-      font-weight: 600;
-    }
-    .desc { color: var(--muted); font-size: 13px; line-height: 1.7; margin-top: 10px; }
-    .tags { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .tag {
-      font-size: 11px; padding: 4px 10px; border-radius: 999px;
-      border: 1px solid var(--border); color: var(--muted);
-    }
-  </style>
+  <link rel="stylesheet" href="./theme.css">
 </head>
 <body>
+  <div id="particles-js"></div>
   <main class="wrap">
     <div class="topbar">
       <div>
         <h1 class="title">博客 / 笔记专栏</h1>
         <p class="sub">集中沉淀项目问题复盘、架构决策和工程化经验。</p>
       </div>
-      <a class="btn" href="../index.html">返回首页</a>
+      <div class="topbar-actions">
+        <a class="btn" href="../index.html">返回首页</a>
+        <div class="theme-switcher">
+          <button id="theme-toggle-btn" title="切换主题">🎨</button>
+        </div>
+      </div>
     </div>
 
     <article class="card">
@@ -79,6 +37,78 @@
         <span class="tag">工程复盘</span>
       </div>
     </article>
+
+    <article class="card">
+      <p class="meta">2026-03-05 · RAG</p>
+      <h2 class="note-title">
+        <a href="./rag-from-0-to-1-practice.html">RAG 从 0 到 1 落地笔记：分层检索、重排与可追溯回答</a>
+      </h2>
+      <p class="desc">整理了一套更贴近业务的 RAG 实践路径：数据分层、检索策略组合、答案约束与评估闭环，核心目标是“回答准、能解释、可迭代”。</p>
+      <div class="tags">
+        <span class="tag">RAG</span>
+        <span class="tag">GraphRAG</span>
+        <span class="tag">检索重排</span>
+        <span class="tag">知识库</span>
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="meta">2026-03-05 · FastGPT</p>
+      <h2 class="note-title">
+        <a href="./fastgpt-cross-knowledgebase-migration-patch.html">FastGPT 跨知识库迁移补丁：保持引用不丢失的迁移策略</a>
+      </h2>
+      <p class="desc">记录一次跨知识库迁移补丁的设计：从任务拆分、映射表、幂等执行到回滚机制，目标是迁移可追溯、可恢复、可重复。</p>
+      <div class="tags">
+        <span class="tag">FastGPT</span>
+        <span class="tag">知识库迁移</span>
+        <span class="tag">幂等补丁</span>
+        <span class="tag">数据治理</span>
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="meta">2026-03-05 · WeChat + AI</p>
+      <h2 class="note-title">
+        <a href="./ai-wechat-official-account-integration.html">AI 接入微信公众号：消息链路、媒体处理与容错实践</a>
+      </h2>
+      <p class="desc">从公众号消息收发到 AI 回答落地，整理了签名校验、重试去重、媒体回传、限流熔断和运营可观测性的一套实现方案。</p>
+      <div class="tags">
+        <span class="tag">微信公众号</span>
+        <span class="tag">AI 接入</span>
+        <span class="tag">消息队列</span>
+        <span class="tag">媒体处理</span>
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="meta">2026-03-05 · MediaPipe</p>
+      <h2 class="note-title">
+        <a href="./mediapipe-exploration-notes.html">MediaPipe 摸索笔记：关键点稳定性、延迟与工程化取舍</a>
+      </h2>
+      <p class="desc">覆盖手势/姿态识别在真实设备上的调优路径：光照、遮挡、帧率波动下的稳定性策略，以及上线前的性能门槛。</p>
+      <div class="tags">
+        <span class="tag">MediaPipe</span>
+        <span class="tag">CV</span>
+        <span class="tag">实时推理</span>
+        <span class="tag">性能优化</span>
+      </div>
+    </article>
+
+    <article class="card">
+      <p class="meta">2026-03-05 · Agent</p>
+      <h2 class="note-title">
+        <a href="./agent-skills-with-anthropic.html">agent-skills-with-anthropic：技能化 Agent 的实践笔记</a>
+      </h2>
+      <p class="desc">聚焦技能编排与上下文治理：何时触发技能、如何约束输出、怎样做失败兜底，让 Agent 从“能聊”变成“能交付”。</p>
+      <div class="tags">
+        <span class="tag">Agent</span>
+        <span class="tag">Skills</span>
+        <span class="tag">Anthropic</span>
+        <span class="tag">Prompt 工程</span>
+      </div>
+    </article>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
 </body>
 </html>

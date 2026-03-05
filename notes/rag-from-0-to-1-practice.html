@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG 从 0 到 1 落地笔记 | Echo Notes</title>
+  <meta name="description" content="RAG 落地实践：分层检索、重排、答案约束与评估闭环。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+
+    <article class="article">
+      <h1>RAG 从 0 到 1 落地笔记</h1>
+      <p class="meta">发布于 2026-03-05</p>
+
+      <h2>目标定义</h2>
+      <ul>
+        <li>回答要准：降低幻觉和错引。</li>
+        <li>过程可解释：给出来源片段与引用路径。</li>
+        <li>系统可迭代：支持持续加数据、调策略、看指标。</li>
+      </ul>
+
+      <h2>核心架构</h2>
+      <ul>
+        <li>数据层：结构化库 + 文档库 + 图谱库（实体/关系）。</li>
+        <li>检索层：关键词检索、向量检索、图关系检索并行召回。</li>
+        <li>排序层：轻量重排模型对候选片段打分，保留高相关上下文。</li>
+        <li>生成层：LLM 严格基于检索上下文回答，并输出引用证据。</li>
+      </ul>
+
+      <h2>推荐流程</h2>
+      <ul>
+        <li>问题理解：先做意图分类，区分事实问答、流程问答、总结问答。</li>
+        <li>多路召回：<code>BM25 + Vector + Graph</code> 同时召回，避免单路偏差。</li>
+        <li>重排截断：按相关性排序后截断 token，保留最有信息密度的片段。</li>
+        <li>答案约束：提示词中强制“无依据就说不知道”，减少编造。</li>
+        <li>可追溯输出：返回答案 + 引用片段 + 文档ID/实体ID。</li>
+      </ul>
+
+      <h2>评估与监控</h2>
+      <ul>
+        <li>离线指标：召回率、MRR、nDCG、答案正确率。</li>
+        <li>在线指标：首答时延、用户追问率、人工纠错率。</li>
+        <li>样本池建设：保留高频问题、失败样本和边界问题，持续回归测试。</li>
+      </ul>
+
+      <h2>常见坑位</h2>
+      <ul>
+        <li>只做向量检索：术语精确匹配场景会丢召回。</li>
+        <li>分块过大或过小：过大噪声多，过小语义断裂。</li>
+        <li>无版本化：知识更新后无法追踪旧答案来源。</li>
+        <li>缺少拒答策略：模型会在低置信度场景硬答。</li>
+      </ul>
+
+      <h2>落地结论</h2>
+      <p>RAG 不是“接个向量库就结束”。真正可用的系统必须把数据治理、检索策略、答案约束和评估闭环一起建设，才能在业务场景里稳定输出。</p>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>

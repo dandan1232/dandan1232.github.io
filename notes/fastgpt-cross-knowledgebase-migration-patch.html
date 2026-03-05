@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastGPT 跨知识库迁移补丁 | Echo Notes</title>
+  <meta name="description" content="FastGPT 跨知识库迁移补丁实践：映射、幂等、回滚与验证。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article">
+      <h1>FastGPT 跨知识库迁移补丁</h1>
+      <p class="meta">发布于 2026-03-05</p>
+
+      <h2>问题背景</h2>
+      <ul>
+        <li>业务需要把历史问答资产从旧知识库迁移到新知识库。</li>
+        <li>迁移后要求引用关系不丢、对话上下文可追溯、支持回滚。</li>
+      </ul>
+
+      <h2>补丁设计</h2>
+      <ul>
+        <li>建立双向映射表：<code>old_doc_id -> new_doc_id</code>、<code>old_chunk_id -> new_chunk_id</code>。</li>
+        <li>迁移任务分阶段执行：抽取、转换、写入、校验、切流。</li>
+        <li>每阶段记录任务状态和校验摘要，支持断点续跑。</li>
+      </ul>
+
+      <h2>幂等与回滚</h2>
+      <ul>
+        <li>每条记录使用稳定业务键防重复写入，失败可重复执行。</li>
+        <li>补丁执行前生成快照，支持按批次回滚。</li>
+        <li>切流采用灰度策略，先小流量验证再全量切换。</li>
+      </ul>
+
+      <h2>验证清单</h2>
+      <ul>
+        <li>引用命中率：迁移前后 top-k 命中差异在可接受阈值内。</li>
+        <li>答案一致性：核心问题集人工抽检通过。</li>
+        <li>性能基线：检索时延不高于旧库基线。</li>
+      </ul>
+
+      <h2>结论</h2>
+      <p>跨知识库迁移不是“导入导出”，关键是映射可追溯、执行可幂等、上线可回滚。</p>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>

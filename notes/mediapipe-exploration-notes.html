@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediaPipe 摸索笔记 | Echo Notes</title>
+  <meta name="description" content="MediaPipe 摸索：稳定性、延迟优化与上线前验证。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article">
+      <h1>MediaPipe 摸索笔记</h1>
+      <p class="meta">发布于 2026-03-05</p>
+
+      <h2>关注点</h2>
+      <ul>
+        <li>关键点识别在真实设备上的稳定性。</li>
+        <li>推理延迟与帧率平衡。</li>
+        <li>弱光、遮挡、快速运动场景的鲁棒性。</li>
+      </ul>
+
+      <h2>调优路径</h2>
+      <ul>
+        <li>输入预处理：分辨率降采样 + ROI 裁剪，优先保住实时性。</li>
+        <li>时序平滑：对关键点做低通滤波，抑制抖动。</li>
+        <li>置信度门控：低置信度帧不触发动作判定。</li>
+      </ul>
+
+      <h2>工程化策略</h2>
+      <ul>
+        <li>将模型推理与业务逻辑解耦，便于替换模型版本。</li>
+        <li>保留关键中间指标：帧耗时、检测置信度、丢帧率。</li>
+        <li>设置性能红线：如 <code>P95 latency</code> 与最低可接受 FPS。</li>
+      </ul>
+
+      <h2>常见问题</h2>
+      <ul>
+        <li>不同设备摄像头畸变差异会放大误判。</li>
+        <li>背景复杂时关键点跳变明显，需要增强场景约束。</li>
+        <li>直接用实验参数上线，往往在长时间运行中漂移。</li>
+      </ul>
+
+      <h2>结论</h2>
+      <p>MediaPipe 的价值在“快速可用”，但上线质量取决于时序稳定、性能基线和场景化容错。</p>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>
