@@ -26,6 +26,11 @@ const NOTES_GROUPS = [
     ]
   },
   {
+    id: "ip",
+    label: "IP / 软著",
+    items: [{ title: "软件著作权与专利清单", href: "./software-copyrights.html" }]
+  },
+  {
     id: "agent",
     label: "Agent",
     items: [{ title: "agent-skills-with-anthropic", href: "./agent-skills-with-anthropic.html" }]
