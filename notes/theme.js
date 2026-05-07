@@ -12,11 +12,19 @@ const NOTES_GROUPS = [
     id: "ai",
     label: "AI 应用",
     items: [
+      { title: "大模型应用开发基础", href: "./llm-app-dev-fundamentals.html" },
       { title: "RAG 从 0 到 1 落地笔记", href: "./rag-from-0-to-1-practice.html" },
       { title: "FastGPT 跨知识库迁移补丁", href: "./fastgpt-cross-knowledgebase-migration-patch.html" },
       { title: "FastGPT 知识库结构讲解", href: "./fastgpt-knowledge-base-structure.html" },
       { title: "AI 接入微信公众号", href: "./ai-wechat-official-account-integration.html" },
       { title: "AI 后端 LLM 工程师技能雷达图", href: "./ai-backend-llm-engineer-skills.html" }
+    ]
+  },
+  {
+    id: "rec",
+    label: "推荐系统",
+    items: [
+      { title: "Torch-RecHub 轻量推荐系统", href: "./torch-rechub-recommendation.html" }
     ]
   },
   {
@@ -42,7 +50,10 @@ const NOTES_GROUPS = [
   {
     id: "agent",
     label: "Agent",
-    items: [{ title: "agent-skills-with-anthropic", href: "./agent-skills-with-anthropic.html" }]
+    items: [
+      { title: "Easy-Lagent LangChain & LangGraph", href: "./easy-lagent-langchain-langgraph.html" },
+      { title: "agent-skills-with-anthropic", href: "./agent-skills-with-anthropic.html" }
+    ]
   }
 ];
 

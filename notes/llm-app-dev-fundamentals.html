@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大模型应用开发基础：从 LLM 到 RAG、MCP 全景梳理 | Echo Notes</title>
+  <meta name="description" content="大模型应用开发核心知识梳理：LLM 构建流程、RAG 检索增强生成、Embedding 向量化、MCP 协议与 Prompt 工程。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+
+    <article class="article">
+      <h1>大模型应用开发基础：从 LLM 到 RAG、MCP 全景梳理</h1>
+      <p class="meta">发布于 2026-05-07 · AI 应用开发</p>
+
+      <h2>一、什么是大语言模型（LLM）</h2>
+      <p>语言模型的核心任务是<strong>预测词序列中下一个词的概率</strong>。从统计语言模型到今天的大语言模型，经历了四代演化：</p>
+      <ul>
+        <li><strong>统计语言模型（SLM）</strong>：基于马尔可夫假设的 n-gram 模型</li>
+        <li><strong>神经语言模型（NLM）</strong>：基于 RNN 的词嵌入，代表作 word2vec</li>
+        <li><strong>预训练语言模型（PLM）</strong>：基于 Transformer 的双向/单向预训练，代表作 BERT、GPT-1/2</li>
+        <li><strong>大语言模型（LLM）</strong>：基于 Scaling Law 的超大规模模型，具备涌现能力，代表作 GPT-3、ChatGPT、Llama</li>
+      </ul>
+
+      <h2>二、大模型的构建流程</h2>
+      <p>一个大模型的诞生通常经历三个阶段：</p>
+
+      <h3>2.1 预训练（Pretraining）</h3>
+      <p>使用海量文本数据训练模型参数，目标是为模型找到一个优质的"起点"。当前主流路线是<strong>解码器架构 + 预测下一个词</strong>。预训练数据规模通常在数 T token 级别（如 Llama-3 使用 15T token），对算力要求极高。</p>
+
+      <h3>2.2 有监督微调（SFT）</h3>
+      <p>预训练后的模型擅长文本补全，但不擅长遵循人类指令。通过<strong>指令微调</strong>（Instruction Tuning），用成对的输入-输出数据训练模型以问答形式回答问题，激活其任务解决能力。所需数据量远小于预训练（几千到几十万条即可）。</p>
+
+      <h3>2.3 人类对齐（RLHF / DPO）</h3>
+      <p>通过基于人类反馈的强化学习（RLHF）使模型输出符合人类价值观。核心是训练一个<strong>奖励模型</strong>来评判输出质量。简化方案如 DPO（直接偏好优化）可以跳过强化学习，直接用偏好数据优化模型。</p>
+
+      <h2>三、大模型应用开发范式</h2>
+
+      <h3>3.1 Prompt 工程</h3>
+      <p>通过精心构造提示词直接调教大模型，是最"有手就行"的开发方式。两种关键技术：</p>
+      <ul>
+        <li><strong>上下文学习（ICL）</strong>：将任务说明和示例融入提示，利用模型归纳能力完成新任务</li>
+        <li><strong>思维链提示（CoT）</strong>：在提示中引入逻辑推理链条，增强复杂问题的解析能力</li>
+      </ul>
+
+      <h3>3.2 RAG：给 LLM 外接大脑</h3>
+      <p>大模型存在三大局限：<strong>知识滞后</strong>（不知道训练截止后的事）、<strong>数据安全</strong>（企业数据不能外传）、<strong>幻觉问题</strong>（一本正经地胡说八道）。RAG（检索增强生成）通过以下流程解决：</p>
+      <ol>
+        <li>将知识转成 Embedding 向量，存入向量数据库</li>
+        <li>用户提问时，先检索相关知识片段</li>
+        <li>将检索结果作为上下文，配合 Prompt 送入 LLM 生成答案</li>
+      </ol>
+
+      <h4>RAG 核心流程详解</h4>
+      <ul>
+        <li><strong>文档处理</strong>：支持 PDF、PPT、Excel 等多种格式的读取与切分</li>
+        <li><strong>Chunk 分割</strong>：如何合理地将文档分割成语义完整的片段</li>
+        <li><strong>Embedding 向量化</strong>：选择合适的模型将 Chunks 转为向量</li>
+        <li><strong>查询改写</strong>：对用户提问进行扩充或改写，提高检索召回率</li>
+        <li><strong>检索与排序</strong>：先粗排召回候选，再精排筛选高相关内容</li>
+        <li><strong>Prompt 组装</strong>：将检索结果与用户问题组合成完整 Prompt</li>
+        <li><strong>答案生成与校验</strong>：LLM 生成答案后做合规性检查</li>
+      </ul>
+
+      <h4>RAG vs 微调</h4>
+      <ul>
+        <li><strong>RAG 优势</strong>：实时更新知识、高可解释性、适合动态场景</li>
+        <li><strong>微调优势</strong>：定制模型行为、减少幻觉，但需大量计算资源</li>
+        <li>两者可协同使用，如 RA-DIT 联合优化检索器与生成器</li>
+      </ul>
+
+      <h3>3.3 Embedding 模型</h3>
+      <p>Embedding 模型的任务是<strong>将文本转换为向量</strong>，使语义相似的文本对应高相似度的向量。训练数据通常是三元组（Anchor、Positive、Negative）。</p>
+      <p>常用模型对比：OpenAI 的 text-embedding-ada-002 维度 1536，BGE 系列支持中英文，M3E 系列针对中文优化。选择时需考虑维度、速度、多语言支持等因素。</p>
+
+      <h3>3.4 MCP：大模型的 USB-C 接口</h3>
+      <p>MCP（Model Context Protocol）是 Anthropic 提出的<strong>开放标准协议</strong>，用于在大模型和数据源之间建立安全双向的连接。可以把它理解为大模型世界的 USB-C——统一了 LLM 访问外部资源的方式。</p>
+
+      <h4>核心架构</h4>
+      <ul>
+        <li><strong>MCP Host</strong>：包含 MCP Client 的应用（如 Claude Desktop、IDE）</li>
+        <li><strong>MCP Client</strong>：使用 MCP 协议与 Server 建立一对一连接</li>
+        <li><strong>MCP Server</strong>：连接内外部资源，对外提供服务</li>
+      </ul>
+
+      <h4>Server 提供的三种能力</h4>
+      <ul>
+        <li><strong>Resources</strong>：资源读取（类似文件数据读取）</li>
+        <li><strong>Tools</strong>：工具调用（第三方服务、函数）</li>
+        <li><strong>Prompts</strong>：预定义的提示词模板</li>
+      </ul>
+
+      <h4>通讯机制</h4>
+      <p>支持两种通讯方式，均使用 JSON-RPC 2.0 格式：</p>
+      <ul>
+        <li><strong>本地通讯（stdio）</strong>：Client 启动 Server 作为子进程，通过 stdin/stdout 通信</li>
+        <li><strong>远程通讯（SSE）</strong>：基于 HTTP 的 Server-Sent Events，支持远程部署</li>
+      </ul>
+
+      <h4>Server 代码示例</h4>
+      <pre><code>from mcp.server import Server
+import mcp.types as types
+
+server = Server("demo")
+
+@server.list_tools()
+async def handle_list_tools():
+    return [
+        types.Tool(
+            name="demo-tool",
+            description="Get data tool for a param",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "param": {"type": "string", "description": "url"}
+                },
+                "required": ["param"]
+            }
+        )
+    ]
+
+@server.call_tool()
+async def handle_call_tool(name, arguments):
+    if name == "demo-tool":
+        param = arguments.get("param").upper()
+        return [types.TextContent(type="text", text=f"text:{param}")]</code></pre>
+
+      <h4>调试工具</h4>
+      <p>MCP 提供了 <strong>MCP Inspector</strong> 用于调试和测试 Server：</p>
+      <pre><code>npx @modelcontextprotocol/inspector
+# 启动后访问 http://localhost:5173</code></pre>
+
+      <h2>四、服务端部署方式</h2>
+      <p>大模型应用的服务端有两种主要方式：</p>
+      <ul>
+        <li><strong>调用 API</strong>：便捷、按需付费、无需运维，但有网络延迟和数据隐私风险</li>
+        <li><strong>本地部署</strong>：数据安全、性能可控、可定制，但需要 GPU 投资和运维能力</li>
+      </ul>
+
+      <h2>五、总结</h2>
+      <p>大模型应用开发的核心知识图谱：</p>
+      <ul>
+        <li><strong>LLM 基础</strong>：理解预训练 → SFT → RLHF 的构建流程</li>
+        <li><strong>Prompt 工程</strong>：ICL 和 CoT 是挖掘模型能力的基本功</li>
+        <li><strong>RAG</strong>：解决知识滞后和幻觉问题的核心方案</li>
+        <li><strong>Embedding</strong>：RAG 的基础设施，决定检索质量</li>
+        <li><strong>MCP</strong>：统一 LLM 与外部资源的连接标准</li>
+      </ul>
+      <p>这些技术栈构成了大模型应用开发的基石，掌握它们是进入 AI 应用开发领域的第一步。</p>
+
+      <h2>参考资料</h2>
+      <ul>
+        <li>动手学大模型应用全栈开发 - Datawhale</li>
+        <li>MCP 官方文档：docs.anthropic.com</li>
+        <li>RAG 综述论文：arxiv.org/pdf/2312.10997</li>
+      </ul>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>
