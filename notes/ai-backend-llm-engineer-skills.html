@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 后端 LLM 工程师技能雷达图 | Echo Notes</title>
+  <meta name="description" content="面向 AI 应用工程师的技能分层路线图：RAG、Prompt、Agent、工程能力与学习路径。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+  <style>
+    .skill-table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 13px; }
+    .skill-table th, .skill-table td { padding: 8px 10px; border: 1px solid var(--border-subtle); text-align: left; }
+    .skill-table th { background: var(--accent-soft); color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .skill-table td { color: var(--text-main); }
+    .level-must { color: #38bdf8; font-weight: 600; }
+    .level-should { color: #a78bfa; }
+    .level-skip { color: var(--text-muted); text-decoration: line-through; }
+    .phase-box { border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px 16px; margin: 12px 0; background: var(--bg-card); }
+    .phase-box h3 { font-size: 16px; margin-bottom: 8px; color: var(--accent); }
+    .arch-diagram { background: rgba(56,189,248,0.06); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; font-family: monospace; font-size: 13px; line-height: 1.8; color: var(--text-muted); margin: 12px 0; white-space: pre; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+
+    <article class="article">
+      <h1>AI 后端 LLM 工程师 — 技能雷达图</h1>
+      <p class="meta">整理于 2026-05-07 · 来源：Obsidian 笔记库</p>
+
+      <p>本文是一份面向 <strong>AI 应用工程师</strong>（非算法研究员）的技能分层路线图。核心思路：<strong>不学 CNN、不手写反向传播，不是"没学 AI"，而是已经走在"真正赚钱的 AI 工程路线"上。</strong></p>
+
+      <h2>一、技能雷达总览</h2>
+
+      <h3>AI / 模型相关</h3>
+      <table class="skill-table">
+        <tr><th>技能</th><th>级别</th><th>说明</th></tr>
+        <tr><td>机器学习基础概念</td><td class="level-should">该会</td><td>不推公式，只懂原理</td></tr>
+        <tr><td>深度学习基础</td><td class="level-should">该会</td><td>重点 Transformer</td></tr>
+        <tr><td>Transformer 原理</td><td class="level-must">会</td><td>Attention、Embedding</td></tr>
+        <tr><td>向量 Embedding</td><td class="level-must">会</td><td>RAG 核心</td></tr>
+        <tr><td>Reranker</td><td class="level-must">会</td><td>检索效果关键</td></tr>
+        <tr><td>LoRA / 微调</td><td class="level-should">该会</td><td>不必亲自训练</td></tr>
+        <tr><td>模型训练（从零）</td><td class="level-skip">不用会</td><td>算法岗内容</td></tr>
+        <tr><td>CNN / CV 算法</td><td class="level-skip">不用会</td><td>非主线</td></tr>
+      </table>
+
+      <h3>RAG / 知识工程（主战场）</h3>
+      <table class="skill-table">
+        <tr><th>技能</th><th>级别</th><th>说明</th></tr>
+        <tr><td>文本切分策略</td><td class="level-must">会</td><td>Chunk 质量决定上限</td></tr>
+        <tr><td>向量检索</td><td class="level-must">会</td><td>pgvector / Milvus</td></tr>
+        <tr><td>混合检索（BM25 + 向量）</td><td class="level-must">会</td><td>工业级必备</td></tr>
+        <tr><td>GraphRAG / LightRAG</td><td class="level-must">会</td><td>实体/关系检索</td></tr>
+        <tr><td>Neo4j 图建模</td><td class="level-must">会</td><td>实体 / 关系</td></tr>
+        <tr><td>幻觉控制</td><td class="level-must">会</td><td>Prompt + RAG</td></tr>
+        <tr><td>检索召回评估</td><td class="level-should">该会</td><td>Recall / TopK</td></tr>
+        <tr><td>知识图谱算法</td><td class="level-skip">不用会</td><td>GNN 非必须</td></tr>
+      </table>
+
+      <h3>Prompt & Agent</h3>
+      <table class="skill-table">
+        <tr><th>技能</th><th>级别</th><th>说明</th></tr>
+        <tr><td>Prompt 设计</td><td class="level-must">会</td><td>System Prompt</td></tr>
+        <tr><td>Few-shot / CoT</td><td class="level-must">会</td><td>提升稳定性</td></tr>
+        <tr><td>Tool Calling</td><td class="level-must">会</td><td>Agent 核心</td></tr>
+        <tr><td>ReAct 框架</td><td class="level-should">该会</td><td>行业通用</td></tr>
+        <tr><td>多 Agent 协作</td><td class="level-should">该会</td><td>高阶加分</td></tr>
+      </table>
+
+      <h3>工程能力（最重要）</h3>
+      <table class="skill-table">
+        <tr><th>技能</th><th>级别</th><th>说明</th></tr>
+        <tr><td>Python 工程化</td><td class="level-must">会</td><td>模块化 / 规范</td></tr>
+        <tr><td>FastAPI</td><td class="level-must">会</td><td>主力框架</td></tr>
+        <tr><td>异步并发</td><td class="level-must">会</td><td>性能瓶颈点</td></tr>
+        <tr><td>Docker / Compose</td><td class="level-must">会</td><td>必备</td></tr>
+        <tr><td>Linux</td><td class="level-must">会</td><td>日常</td></tr>
+        <tr><td>CI/CD</td><td class="level-should">该会</td><td>加分项</td></tr>
+        <tr><td>C++ / Rust</td><td class="level-skip">不用会</td><td>ROI 极低</td></tr>
+      </table>
+
+      <h3>数据库 & 存储</h3>
+      <table class="skill-table">
+        <tr><th>技能</th><th>级别</th><th>说明</th></tr>
+        <tr><td>MySQL</td><td class="level-must">会</td><td>业务数据</td></tr>
+        <tr><td>PostgreSQL / pgvector</td><td class="level-must">会</td><td>向量库</td></tr>
+        <tr><td>Neo4j</td><td class="level-must">会</td><td>图谱</td></tr>
+        <tr><td>Redis</td><td class="level-must">会</td><td>缓存</td></tr>
+        <tr><td>MongoDB</td><td class="level-should">该会</td><td>文档存储</td></tr>
+      </table>
+
+      <h2>二、投入优先级</h2>
+
+      <div class="phase-box">
+        <h3>必须 100% 投入</h3>
+        <ul>
+          <li>RAG / GraphRAG</li>
+          <li>Prompt 工程</li>
+          <li>FastAPI + Docker + Nginx</li>
+          <li>数据库协同（PG + Neo4j）</li>
+        </ul>
+      </div>
+
+      <div class="phase-box">
+        <h3>选修（锦上添花）</h3>
+        <ul>
+          <li>Agent 工程体系（Tool 调度、Memory 策略、执行控制）</li>
+          <li>多模态</li>
+          <li>LoRA 原理</li>
+          <li>MQ + 异步 AI 任务架构（Kafka / RabbitMQ）</li>
+        </ul>
+      </div>
+
+      <div class="phase-box">
+        <h3>可以明确放弃</h3>
+        <ul>
+          <li>手写神经网络 / 反向传播推导</li>
+          <li>算法竞赛</li>
+          <li>CV / RL 深度研究</li>
+          <li>自研深度学习框架</li>
+        </ul>
+      </div>
+
+      <h2>三、学习路径（6 个月规划）</h2>
+
+      <table class="skill-table">
+        <tr><th>阶段</th><th>时间</th><th>内容</th></tr>
+        <tr><td>基础</td><td>第 1-2 月</td><td>Python 基础、数学基础、模型高层次工作原理</td></tr>
+        <tr><td>ML 入门</td><td>第 3 月</td><td>NumPy / Pandas / Matplotlib、机器学习基础、3 个迷你项目</td></tr>
+        <tr><td>DL + NLP</td><td>第 4 月</td><td>PyTorch、小型神经网络、NLP + CV 各 1 个项目</td></tr>
+        <tr><td>LLM 实战</td><td>第 5 月</td><td>LLM 基础、OpenAI / Anthropic API、RAG 应用、向量数据库</td></tr>
+        <tr><td>项目 + 部署</td><td>第 6 月</td><td>3 个真实项目、部署上线、GitHub 作品集、简历 + 面试</td></tr>
+      </table>
+
+      <h2>四、当前阶段重点补强</h2>
+
+      <div class="phase-box">
+        <h3>Phase 1 — 马上做</h3>
+        <ul>
+          <li><strong>RAG 工业化</strong>：多路召回、Reranker 链路、检索评估体系</li>
+          <li><strong>NumPy / Pandas</strong>：工程补齐，不怕看代码、能改就行</li>
+        </ul>
+      </div>
+
+      <div class="phase-box">
+        <h3>Phase 2 — 直接拉开差距</h3>
+        <ul>
+          <li><strong>Agent 工程体系</strong>：Tool 调度、Memory 策略、执行控制</li>
+          <li><strong>MQ + 异步 AI 任务架构</strong>：推理任务异步化、批量 embedding 任务队列</li>
+        </ul>
+      </div>
+
+      <div class="phase-box">
+        <h3>Phase 3 — 架构层</h3>
+        <ul>
+          <li><strong>数据生命周期管理</strong>：增量 embedding、索引重建策略、多租户隔离</li>
+          <li><strong>AI 服务网关</strong>：模型路由、限流、token 控制、统一日志</li>
+          <li><strong>推理成本结构</strong>：token 成本、延迟瓶颈、并发极限、cache 收益</li>
+        </ul>
+      </div>
+
+      <h2>五、能力分层定位</h2>
+
+      <div class="arch-diagram">用户请求
+    ↓
+SpringBoot / FastAPI
+    ↓
+RAG 服务
+    ↓
+向量数据库 + 图数据库
+    ↓
+LLM
+    ↓
+缓存 / 消息队列
+    ↓
+高并发系统部署</div>
+
+      <table class="skill-table">
+        <tr><th>层级</th><th>定位</th><th>特征</th></tr>
+        <tr><td>L1</td><td>AI 工具使用者</td><td>会调 OpenAI、会 LangChain、会搭简单 RAG（大量人停在这里）</td></tr>
+        <tr><td>L2</td><td>AI 应用工程师</td><td>会向量库、会 RAG 优化、会评估指标、会部署、会成本控制</td></tr>
+        <tr><td>L3</td><td>AI 系统架构工程师</td><td>MQ 异步任务、多模型路由、推理成本结构、多租户数据隔离、灰度发布</td></tr>
+      </table>
+
+      <h2>六、最大误区</h2>
+      <ul>
+        <li>直接学 LangChain — 你会成为"工具型选手"，不是工程师</li>
+        <li>直接学 Prompt — 缺少底层理解，无法优化和排错</li>
+        <li>只会调 API — 无法构建可靠的生产系统</li>
+        <li>只会用现成平台 — 缺乏定制化和问题排查能力</li>
+      </ul>
+
+      <p><strong>正确的三层学习顺序：</strong></p>
+      <ul>
+        <li><strong>第一层：AI 模型层</strong> — ML → DL → NLP → 微调</li>
+        <li><strong>第二层：RAG 层</strong> — Embedding → 向量数据库 → Hybrid 检索</li>
+        <li><strong>第三层：工程层</strong> — 后端 → 数据库 → 消息队列 → Docker → 部署</li>
+      </ul>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>

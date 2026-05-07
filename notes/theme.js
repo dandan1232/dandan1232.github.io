@@ -14,7 +14,16 @@ const NOTES_GROUPS = [
     items: [
       { title: "RAG 从 0 到 1 落地笔记", href: "./rag-from-0-to-1-practice.html" },
       { title: "FastGPT 跨知识库迁移补丁", href: "./fastgpt-cross-knowledgebase-migration-patch.html" },
-      { title: "AI 接入微信公众号", href: "./ai-wechat-official-account-integration.html" }
+      { title: "FastGPT 知识库结构讲解", href: "./fastgpt-knowledge-base-structure.html" },
+      { title: "AI 接入微信公众号", href: "./ai-wechat-official-account-integration.html" },
+      { title: "AI 后端 LLM 工程师技能雷达图", href: "./ai-backend-llm-engineer-skills.html" }
+    ]
+  },
+  {
+    id: "training",
+    label: "训练 & 系统",
+    items: [
+      { title: "从 0 到 1 构建 RLHF 系统", href: "./rlhf-system-from-scratch.html" }
     ]
   },
   {
