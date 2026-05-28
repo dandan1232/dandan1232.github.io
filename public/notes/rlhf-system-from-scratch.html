@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>从 0 到 1 构建 RLHF 系统 | Echo Notes</title>
+  <meta name="description" content="小红书大模型团队 RLHF 系统设计：异构组网、训推一体优化、PPO 细节与 Medusa 加速。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+  <style>
+    .arch-diagram { background: rgba(56,189,248,0.06); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; font-family: monospace; font-size: 13px; line-height: 1.8; color: var(--text-muted); margin: 12px 0; white-space: pre; overflow-x: auto; }
+    .insight-box { border-left: 3px solid var(--accent); padding: 10px 14px; margin: 12px 0; background: var(--accent-soft); border-radius: 0 12px 12px 0; font-size: 13px; color: var(--text-main); line-height: 1.7; }
+    .compare-table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 13px; }
+    .compare-table th, .compare-table td { padding: 8px 10px; border: 1px solid var(--border-subtle); text-align: left; }
+    .compare-table th { background: var(--accent-soft); color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+
+    <article class="article">
+      <h1>从 0 到 1 构建 RLHF 系统</h1>
+      <p class="meta">整理于 2026-05-07 · 来源：小红书大模型团队 QCon 分享</p>
+
+      <p>本文整理自小红书 AGI 团队在 QCon 上海 2024 的分享，介绍其自研 MLLM RLHF 训练框架的设计与优化，覆盖异构组网、训推一体、PPO 细节处理和 Medusa 加速等核心技术。</p>
+
+      <h2>RLHF 背景</h2>
+      <p>RLHF（基于人类反馈的强化学习）是让大模型输出更贴近人类偏好的关键技术。核心流程：</p>
+
+      <div class="arch-diagram">SFT（前置阶段）
+    ↓
+第一阶段：RM（Reward Model）
+    → 偏好训练一个打分模型，模拟人类视角评价数据质量
+    ↓
+第二阶段：RL（PPO）
+    → LLM 根据指令生成回复 → RM 实时打分 → 策略优化
+    → 不断生成接近人类偏好的输出</div>
+
+      <h3>PPO 核心组件</h3>
+      <ul>
+        <li><strong>Actor Model</strong> — 演员模型，训练的目标语言模型</li>
+        <li><strong>Critic Model</strong> — 评论家模型，预估总收益</li>
+        <li><strong>Reward Model</strong> — 奖励模型，计算即时收益</li>
+        <li><strong>Reference Model</strong> — 参考模型，防止模型训歪</li>
+      </ul>
+
+      <div class="insight-box">
+        PPO 是一个训推混合流程：第一阶段 Make-Experience（Rollout）涉及 4 个模型推理；第二阶段 Training 涉及 actor 和 critic 两个模型独立训练。工程痛点：多阶段 dataloader、generate 自回归、4 模型推理 + 2 模型训练。
+      </div>
+
+      <h2>框架设计</h2>
+
+      <h3>技术选型</h3>
+      <table class="compare-table">
+        <tr><th>组件</th><th>选型</th><th>原因</th></tr>
+        <tr><td>训练框架</td><td>Megatron-core + Ray</td><td>降低维护成本，避免缝合怪</td></tr>
+        <tr><td>推理引擎</td><td>vLLM</td><td>高性能推理，但 logp 需走 Megatron 保证一致性</td></tr>
+      </table>
+
+      <h3>异构组网架构</h3>
+      <p>核心思路：<strong>Forward-Offload</strong> 分时复用模型，将 4 个模型的显存降到 2 个。</p>
+
+      <div class="arch-diagram">原始方案：4 模型 × 8机64卡 = 32机256卡
+    ↓ Forward-Offload
+Offload 方案：actor→offload→ref, critic→offload→RM
+    → 2 模型 × 8机64卡 = 16机128卡（降低 50%）
+    ↓ Training-Separated
+actor / critic 独立集群异步训练 → 吞吐最大化</div>
+
+      <div class="insight-box">
+        启动方式：复用 torchrun 拉起主任务，实现 mock-run 方式自动拉起远端 critic 集群。
+      </div>
+
+      <h3>同构组网架构</h3>
+      <p>当数据量和模型规模增大时，进一步压缩到<strong>单个 SFT 所需的训练规模</strong>：</p>
+      <ul>
+        <li>Forward 阶段：offload param 完成模型切换</li>
+        <li>Training 阶段：offload 中间状态（param/grad/ddp-bucket/opt-state）</li>
+        <li>代价：增加上下文切换开销，但相对训练时间较小</li>
+      </ul>
+
+      <h2>训推一体优化</h2>
+
+      <h3>Pipeline 优化</h3>
+      <p>问题：actor 采样阶段训练空窗，资源浪费。</p>
+
+      <table class="compare-table">
+        <tr><th>方案</th><th>特点</th></tr>
+        <tr><td>常规版本</td><td>推理/训练独立集群，存在优化空间</td></tr>
+        <tr><td>全量 Offload</td><td>vLLM/actor/critic 全集群资源利用，ROI 高，但有 offload/restart 空隙</td></tr>
+        <tr><td>Pipeline 版本</td><td>流水线 overlap 数据落盘、restart/offload、部分 forward 开销，性能最优</td></tr>
+      </table>
+
+      <h3>PPO 细节处理</h3>
+      <ul>
+        <li><strong>Padding-Free 优化</strong>：对 generate/forward/train 三阶段去除 padding，整体提升 10%</li>
+        <li><strong>参数同步</strong>：提前与 Ray-vLLM 组建 NCCL Group，比文件系统 reload 快几十秒</li>
+        <li><strong>CP 并行优化</strong>：规避对 logits 进行 gather，先统一得到 total logp，通信量从 BSH 降到 BS</li>
+      </ul>
+
+      <h3>训推一致性</h3>
+      <div class="insight-box">
+        RM 的 vhead 本质是矩阵乘 [1,hidden] × [hidden,1]，初始 diff ~0.001 经过矩阵乘后放大到 0.3，精度无法容忍。解决方案：RM+RL 使用相同训练框架；RL 场景下 RM-serving 转为本地 offload forward。
+      </div>
+
+      <h3>Medusa 投机采样</h3>
+      <p>通过多个 head 预测降低 decode 次数，无损优化自回归性能。核心设计：</p>
+      <ul>
+        <li>主干网络 + 多个 Medusa Head（与 LM-Head 同结构）</li>
+        <li>RL 场景关注吞吐，running-batch 尽可能大</li>
+        <li><strong>伴生训练</strong>：backbone 实时更新，mhead 延后更新，可与训练阶段 overlap</li>
+        <li>即使 running-batch 打满，仍有 <strong>50% 性能收益</strong></li>
+      </ul>
+
+      <h3>多模态优化</h3>
+      <ul>
+        <li><strong>组网优化</strong>：LLM 的 TP/PP/CP 用作视觉部分的 DP</li>
+        <li><strong>多路复用</strong>：vLLM/actor/critic 复用相同的 img_feature</li>
+        <li><strong>Prefetch</strong>：frozen visual-model 通过 prefetch 融入 make-experience 做 Pipeline overlap</li>
+      </ul>
+
+      <h2>实践效果</h2>
+      <ul>
+        <li>开源模型 RL 后相比基线 SFT <strong>GSB 提升 5-20%</strong></li>
+        <li>推理、数学提升较多，综合自动化评分 <strong>提升 6%</strong></li>
+        <li>PRM（过程奖励）让激励更准确，reward-gap 加大，<strong>提升模型上限 5%</strong></li>
+      </ul>
+
+      <h2>调参经验</h2>
+      <ul>
+        <li>可视化逐样本/token 进行细粒度分析</li>
+        <li>Advantage-batch 对小 DP 场景有用，防止走偏</li>
+        <li>Critic 从 RM 参数加载，复用训练集群做 reward 的 batch-forward</li>
+        <li>LR 基于 SFT 设置，<strong>actor &lt; critic</strong>，否则容易发散</li>
+        <li>Critic 先学习，actor 先 frozen，更准确地学习</li>
+        <li>Reward Hacking：训练指标持续增加但评测下降时需要迭代 RM</li>
+      </ul>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>

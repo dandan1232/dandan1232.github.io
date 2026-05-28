@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>基于 PyTorch 的轻量推荐系统框架 Torch-RecHub | Echo Notes</title>
+  <meta name="description" content="Torch-RecHub 推荐系统框架学习笔记：架构设计、模型库、核心组件与快速上手指南。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+
+    <article class="article">
+      <h1>基于 PyTorch 的轻量推荐系统框架 Torch-RecHub</h1>
+      <p class="meta">发布于 2026-05-07 · 推荐系统</p>
+
+      <h2>项目简介</h2>
+      <p><strong>Torch-RecHub</strong> 是由 Datawhale 社区维护的、基于 PyTorch 构建的轻量推荐系统框架。它旨在简化推荐算法的研究和应用，提供常见的模型实现、数据处理工具和评估指标。</p>
+      <ul>
+        <li><strong>项目地址</strong>：github.com/datawhalechina/torch-rechub</li>
+        <li><strong>文档地址</strong>：datawhalechina.github.io/torch-rechub/</li>
+      </ul>
+
+      <h2>核心特性</h2>
+      <ul>
+        <li><strong>模块化设计</strong>：易于添加新的模型、数据集和评估指标</li>
+        <li><strong>基于 PyTorch</strong>：利用动态图和 GPU 加速能力</li>
+        <li><strong>丰富的模型库</strong>：包含 30+ 种经典和前沿推荐算法</li>
+        <li><strong>标准化流程</strong>：统一的数据加载、训练和评估流程</li>
+        <li><strong>易扩展</strong>：模型训练与模型定义解耦，无 basemodel 概念</li>
+        <li><strong>原生函数</strong>：尽可能使用 PyTorch 原生类与函数，方便新手学习</li>
+        <li><strong>生产部署</strong>：支持 ONNX 导出，便于部署到生产环境</li>
+      </ul>
+
+      <h2>安装指南</h2>
+
+      <h3>系统要求</h3>
+      <ul>
+        <li>Python 3.9+</li>
+        <li>PyTorch 1.7+（推荐 CUDA 版本）</li>
+        <li>NumPy、Pandas、SciPy、Scikit-learn</li>
+      </ul>
+
+      <h3>安装方式</h3>
+      <pre><code># 稳定版（推荐）
+pip install torch-rechub
+
+# 最新开发版
+pip install uv
+git clone https://github.com/datawhalechina/torch-rechub.git
+cd torch-rechub
+uv sync</code></pre>
+
+      <h3>验证安装</h3>
+      <pre><code>import torch_rechub
+print(torch_rechub.__version__)
+
+# 或运行示例
+python examples/matching/run_ml_dssm.py</code></pre>
+
+      <h2>整体架构</h2>
+      <p>Torch-RecHub 采用分层架构设计：</p>
+      <ul>
+        <li><strong>特征层</strong>：处理 DenseFeature（数值型）、SparseFeature（类别型）、SequenceFeature（序列型）</li>
+        <li><strong>数据层</strong>：TorchDataset / PredictDataset / DataGenerator / MatchDataGenerator</li>
+        <li><strong>模型层</strong>：排序模型、召回模型、多任务模型、生成式推荐模型</li>
+        <li><strong>训练层</strong>：CTRTrainer / MatchTrainer / MTLTrainer</li>
+        <li><strong>工具层</strong>：ONNX 导出、模型可视化、回调函数、损失函数</li>
+      </ul>
+
+      <h2>模型库总览（30+ 模型）</h2>
+
+      <h3>排序模型（Ranking）— 13 个</h3>
+      <p>用于精排阶段，预测用户对物品的点击率或偏好分数。</p>
+      <table>
+        <thead><tr><th>模型</th><th>适用场景</th><th>核心特点</th></tr></thead>
+        <tbody>
+          <tr><td>Wide&amp;Deep</td><td>基础排序任务</td><td>结合线性和深度模型，兼顾记忆和泛化</td></tr>
+          <tr><td>DeepFM</td><td>特征交互重要场景</td><td>同时捕获低阶和高阶特征交互</td></tr>
+          <tr><td>DCN / DCNv2</td><td>显式特征交叉</td><td>显式学习高阶特征交叉，计算效率高</td></tr>
+          <tr><td>DIN</td><td>用户兴趣动态变化</td><td>基于注意力机制捕捉用户兴趣</td></tr>
+          <tr><td>DIEN</td><td>长序列兴趣建模</td><td>建模用户兴趣的动态演化过程</td></tr>
+          <tr><td>BST</td><td>序列特征重要场景</td><td>使用 Transformer 建模序列特征</td></tr>
+          <tr><td>AutoInt</td><td>自动特征交互学习</td><td>自动学习特征交互模式</td></tr>
+        </tbody>
+      </table>
+
+      <h3>召回模型（Matching）— 12 个</h3>
+      <p>用于粗排阶段，从海量物品中召回候选集。</p>
+      <table>
+        <thead><tr><th>模型</th><th>适用场景</th><th>核心特点</th></tr></thead>
+        <tbody>
+          <tr><td>DSSM</td><td>文本匹配场景</td><td>双塔结构，用户和物品映射到同一向量空间</td></tr>
+          <tr><td>YoutubeDNN</td><td>大规模推荐</td><td>基于用户行为序列的深度召回</td></tr>
+          <tr><td>MIND</td><td>多兴趣推荐</td><td>为用户学习多个兴趣表示</td></tr>
+          <tr><td>GRU4Rec / SASRec</td><td>序列推荐</td><td>建模用户近期行为序列</td></tr>
+          <tr><td>ComiRec</td><td>可控多兴趣推荐</td><td>允许控制生成的兴趣数量</td></tr>
+        </tbody>
+      </table>
+
+      <h3>多任务模型（Multi-Task）— 5 个</h3>
+      <p>同时优化多个相关任务，提高模型泛化能力。</p>
+      <table>
+        <thead><tr><th>模型</th><th>适用场景</th><th>核心特点</th></tr></thead>
+        <tbody>
+          <tr><td>SharedBottom</td><td>任务相关性强</td><td>所有任务共享底层网络</td></tr>
+          <tr><td>MMoE</td><td>任务冲突较大</td><td>多门控专家混合，为不同任务学习不同专家组合</td></tr>
+          <tr><td>PLE</td><td>复杂多任务</td><td>渐进式分层提取，缓解负迁移</td></tr>
+          <tr><td>ESMM</td><td>样本选择偏差</td><td>全空间建模，解决样本选择偏差</td></tr>
+          <tr><td>AITM</td><td>任务间有依赖</td><td>自适应信息迁移，学习任务间依赖关系</td></tr>
+        </tbody>
+      </table>
+
+      <h3>生成式推荐（Generative）— 2 个</h3>
+      <table>
+        <thead><tr><th>模型</th><th>适用场景</th><th>核心特点</th></tr></thead>
+        <tbody>
+          <tr><td>HSTU</td><td>大规模序列推荐</td><td>层级序列转换单元，支撑万亿参数推荐系统</td></tr>
+          <tr><td>HLLM</td><td>融合 LLM 能力</td><td>结合大语言模型的语义理解能力</td></tr>
+        </tbody>
+      </table>
+
+      <h2>快速上手</h2>
+
+      <h3>排序模型示例</h3>
+      <pre><code>from torch_rechub.models.ranking import DeepFM
+from torch_rechub.trainers import CTRTrainer
+
+# 创建模型
+model = DeepFM(
+    deep_features=deep_features,
+    fm_features=fm_features,
+    mlp_params={"dims": [256, 128], "dropout": 0.2}
+)
+
+# 训练
+trainer = CTRTrainer(model, optimizer_params={"lr": 0.001}, device="cuda:0")
+trainer.fit(train_dataloader, val_dataloader)</code></pre>
+
+      <h3>召回模型示例</h3>
+      <pre><code>from torch_rechub.models.matching import DSSM
+from torch_rechub.trainers import MatchTrainer
+
+# 创建模型
+model = DSSM(
+    user_features=user_features,
+    item_features=item_features,
+    temperature=0.02,
+    user_params={"dims": [256, 128, 64]},
+    item_params={"dims": [256, 128, 64]}
+)
+
+# 训练
+trainer = MatchTrainer(model, mode=0, device="cuda:0")
+trainer.fit(train_dataloader)</code></pre>
+
+      <h2>模型选择指南</h2>
+      <ul>
+        <li><strong>刚入门推荐系统</strong>：从 Wide&amp;Deep 和 DSSM 开始，理解排序和召回的基本范式</li>
+        <li><strong>特征工程重要</strong>：优先尝试 DeepFM、DCN，它们对特征交互建模能力强</li>
+        <li><strong>用户行为序列丰富</strong>：DIN、DIEN、SASRec 能有效捕捉时序兴趣</li>
+        <li><strong>多目标优化</strong>：MMoE、PLE 是业界最常用的多任务模型</li>
+        <li><strong>大模型融合</strong>：关注 HLLM，代表了 LLM + 推荐的前沿方向</li>
+      </ul>
+
+      <h2>总结</h2>
+      <p>Torch-RecHub 是一个非常适合学习和实践推荐系统的框架。它的代码精简、模块化设计清晰，模型覆盖了从经典到前沿的各个阶段。无论你是推荐系统初学者还是需要快速验证想法的工程师，都值得深入了解。</p>
+
+      <h2>参考资料</h2>
+      <ul>
+        <li>Torch-RecHub 官方文档：datawhalechina.github.io/torch-rechub/</li>
+        <li>Fun-Rec 推荐系统学习项目：github.com/datawhalechina/fun-rec</li>
+      </ul>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>

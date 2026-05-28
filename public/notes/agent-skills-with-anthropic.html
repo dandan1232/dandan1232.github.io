@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>agent-skills-with-anthropic | Echo Notes</title>
+  <meta name="description" content="agent-skills-with-anthropic 实践：技能触发、上下文治理与失败兜底。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article">
+      <h1>agent-skills-with-anthropic 实践笔记</h1>
+      <p class="meta">发布于 2026-03-05</p>
+
+      <h2>核心目标</h2>
+      <ul>
+        <li>把 Agent 从“泛化对话”升级为“可交付任务执行器”。</li>
+        <li>通过 skills 约束能力边界，减少漂移和无效输出。</li>
+      </ul>
+
+      <h2>技能触发策略</h2>
+      <ul>
+        <li>优先规则触发：显式命令或明确任务域直接命中技能。</li>
+        <li>其次语义触发：相似意图匹配到候选技能并排序。</li>
+        <li>冲突处理：多技能命中时按风险优先级和最小动作原则执行。</li>
+      </ul>
+
+      <h2>上下文治理</h2>
+      <ul>
+        <li>短上下文保留任务关键约束，长上下文摘要化持久化。</li>
+        <li>技能输出必须结构化，便于后续步骤消费。</li>
+        <li>对高风险任务增加“执行前确认”门禁。</li>
+      </ul>
+
+      <h2>失败兜底</h2>
+      <ul>
+        <li>技能不可用时回退到安全回答模板，明确缺失能力。</li>
+        <li>工具失败时暴露可操作错误信息，不隐藏关键上下文。</li>
+        <li>保留失败样本，定期用于提示词和路由策略迭代。</li>
+      </ul>
+
+      <h2>结论</h2>
+      <p>技能化的本质是把能力显式化、把流程可控化，最终目标是稳定交付而不是一次性“答得像”。</p>
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>
