@@ -35,6 +35,13 @@ const NOTES_GROUPS = [
     ]
   },
   {
+    id: "devops",
+    label: "工程运维",
+    items: [
+      { title: "Docker Desktop 数据迁移", href: "./docker-desktop-data-migration.html" }
+    ]
+  },
+  {
     id: "multimodal",
     label: "多模态",
     items: [

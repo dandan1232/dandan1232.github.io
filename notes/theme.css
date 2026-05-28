@@ -230,6 +230,16 @@ ul {
   margin-top: 6px;
 }
 
+pre {
+  margin: 10px 0 14px;
+  padding: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.06);
+  line-height: 1.6;
+}
+
 code {
   background: rgba(56, 189, 248, 0.12);
   color: var(--accent);
@@ -237,6 +247,16 @@ code {
   border-radius: 8px;
   padding: 1px 6px;
   font-size: 12px;
+}
+
+pre code {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-main);
+  white-space: pre;
 }
 
 .article-media {
