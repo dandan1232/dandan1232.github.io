@@ -2,20 +2,23 @@ import { watch } from "vue";
 import { loadTranslations } from "../utils/load";
 import { locale, translations } from "../store";
 import { onMounted } from "vue";
-import { LOCALES } from "../constants";
+import { LOCALES, LOCALE_DEFAULT } from "../constants";
 
 import type { Locale } from "../types";
 
 export const useTranslations = () => {
   onMounted(() => {
-    locale.value = window.localStorage.getItem("portfolio-locale") as Locale;
-    if (!locale.value) {
+    const storedLocale = window.localStorage.getItem("portfolio-locale") as Locale | null;
+
+    if (storedLocale && storedLocale in LOCALES) {
+      locale.value = storedLocale;
+    } else {
       const preferredLocale = navigator.language.split("-")[0] as Locale;
 
       if (preferredLocale in LOCALES) {
         locale.value = preferredLocale;
       } else {
-        locale.value = "en";
+        locale.value = LOCALE_DEFAULT;
       }
     }
   });

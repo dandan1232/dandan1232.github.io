@@ -1,11 +1,11 @@
 export const LOCALES = {
+  zh: {
+    iso: "zh-CN",
+    name: "中文",
+  },
   en: {
     iso: "en-US",
     name: "English",
-  },
-  de: {
-    iso: "de-DE",
-    name: "Deutsch",
   },
 } as const satisfies Record<
   string,
@@ -15,4 +15,4 @@ export const LOCALES = {
   }
 >;
 
-export const LOCALE_DEFAULT: keyof typeof LOCALES = "en";
+export const LOCALE_DEFAULT: keyof typeof LOCALES = "zh";

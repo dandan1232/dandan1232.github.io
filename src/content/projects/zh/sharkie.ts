@@ -15,7 +15,7 @@ export default {
   live: "https://sharkie.david-hckh.com/",
   source: "https://github.com/davidhckh/sharkie-game",
   description:
-    "Sharkie ist ein 2D-Unterwasser-Abenteuerspiel, entwickelt mit Vanilla JavaScript und HTML5 Canvas.<br/><br/>Das Projekt basiert auf objektorientierten Programmierprinzipien und nutzt eigene Klassen für Spielfiguren, Gegner und Spielsysteme, ergänzt durch flüssige Animationen, Kampfsysteme und mehrschichtige Parallax-Hintergründe.",
+    "Sharkie 是一款使用原生 JavaScript 和 HTML5 Canvas 开发的 2D 海底冒险游戏。<br/><br/>项目基于面向对象编程原则，为角色、敌人和游戏系统设计了自定义类，并加入了流畅动画、战斗机制和多层视差背景。",
   components: [
     {
       type: "media",
@@ -30,8 +30,8 @@ export default {
       props: {
         type: "image",
         src: sharkie0,
-        alt: "Spielfiguren und Karten-Design",
-        caption: "Spielfiguren und Karten-Design",
+        alt: "角色与地图设计",
+        caption: "角色与地图设计",
       },
     },
     {
@@ -39,8 +39,8 @@ export default {
       props: {
         type: "image",
         src: sharkie1,
-        alt: "Boss-Kampf",
-        caption: "Boss-Kampf",
+        alt: "Boss 战",
+        caption: "Boss 战",
       },
     },
     {
@@ -57,8 +57,8 @@ export default {
       props: {
         type: "image",
         src: sharkie3,
-        alt: "Sieg-Screen",
-        caption: "Sieg-Screen",
+        alt: "胜利界面",
+        caption: "胜利界面",
       },
     },
     {
@@ -66,8 +66,8 @@ export default {
       props: {
         type: "image",
         src: sharkie4,
-        alt: "Todes-Screen",
-        caption: "Todes-Screen",
+        alt: "失败界面",
+        caption: "失败界面",
       },
     },
   ],

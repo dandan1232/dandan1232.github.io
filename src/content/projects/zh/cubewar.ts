@@ -16,7 +16,7 @@ export default {
   videoBorder: false,
   live: "https://cubewar.io",
   description:
-    "CubeWar ist ein browserbasiertes Multiplayer-Spiel, in dem Spieler in schnellen, strategischen Kämpfen gegeneinander antreten.<br/><br/>Ich habe den gesamten Stack selbst entwickelt, inklusive der Spiel-Engine, des Client-Timeline-Systems und des Echtzeit-Netzwerks mit Redis-basiertem Matchmaking für flüssiges Gameplay.",
+    "CubeWar 是一款基于浏览器的多人游戏，玩家操控方块角色参与快节奏的策略对战。<br/><br/>我独立完成了完整技术栈，包括游戏引擎、客户端时间轴系统，以及基于 Redis 匹配的实时网络层，以支持流畅的高并发玩法。",
   components: [
     {
       type: "media",
@@ -40,8 +40,8 @@ export default {
       props: {
         type: "image",
         src: cubewar1,
-        alt: "Karten Themen",
-        caption: "Karten Themen",
+        alt: "地图主题",
+        caption: "地图主题",
       },
     },
     {
@@ -49,8 +49,8 @@ export default {
       props: {
         type: "image",
         src: cubewar2,
-        alt: "Authentifizierung",
-        caption: "Authentifizierung",
+        alt: "身份验证",
+        caption: "身份验证",
       },
     },
     {
@@ -58,8 +58,8 @@ export default {
       props: {
         type: "image",
         src: cubewar3,
-        alt: "Responsives Design",
-        caption: "Responsives Design",
+        alt: "响应式设计",
+        caption: "响应式设计",
       },
     },
     {
@@ -67,8 +67,8 @@ export default {
       props: {
         type: "image",
         src: cubewar4,
-        alt: "Mehrere Spielmodi",
-        caption: "Mehrere Spielmodi",
+        alt: "多种游戏模式",
+        caption: "多种游戏模式",
       },
     },
     {

@@ -15,14 +15,14 @@ export default {
   tags: ["three", "node", "kubernetes", "redis", "postgresql"],
   videoBorder: true,
   description:
-    "Quibbo ist eine Plattform für schnelle, rundenbasierte Multiplayer-Spiele. Sie verbindet Matchmaking, anpassbare 3D-Avatare und Account-Integration mit einem Rangsystem auf ELO-Basis.<br/><br/>Das Projekt begann als technisches Experiment und entwickelte sich zu einem skalierbaren System, um neue Spielideen auszuprobieren.",
+    "Quibbo 是一个面向快节奏回合制多人游戏的平台，整合了匹配机制、可自定义 3D 头像、账号系统，以及基于 ELO 的排位奖励。<br/><br/>这个项目最初是一个技术实验，后来发展成可扩展的系统，用于测试新的游戏创意。",
   components: [
     {
       type: "media",
       props: {
         type: "video",
         src: videoQuibbo,
-        caption: "Benutzeroberfläche",
+        caption: "用户界面",
       },
     },
     {
@@ -30,8 +30,8 @@ export default {
       props: {
         type: "image",
         src: quibbo0,
-        alt: "Avatar Ersteller",
-        caption: "Avatar Ersteller",
+        alt: "头像创建器",
+        caption: "头像创建器",
       },
     },
     {
@@ -39,8 +39,8 @@ export default {
       props: {
         type: "image",
         src: quibbo1,
-        alt: "Mehrspieler Tic-Tac-Toe",
-        caption: "Mehrspieler Tic-Tac-Toe",
+        alt: "多人井字棋",
+        caption: "多人井字棋",
       },
     },
     {
@@ -48,8 +48,8 @@ export default {
       props: {
         type: "image",
         src: quibbo2,
-        alt: "Verschiedene Minispiele",
-        caption: "Verschiedene Minispiele",
+        alt: "多种小游戏",
+        caption: "多种小游戏",
       },
     },
     {
@@ -57,8 +57,8 @@ export default {
       props: {
         type: "image",
         src: quibbo3,
-        alt: "Avatar Variationen",
-        caption: "Avatar Variationen",
+        alt: "头像变体",
+        caption: "头像变体",
       },
     },
     {
@@ -66,8 +66,8 @@ export default {
       props: {
         type: "image",
         src: quibbo4,
-        alt: "Responsives Design",
-        caption: "Responsives Design",
+        alt: "响应式设计",
+        caption: "响应式设计",
       },
     },
     {
@@ -75,8 +75,8 @@ export default {
       props: {
         type: "image",
         src: quibbo5,
-        alt: "Dunkles Design",
-        caption: "Dunkles Design",
+        alt: "深色模式",
+        caption: "深色模式",
       },
     },
   ],

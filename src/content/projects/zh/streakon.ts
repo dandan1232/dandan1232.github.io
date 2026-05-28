@@ -12,15 +12,15 @@ export default {
   videoBorder: false,
   live: "https://www.streakon.app",
   description:
-    "StreakOn unterstützt kleine Gruppen dabei, durch gemeinsame Streaks und einfache Check-ins bei täglichen Gewohnheiten dranzubleiben.<br/><br/>Die App wurde mit Fokus auf geringe Interaktionshürden, mobile Nutzung und leichte soziale Funktionen entwickelt – mit Next.js, Node.js, PostgreSQL und Redis.",
+    "StreakOn 帮助小团队通过共享连续打卡和简单签到，坚持每日习惯。<br/><br/>这款应用围绕低操作负担、移动端可用性和轻量社交功能设计，使用 Next.js、Node.js、PostgreSQL 和 Redis 构建。",
   components: [
     {
       type: "media",
       props: {
         type: "image",
         src: streakon0,
-        alt: "Solo- und Gruppen-Streaks",
-        caption: "Solo- und Gruppen-Streaks",
+        alt: "个人与小组连续打卡",
+        caption: "个人与小组连续打卡",
       },
     },
     {
@@ -28,8 +28,8 @@ export default {
       props: {
         type: "image",
         src: streakon1,
-        alt: "Streak-Fortschritt",
-        caption: "Streak-Fortschritt",
+        alt: "打卡进度",
+        caption: "打卡进度",
       },
     },
     {
@@ -37,8 +37,8 @@ export default {
       props: {
         type: "image",
         src: streakon2,
-        alt: "Freunde anfeuern",
-        caption: "Freunde anfeuern",
+        alt: "为朋友加油",
+        caption: "为朋友加油",
       },
     },
     {
@@ -46,8 +46,8 @@ export default {
       props: {
         type: "image",
         src: streakon3,
-        alt: "Einladungs-Flow",
-        caption: "Einladungs-Flow",
+        alt: "邀请流程",
+        caption: "邀请流程",
       },
     },
   ],
