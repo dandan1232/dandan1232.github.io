@@ -7,19 +7,28 @@ import { resources } from "../utils/resources";
 import { raycast } from "./utils/raycast";
 
 let canvas: HTMLCanvasElement | null = null;
+let initialized = false;
 
 const init = (_canvas: HTMLCanvasElement) => {
   canvas = _canvas;
 
-  resources.once("ready", () => {
-    threeSizes.init(_canvas);
+  const setup = () => {
+    if (initialized || !canvas) return;
+    initialized = true;
+
+    threeSizes.init(canvas);
     camera.init();
     renderTarget.init();
     renderer.init(canvas);
-
     objects.init();
     raycast.init();
-  });
+  };
+
+  if (resources.isReady) {
+    setup();
+  } else {
+    resources.once("ready", setup);
+  }
 };
 
 const destroy = () => {
@@ -29,6 +38,7 @@ const destroy = () => {
   objects.destroy();
   camera.destroy();
   canvas = null;
+  initialized = false;
 };
 
 export const three = { init, destroy };

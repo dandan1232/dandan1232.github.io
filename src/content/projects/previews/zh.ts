@@ -1,7 +1,5 @@
 import thumbnailCubeWar from "../../../assets/thumbnails/cubewar.webp";
 import thumbnailQuibbo from "../../../assets/thumbnails/quibbo.webp";
-//import thumbnailParticles from "../../../assets/thumbnails/particles.webp";
-import thumbnailPokedex from "../../../assets/thumbnails/pokedex.webp";
 import thumbnailSharkie from "../../../assets/thumbnails/sharkie.webp";
 import thumbnailStreakon from "../../../assets/thumbnails/streakon.webp";
 
@@ -9,39 +7,27 @@ import type { ProjectPreview } from "../../types";
 
 export default [
   {
-    title: "StreakOn",
-    slug: "streakon",
+    title: "企业知识库 · GraphRAG 系统",
+    slug: "enterprise-knowledge-base",
     thumbnail: thumbnailStreakon,
-    description: "每日习惯追踪应用",
+    description: "面向业务问答的多层知识检索系统",
   },
   {
-    title: "CubeWar",
-    slug: "cubewar",
+    title: "ChatGPT on WeChat · 媒体增强版",
+    slug: "wechat-media-ai",
     thumbnail: thumbnailCubeWar,
-    description: "多人策略游戏",
+    description: "公众号与企业知识的 AI 消息链路",
   },
   {
-    title: "Quibbo",
-    slug: "quibbo",
+    title: "PPT 自动清洗 & 审核工具",
+    slug: "ppt-audit-tool",
     thumbnail: thumbnailQuibbo,
-    description: "多人游戏平台",
+    description: "面向素材治理的自动化工具链",
   },
   {
-    title: "Sharkie",
-    slug: "sharkie",
+    title: "内部 AI 助手 · Workflow 设计",
+    slug: "workflow-assistant",
     thumbnail: thumbnailSharkie,
-    description: "2D 冒险游戏",
-  },
-  /**  {
-    title: "WebGL 粒子",
-    slug: "particles",
-    thumbnail: thumbnailParticles,
-    description: "动态 3D 粒子",
-  }, */
-  {
-    title: "Pokédex",
-    slug: "pokedex",
-    thumbnail: thumbnailPokedex,
-    description: "开源学习项目",
+    description: "可控、可扩展的 LLM 流程编排",
   },
 ] as const satisfies ProjectPreview[];
