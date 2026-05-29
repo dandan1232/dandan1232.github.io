@@ -66,13 +66,13 @@ const NOTES_GROUPS = [
 
 const darkThemeConfig = {
   particles: {
-    number: { value: 80, density: { enable: true, value_area: 900 } },
-    color: { value: "#38bdf8" },
+    number: { value: 60, density: { enable: true, value_area: 900 } },
+    color: { value: "#ff8400" },
     shape: { type: "circle" },
-    opacity: { value: 0.6, random: true, anim: { enable: true, speed: 0.8, opacity_min: 0.1, sync: false } },
-    size: { value: 3, random: true },
-    line_linked: { enable: true, distance: 140, color: "#38bdf8", opacity: 0.35, width: 1 },
-    move: { enable: true, speed: 1.4, direction: "none", random: true, out_mode: "out" }
+    opacity: { value: 0.32, random: true, anim: { enable: true, speed: 0.7, opacity_min: 0.08, sync: false } },
+    size: { value: 2.4, random: true },
+    line_linked: { enable: true, distance: 140, color: "#ff8400", opacity: 0.18, width: 1 },
+    move: { enable: true, speed: 1.1, direction: "none", random: true, out_mode: "out" }
   },
   interactivity: {
     detect_on: "window",
@@ -85,12 +85,12 @@ const darkThemeConfig = {
 const pinkThemeConfig = {
   particles: {
     number: { value: 40, density: { enable: true, value_area: 800 } },
-    color: { value: "#f472b6" },
+    color: { value: "#ff8400" },
     shape: { type: "circle" },
-    opacity: { value: 0.7, random: true, anim: { enable: true, speed: 1, opacity_min: 0.2, sync: false } },
-    size: { value: 5, random: true, anim: { enable: true, speed: 2, size_min: 1, sync: false } },
+    opacity: { value: 0.24, random: true, anim: { enable: true, speed: 0.8, opacity_min: 0.06, sync: false } },
+    size: { value: 3.2, random: true, anim: { enable: true, speed: 1.4, size_min: 1, sync: false } },
     line_linked: { enable: false },
-    move: { enable: true, speed: 1, direction: "top", random: true, straight: false, out_mode: "out", bounce: false }
+    move: { enable: true, speed: 0.8, direction: "top", random: true, straight: false, out_mode: "out", bounce: false }
   },
   interactivity: {
     detect_on: "window",

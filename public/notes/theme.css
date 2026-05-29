@@ -1,28 +1,31 @@
 :root {
-  --bg-dark: #050816;
-  --bg-card: rgba(15, 23, 42, 0.88);
-  --accent: #38bdf8;
-  --accent-soft: rgba(56, 189, 248, 0.18);
-  --text-main: #e5e7eb;
-  --text-muted: #9ca3af;
-  --border-subtle: rgba(148, 163, 184, 0.3);
-  --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.85);
+  --bg-dark: #f5efe6;
+  --bg-card: rgba(241, 229, 213, 0.82);
+  --bg-card-solid: #f1e5d5;
+  --accent: #ff8400;
+  --accent-soft: rgba(255, 132, 0, 0.14);
+  --text-main: #2d2a24;
+  --text-muted: #5f5646;
+  --border-subtle: rgba(95, 86, 70, 0.22);
+  --shadow-soft: 0 18px 45px rgba(45, 42, 36, 0.12);
   --radius-xl: 16px;
   --transition-fast: 0.25s ease-out;
-  --card-hover-gradient: radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), rgba(15, 23, 42, 0.98));
-  --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(56, 189, 248, 0.28), transparent 55%);
+  --card-hover-gradient: linear-gradient(135deg, rgba(255, 132, 0, 0.1), rgba(241, 229, 213, 0.96));
+  --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(255, 132, 0, 0.18), transparent 55%);
 }
 
 [data-theme="pink"] {
-  --bg-dark: #38132f;
-  --bg-card: rgba(76, 35, 62, 0.88);
-  --accent: #f3dff0;
-  --accent-soft: rgba(244, 114, 182, 0.15);
-  --text-main: #fce7f3;
-  --text-muted: #e5a8c8;
-  --border-subtle: rgba(244, 114, 182, 0.3);
-  --card-hover-gradient: radial-gradient(circle at top left, rgba(244, 114, 182, 0.12), rgba(76, 35, 62, 0.98));
-  --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(244, 114, 182, 0.3), transparent 55%);
+  --bg-dark: #f5efe6;
+  --bg-card: rgba(241, 229, 213, 0.82);
+  --bg-card-solid: #f1e5d5;
+  --accent: #ff8400;
+  --accent-soft: rgba(255, 132, 0, 0.14);
+  --text-main: #2d2a24;
+  --text-muted: #5f5646;
+  --border-subtle: rgba(95, 86, 70, 0.22);
+  --shadow-soft: 0 18px 45px rgba(45, 42, 36, 0.12);
+  --card-hover-gradient: linear-gradient(135deg, rgba(255, 132, 0, 0.1), rgba(241, 229, 213, 0.96));
+  --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(255, 132, 0, 0.18), transparent 55%);
 }
 
 * {
@@ -101,7 +104,7 @@ body {
 
 .btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 26px rgba(45, 42, 36, 0.16);
 }
 
 .theme-switcher button {
@@ -236,14 +239,14 @@ pre {
   overflow-x: auto;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: rgba(56, 189, 248, 0.06);
+  background: rgba(255, 132, 0, 0.07);
   line-height: 1.6;
 }
 
 code {
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(255, 132, 0, 0.1);
   color: var(--accent);
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  border: 1px solid rgba(255, 132, 0, 0.28);
   border-radius: 8px;
   padding: 1px 6px;
   font-size: 12px;
@@ -296,7 +299,7 @@ body.notes-detail .wrap {
   bottom: 0;
   width: 300px;
   z-index: 35;
-  background: rgba(5, 8, 22, 0.9);
+  background: rgba(245, 239, 230, 0.94);
   border-right: 1px solid var(--border-subtle);
   backdrop-filter: blur(16px);
   transform: translateX(-102%);
@@ -308,7 +311,7 @@ body.notes-detail.sidebar-open .notes-sidebar {
 }
 
 [data-theme="pink"] .notes-sidebar {
-  background: rgba(56, 19, 47, 0.9);
+  background: rgba(245, 239, 230, 0.94);
 }
 
 .notes-sidebar-inner {
@@ -448,7 +451,7 @@ body.notes-detail.sidebar-open .notes-sidebar {
 .notes-sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(45, 42, 36, 0.34);
   z-index: 33;
   opacity: 0;
   pointer-events: none;
