@@ -4,6 +4,7 @@ import Hero from "./Hero.vue";
 import About from "./About.vue";
 //import AboutSections from "../features/about/Sections.vue";
 import Projects from "./Projects.vue";
+import TechStack from "./TechStack.vue";
 import Notes from "./Notes.vue";
 import Contact from "./Contact.vue";
 import Footer from "../../../components/Footer.vue";
@@ -158,6 +159,7 @@ watch(
         <div class="intro-wrapper-spacer"></div>
         <div class="about-spacer" ref="aboutSpacerRef" id="about"></div>
       </div>
+      <TechStack id="stack" />
       <Projects id="projects" @loaded="handleProjectsLoaded" />
       <Notes id="notes" />
       <div ref="contactRef" class="home-contact">

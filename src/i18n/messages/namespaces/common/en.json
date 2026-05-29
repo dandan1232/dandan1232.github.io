@@ -25,6 +25,7 @@
   "services": "Tech Stack",
   "start-a-new-project": "Start a new project",
   "source-code": "Source Code",
+  "stack": "Stack",
   "switch-to-project": "Switch to project {project}",
   "version": "Version",
   "view-project": "View project"

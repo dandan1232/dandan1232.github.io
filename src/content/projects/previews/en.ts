@@ -1,4 +1,5 @@
 import thumbnailCubeWar from "../../../assets/thumbnails/cubewar.webp";
+import thumbnailPokedex from "../../../assets/thumbnails/pokedex.webp";
 import thumbnailQuibbo from "../../../assets/thumbnails/quibbo.webp";
 import thumbnailSharkie from "../../../assets/thumbnails/sharkie.webp";
 import thumbnailStreakon from "../../../assets/thumbnails/streakon.webp";
@@ -29,5 +30,11 @@ export default [
     slug: "workflow-assistant",
     thumbnail: thumbnailSharkie,
     description: "Controllable LLM workflow orchestration",
+  },
+  {
+    title: "Software Copyrights",
+    slug: "software-copyrights",
+    thumbnail: thumbnailPokedex,
+    description: "Software copyright records and project assets",
   },
 ] as const satisfies ProjectPreview[];

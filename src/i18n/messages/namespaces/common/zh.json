@@ -25,6 +25,7 @@
   "services": "技术栈",
   "start-a-new-project": "开始新项目",
   "source-code": "源代码",
+  "stack": "技术栈",
   "switch-to-project": "切换到项目 {project}",
   "version": "版本",
   "view-project": "查看项目"

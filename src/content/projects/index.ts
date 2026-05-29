@@ -1,6 +1,12 @@
 import type { Locale } from "../../i18n/types";
 
-export const projectIds = ["enterprise-knowledge-base", "wechat-media-ai", "ppt-audit-tool", "workflow-assistant"];
+export const projectIds = [
+  "enterprise-knowledge-base",
+  "wechat-media-ai",
+  "ppt-audit-tool",
+  "workflow-assistant",
+  "software-copyrights",
+];
 
 function simplifyModules(glob: Record<string, any>) {
   const result: Record<string, any> = {};
