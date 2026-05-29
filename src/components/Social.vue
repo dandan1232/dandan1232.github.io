@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Github from "./icons/Github.vue";
+import Csdn from "./icons/Csdn.vue";
 import Linkedin from "./icons/Linkedin.vue";
 import Instagram from "./icons/Instagram.vue";
 import Mail from "./icons/Mail.vue";
@@ -18,6 +19,7 @@ const props = defineProps<{
 const icons = {
   mail: Mail,
   github: Github,
+  csdn: Csdn,
   linkedin: Linkedin,
   x: X,
   instagram: Instagram,

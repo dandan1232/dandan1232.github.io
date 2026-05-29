@@ -107,6 +107,10 @@ const handleTimelineCreated = (timeline: gsap.core.Timeline, delay: number) => {
         </div>
         <div class="box-description-line"></div>
         <div class="box-description-copy">
+          <div class="box-description-focus">
+            <p class="box-description-focus-label">{{ t("focus-direction") }}</p>
+            <p class="box-description-focus-value">{{ t("focus-direction-copy") }}</p>
+          </div>
           <AppearingText
             :text="t('about-tagline')"
             :steps="3"
@@ -237,6 +241,9 @@ const handleTimelineCreated = (timeline: gsap.core.Timeline, delay: number) => {
     will-change: opacity;
     font-size: var(--font-size-md);
     padding: var(--space-sm) var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
 
     @include mixins.landscape {
       padding: 0;
@@ -245,6 +252,25 @@ const handleTimelineCreated = (timeline: gsap.core.Timeline, delay: number) => {
 
     @include mixins.landscape-large {
       font-size: var(--font-size-lg);
+    }
+  }
+
+  &-focus {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+    line-height: var(--line-height-md);
+
+    &-label {
+      color: var(--color-white-400);
+      font-size: var(--font-size-sm);
+      font-weight: 700;
+    }
+
+    &-value {
+      color: var(--color-text-cyan-400);
+      font-size: var(--font-size-sm);
+      font-weight: 700;
     }
   }
 }

@@ -107,19 +107,17 @@ const handleTimelineCreated = (timeline: gsap.core.Timeline, delay: number) => {
 };
 
 const SERVICES_EN = [
-  { name: "Python & FastAPI" },
-  { name: "RAG & LangChain" },
-  { name: "React & Vue" },
-  { name: "PostgreSQL & Neo4j" },
-  { name: "Docker & GitHub Actions" },
+  { name: "Keep exploring AI + knowledge graphs + RAG" },
+  { name: "Improve system design and distributed architecture skills" },
+  { name: "Find fresh ideas and new things" },
+  { name: "Keep learning and enriching myself" },
 ] as const satisfies { name: string }[];
 
 const SERVICES_ZH = [
-  { name: "Python & FastAPI" },
-  { name: "RAG & LangChain" },
-  { name: "React & Vue" },
-  { name: "PostgreSQL & Neo4j" },
-  { name: "Docker & GitHub Actions" },
+  { name: "持续深入探索 AI + 知识图谱 + RAG" },
+  { name: "提升系统设计与分布式架构能力" },
+  { name: "发现新鲜事儿" },
+  { name: "充实自己" },
 ] as const satisfies { name: string }[];
 
 const services = computed(() => {
