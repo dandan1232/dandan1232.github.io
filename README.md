@@ -1,6 +1,6 @@
 # dandan1232.github.io
 
-Echo Lin 的个人作品集与技术笔记站点。基于 [`davidhckh/portfolio-2025`](https://github.com/davidhckh/portfolio-2025) 的开源模板二次开发，技术栈 Vue 3 + TypeScript + Vite + Three.js + GSAP + Lenis。
+Echo Lin 的个人作品集与技术笔记站点。技术栈 Vue 3 + TypeScript + Vite + Three.js + GSAP + Lenis。
 
 ## 本站结构
 
@@ -30,32 +30,3 @@ Echo Lin 的个人作品集与技术笔记站点。基于 [`davidhckh/portfolio-
 - 项目 ID 列表：`src/content/projects/index.ts`
 - 列表预览资源：`src/content/projects/previews/`
 - 标签样式/文案：`src/components/tagVariants.ts`
-
-详细说明见上游 README（下方保留）。
-
----
-
-# 上游归属（原模板说明）
-
-# Portfolio (2025)
-
-Personal portfolio site: project case studies, lightweight 3D and shader demos, bilingual copy (English and German).
-
-Built with **Vue 3**, **TypeScript**, and **Vite**. Motion via **GSAP** and **Lenis**, 3D via **three.js**, audio via **Howler**. GLSL is compiled through **vite-plugin-glsl**.
-
-## Credits & Attribution
-
-This project was created and designed by David Heckhoff.
-
-If you use this project or substantial parts of its source code as a base for your own portfolio or work, attribution must be preserved.
-
-Please keep:
-
-- existing credit comments in the source code
-- this attribution section in the README
-- a visible reference to the original project/repository in derivative works
-
-Original portfolio:
--> https://david-hckh.com
-
-Commercial reuse or redistribution of substantial portions of this project without permission is prohibited.

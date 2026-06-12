@@ -18,7 +18,6 @@ const handleBackToTop = () => {
 };
 
 const { withSocial = true } = defineProps<Props>();
-const showAttribution = import.meta.env.VITE_SHOW_ATTRIBUTION !== "false";
 </script>
 
 <template>
@@ -41,21 +40,6 @@ const showAttribution = import.meta.env.VITE_SHOW_ATTRIBUTION !== "false";
         <Social v-if="withSocial" />
       </div>
       <div class="footer-credits">
-        <div v-if="showAttribution" class="footer-credits-built">
-          <p>
-            {{ t("original-concept-by") }}
-          </p>
-          <Clickable renderAs="div">
-            <Link
-              href="https://github.com/davidhckh/portfolio-2025"
-              class="footer-link children-unclickable"
-              external
-              data-cursor="circle-white"
-              data-hoversound="hover"
-              >portfolio-2025</Link
-            >
-          </Clickable>
-        </div>
         <div class="footer-credits-music">
           <p>
             {{ t("music-produced-by") }}
