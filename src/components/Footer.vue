@@ -2,7 +2,6 @@
 import Social from "./Social.vue";
 import Link from "./Link.vue";
 import Clickable from "./Clickable.vue";
-import LangSwitch from "./LangSwitch.vue";
 import NotchSection from "./NotchSection.vue";
 import { t } from "../i18n/utils/translate";
 import ButtonRound from "./ButtonRound.vue";
@@ -40,9 +39,6 @@ const showAttribution = import.meta.env.VITE_SHOW_ATTRIBUTION !== "false";
       </div>
       <div class="footer-top">
         <Social v-if="withSocial" />
-        <div class="footer-top-links">
-          <LangSwitch />
-        </div>
       </div>
       <div class="footer-credits">
         <div v-if="showAttribution" class="footer-credits-built">
@@ -128,19 +124,6 @@ const showAttribution = import.meta.env.VITE_SHOW_ATTRIBUTION !== "false";
       flex-direction: row;
     }
 
-    &-links {
-      display: flex;
-      flex-direction: column-reverse;
-      align-items: center;
-      gap: var(--space-md);
-
-      @include mixins.mq("md") {
-        gap: var(--space-lg);
-        flex-direction: row;
-        position: relative;
-        margin-left: auto;
-      }
-    }
   }
 
   &-link {
