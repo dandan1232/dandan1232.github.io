@@ -1,10 +1,11 @@
 import { resources } from "../../../utils/resources";
-import { Mesh, Vector3, Euler, Group, ShaderMaterial, LinearSRGBColorSpace } from "three";
+import { Color, Mesh, Vector3, Euler, Group, ShaderMaterial, LinearSRGBColorSpace } from "three";
 import { scene } from "../../core/scene";
 import { animations } from "./animations";
 import { sceneWeights, sceneWeightsInOut } from "../../../animations/scenes";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { face } from "./face";
+import { hair } from "./hair";
 import { leftDesktop as avatarLeftDesktop } from "./left-desktop";
 import matcapVertexShader from "../../shaders/avatar-matcap/vertex.glsl";
 import matcapFragmentShader from "../../shaders/avatar-matcap/fragment.glsl";
@@ -30,6 +31,9 @@ const contactRotation = new Euler(0, -Math.PI, 0);
 
 const init = () => {
   setupMesh();
+  if (mesh) {
+    hair.init(mesh, uniforms);
+  }
   animations.init();
   face.init();
   avatarLeftDesktop.init();
@@ -64,6 +68,7 @@ const getMaterial = (name: string): Material | null => {
     transparent: true,
     uniforms: {
       uMatcap: { value: tex },
+      uTint: { value: new Color(0xffffff) },
       ...uniforms,
     },
   });
@@ -71,11 +76,13 @@ const getMaterial = (name: string): Material | null => {
 
 const assignMatcap = (child: Mesh): boolean => {
   let tex: Texture | null = null;
+  let tint = 0xffffff;
 
   if (child.name === "black") {
     tex = resources.items["matcap-black"];
   } else if (child.name === "gray") {
-    tex = resources.items["matcap-gray"];
+    tex = resources.items["matcap-white"];
+    tint = 0xff9fba;
   } else if (child.name === "skin") {
     tex = resources.items["matcap-skin"];
   } else if (child.name === "white") {
@@ -85,6 +92,7 @@ const assignMatcap = (child: Mesh): boolean => {
   if (tex) {
     tex.colorSpace = LinearSRGBColorSpace;
     child.userData.matcap = tex;
+    child.userData.tint = new Color(tint);
     return true;
   }
 
@@ -110,6 +118,7 @@ const setupMesh = () => {
       if (hasMatcap) {
         child.onBeforeRender = () => {
           child.material.uniforms.uMatcap.value = child.userData.matcap;
+          child.material.uniforms.uTint.value = child.userData.tint;
         };
       }
     }
@@ -161,6 +170,7 @@ const tick = () => {
 const destroy = () => {
   //mesh = null;
   //transform.clear();
+  hair.destroy();
   face.destroy();
   gsap.ticker.remove(tick);
 };
