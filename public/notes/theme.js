@@ -14,6 +14,7 @@ const NOTES_GROUPS = [
     items: [
       { title: "大模型应用开发基础", href: "./llm-app-dev-fundamentals.html" },
       { title: "RAG 从 0 到 1 落地笔记", href: "./rag-from-0-to-1-practice.html" },
+      { title: "FastGPT 工作流标识全链路透传", href: "./fastgpt-workflow-identifiers.html" },
       { title: "FastGPT 跨知识库迁移补丁", href: "./fastgpt-cross-knowledgebase-migration-patch.html" },
       { title: "FastGPT 知识库结构讲解", href: "./fastgpt-knowledge-base-structure.html" },
       { title: "AI 接入微信公众号", href: "./ai-wechat-official-account-integration.html" },
@@ -106,6 +107,13 @@ function applyTheme(theme) {
     window.pJSDom = [];
   }
   htmlEl.dataset.theme = theme;
+  if (toggleBtn) {
+    const isDark = theme === "dark";
+    toggleBtn.textContent = isDark ? "☀️" : "🌙";
+    toggleBtn.title = isDark ? "切换到暖色主题" : "切换到深色主题";
+    toggleBtn.setAttribute("aria-label", toggleBtn.title);
+    toggleBtn.setAttribute("aria-pressed", String(!isDark));
+  }
   const config = theme === "pink" ? pinkThemeConfig : darkThemeConfig;
   if (typeof particlesJS === "function") {
     particlesJS("particles-js", config);
@@ -247,6 +255,76 @@ function initDetailSidebar() {
   });
 }
 
+function initImageLightbox() {
+  const images = document.querySelectorAll(".article-media img");
+  if (!images.length) return;
+
+  const lightbox = document.createElement("div");
+  lightbox.className = "image-lightbox";
+  lightbox.setAttribute("role", "dialog");
+  lightbox.setAttribute("aria-modal", "true");
+  lightbox.setAttribute("aria-label", "图片大图预览");
+  lightbox.setAttribute("aria-hidden", "true");
+
+  const preview = document.createElement("img");
+  preview.className = "image-lightbox-preview";
+  preview.title = "点击缩小";
+
+  const caption = document.createElement("p");
+  caption.className = "image-lightbox-caption";
+
+  const closeButton = document.createElement("button");
+  closeButton.className = "image-lightbox-close";
+  closeButton.type = "button";
+  closeButton.title = "缩小图片";
+  closeButton.setAttribute("aria-label", "关闭大图预览");
+  closeButton.textContent = "×";
+
+  lightbox.appendChild(preview);
+  lightbox.appendChild(caption);
+  lightbox.appendChild(closeButton);
+  document.body.appendChild(lightbox);
+
+  let trigger = null;
+
+  const closeLightbox = () => {
+    if (!lightbox.classList.contains("is-open")) return;
+    lightbox.classList.remove("is-open");
+    lightbox.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("image-lightbox-open");
+    trigger?.focus();
+  };
+
+  const openLightbox = (image) => {
+    trigger = image.closest("a") || image;
+    preview.src = image.currentSrc || image.src;
+    preview.alt = image.alt || "文章大图";
+    caption.textContent = image.closest("figure")?.querySelector("figcaption")?.textContent || image.alt || "";
+    lightbox.classList.add("is-open");
+    lightbox.setAttribute("aria-hidden", "false");
+    document.body.classList.add("image-lightbox-open");
+    closeButton.focus();
+  };
+
+  images.forEach((image) => {
+    const link = image.closest("a");
+    image.title = "点击放大";
+    (link || image).addEventListener("click", (event) => {
+      event.preventDefault();
+      openLightbox(image);
+    });
+  });
+
+  closeButton.addEventListener("click", closeLightbox);
+  preview.addEventListener("click", closeLightbox);
+  lightbox.addEventListener("click", (event) => {
+    if (event.target === lightbox) closeLightbox();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeLightbox();
+  });
+}
+
 if (toggleBtn) {
   toggleBtn.addEventListener("click", () => {
     const newTheme = htmlEl.dataset.theme === "dark" ? "pink" : "dark";
@@ -256,6 +334,7 @@ if (toggleBtn) {
 
 document.addEventListener("DOMContentLoaded", () => {
   initDetailSidebar();
+  initImageLightbox();
   const savedTheme = localStorage.getItem("theme") || "dark";
   applyTheme(savedTheme);
 });

@@ -3,10 +3,17 @@ import thumbnailPokedex from "../../../assets/thumbnails/pokedex.webp";
 import thumbnailQuibbo from "../../../assets/thumbnails/quibbo.webp";
 import thumbnailSharkie from "../../../assets/thumbnails/sharkie.webp";
 import thumbnailStreakon from "../../../assets/thumbnails/streakon.webp";
+import thumbnailFastGPT from "../../../assets/thumbnails/fastgpt-workflow.png";
 
 import type { ProjectPreview } from "../../types";
 
 export default [
+  {
+    title: "FastGPT Workflow Tracing",
+    slug: "fastgpt-workflow",
+    thumbnail: thumbnailFastGPT,
+    description: "End-to-end identifiers from workflow context to log storage",
+  },
   {
     title: "Enterprise Knowledge Base · GraphRAG",
     slug: "enterprise-knowledge-base",

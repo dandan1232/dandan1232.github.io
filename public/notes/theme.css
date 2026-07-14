@@ -1,17 +1,17 @@
 :root {
-  --bg-dark: #f5efe6;
-  --bg-card: rgba(241, 229, 213, 0.82);
-  --bg-card-solid: #f1e5d5;
-  --accent: #ff8400;
-  --accent-soft: rgba(255, 132, 0, 0.14);
-  --text-main: #2d2a24;
-  --text-muted: #5f5646;
-  --border-subtle: rgba(95, 86, 70, 0.22);
-  --shadow-soft: 0 18px 45px rgba(45, 42, 36, 0.12);
+  --bg-dark: #15120f;
+  --bg-card: rgba(34, 29, 24, 0.88);
+  --bg-card-solid: #221d18;
+  --accent: #ff9838;
+  --accent-soft: rgba(255, 152, 56, 0.14);
+  --text-main: #f6efe7;
+  --text-muted: #c4b6a7;
+  --border-subtle: rgba(255, 190, 125, 0.22);
+  --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.32);
   --radius-xl: 16px;
   --transition-fast: 0.25s ease-out;
-  --card-hover-gradient: linear-gradient(135deg, rgba(255, 132, 0, 0.1), rgba(241, 229, 213, 0.96));
-  --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(255, 132, 0, 0.18), transparent 55%);
+  --card-hover-gradient: linear-gradient(135deg, rgba(255, 152, 56, 0.13), rgba(34, 29, 24, 0.98));
+  --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(255, 152, 56, 0.2), transparent 55%);
 }
 
 [data-theme="pink"] {
@@ -222,6 +222,12 @@ h2 {
   font-size: 20px;
 }
 
+h3 {
+  margin-top: 14px;
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
 p,
 li {
   font-size: 14px;
@@ -231,6 +237,66 @@ li {
 ul {
   padding-left: 18px;
   margin-top: 6px;
+}
+
+ol {
+  padding-left: 22px;
+  margin-top: 6px;
+}
+
+blockquote {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--accent-soft);
+}
+
+.article a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+.article table {
+  display: block;
+  width: 100%;
+  margin: 12px 0 18px;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.article th,
+.article td {
+  min-width: 120px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.article th {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.long-form h1 {
+  max-width: 800px;
+}
+
+.long-form h2 {
+  margin-top: 30px;
+  scroll-margin-top: 18px;
+}
+
+.long-form h3 {
+  margin-top: 22px;
+  scroll-margin-top: 18px;
+}
+
+.long-form p,
+.long-form li {
+  line-height: 1.85;
 }
 
 pre {
@@ -277,12 +343,97 @@ pre code {
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-soft);
+  cursor: zoom-in;
 }
 
 .article-media figcaption {
   margin-top: 8px;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+body.image-lightbox-open {
+  overflow: hidden;
+}
+
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 56px 24px 72px;
+  background: rgba(24, 20, 16, 0.88);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.image-lightbox.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.image-lightbox-preview {
+  grid-area: 1 / 1;
+  max-width: min(1500px, calc(100vw - 48px));
+  max-height: calc(100vh - 136px);
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+  cursor: zoom-out;
+  transform: scale(0.96);
+  transition: transform var(--transition-fast);
+}
+
+.image-lightbox.is-open .image-lightbox-preview {
+  transform: scale(1);
+}
+
+.image-lightbox-caption {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  color: #fff;
+  text-align: center;
+  font-size: 13px;
+}
+
+.image-lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.36);
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.image-lightbox-close:hover,
+.image-lightbox-close:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .image-lightbox {
+    padding-inline: 12px;
+  }
+
+  .image-lightbox-preview {
+    max-width: calc(100vw - 24px);
+  }
 }
 
 /* Notes detail sidebar */
@@ -299,7 +450,7 @@ body.notes-detail .wrap {
   bottom: 0;
   width: 300px;
   z-index: 35;
-  background: rgba(245, 239, 230, 0.94);
+  background: rgba(21, 18, 15, 0.94);
   border-right: 1px solid var(--border-subtle);
   backdrop-filter: blur(16px);
   transform: translateX(-102%);

@@ -3,10 +3,17 @@ import thumbnailPokedex from "../../../assets/thumbnails/pokedex.webp";
 import thumbnailQuibbo from "../../../assets/thumbnails/quibbo.webp";
 import thumbnailSharkie from "../../../assets/thumbnails/sharkie.webp";
 import thumbnailStreakon from "../../../assets/thumbnails/streakon.webp";
+import thumbnailFastGPT from "../../../assets/thumbnails/fastgpt-workflow.png";
 
 import type { ProjectPreview } from "../../types";
 
 export default [
+  {
+    title: "FastGPT 标识全链路透传",
+    slug: "fastgpt-workflow",
+    thumbnail: thumbnailFastGPT,
+    description: "从工作流上下文到日志数据库的可追溯链路",
+  },
   {
     title: "企业知识库 · GraphRAG 系统",
     slug: "enterprise-knowledge-base",

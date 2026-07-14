@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastGPT 工作流标识全链路透传与落库实践 | Echo Notes</title>
+  <meta name="description" content="FastGPT 的 appId 与 chatId 经 AI Proxy、llm-router 到 new-api 全链路透传、日志落库和逐跳排障实践。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+<h1 id="fastgpt-ai-proxy-llm-router-new-api-工作流标识透传说明">FastGPT -&gt; AI Proxy -&gt; llm-router -&gt; new-api 工作流标识透传说明</h1>
+<h2 id="appid-与-chatid-从-fastgpt-经-ai-proxy、llm-router-到-new-api-的实现与排障记录">AppID 与 ChatID 从 FastGPT 经 AI Proxy、llm-router 到 new-api 的实现与排障记录</h2>
+<blockquote>
+<p>文档日期：2026-07-14<br />
+适用字段：FastGPT 工作流 <code>appId</code>、对话 <code>chatId</code><br />
+标准请求头：<code>X-App-Id</code>、<code>X-Chat-Id</code></p>
+</blockquote>
+<h2 id="1-文档目的">1. 文档目的</h2>
+<p>本文记录 <code>appId</code> 和 <code>chatId</code> 如何从 FastGPT 发出，经过 AI Proxy 和 llm-router，最终由 new-api 接收并写入日志数据库。除最终实现外，本文也记录本次联调中出现过的问题、定位方法、部署注意事项和后续排障步骤。</p>
+<h2 id="目录">目录</h2>
+<ol>
+<li><a href="#1-%E6%96%87%E6%A1%A3%E7%9B%AE%E7%9A%84">文档目的</a></li>
+<li><a href="#2-%E6%9C%80%E7%BB%88%E7%BB%93%E8%AE%BA">最终结论</a></li>
+<li><a href="#3-%E4%B8%BB%E9%93%BE%E8%B7%AF%E6%80%BB%E8%A7%88">主链路总览</a></li>
+<li><a href="#4-%E8%AF%B7%E6%B1%82%E5%A4%B4%E5%8D%8F%E8%AE%AE">请求头协议</a></li>
+<li><a href="#5-fastgpt-%E7%AB%AF%E5%AE%9E%E7%8E%B0">FastGPT 端实现</a></li>
+<li><a href="#6-ai-proxy-%E7%AB%AF%E5%AE%9E%E7%8E%B0">AI Proxy 端实现</a></li>
+<li><a href="#7-llm-router-%E7%AB%AF%E5%AE%9E%E7%8E%B0">llm-router 端实现</a></li>
+<li><a href="#8-new-api-%E7%AB%AF%E5%AE%9E%E7%8E%B0">new-api 端实现</a></li>
+<li><a href="#9-v1chatcompletions-%E4%B8%8E-v1responses"><code>/v1/chat/completions</code> 与 <code>/v1/responses</code></a></li>
+<li><a href="#10-%E6%9C%AC%E6%AC%A1%E8%81%94%E8%B0%83%E4%B8%AD%E5%87%BA%E7%8E%B0%E7%9A%84%E9%97%AE%E9%A2%98">本次联调中出现的问题</a></li>
+<li><a href="#11-docker-%E7%BD%91%E7%BB%9C%E4%B8%8E%E9%85%8D%E7%BD%AE%E6%A3%80%E6%9F%A5">Docker 网络与配置检查</a></li>
+<li><a href="#12-%E6%8E%A8%E8%8D%90%E7%9A%84%E9%80%90%E8%B7%B3%E6%8E%92%E9%9A%9C%E6%B5%81%E7%A8%8B">推荐的逐跳排障流程</a></li>
+<li><a href="#13-%E5%88%86%E6%AE%B5-curl-%E9%AA%8C%E8%AF%81">分段 Curl 验证</a></li>
+<li><a href="#14-%E5%8F%91%E5%B8%83%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95">发布检查清单</a></li>
+<li><a href="#15-%E5%AE%89%E5%85%A8%E5%92%8C%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9">安全和可观测性注意事项</a></li>
+<li><a href="#16-%E5%90%8E%E7%BB%AD%E5%BB%BA%E8%AE%AE">后续建议</a></li>
+<li><a href="#17-%E9%AA%8C%E6%94%B6%E6%A0%87%E5%87%86">验收标准</a></li>
+</ol>
+<p>涉及四个仓库：</p>
+<table>
+<thead>
+<tr>
+<th>系统</th>
+<th>本地路径</th>
+<th>职责</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FastGPT</td>
+<td><code>/mnt/d/project/ai-gpt-latest</code></td>
+<td>从工作流上下文取得 <code>appId/chatId</code>，随模型请求发出</td>
+<td></td>
+</tr>
+<tr>
+<td>AI Proxy</td>
+<td><code>/mnt/d/project/aiproxy</code></td>
+<td>接收 FastGPT 请求，选择渠道并重建上游请求，显式透传两个业务头</td>
+<td></td>
+</tr>
+<tr>
+<td>llm-router</td>
+<td><code>/mnt/d/project/llm-router</code></td>
+<td>进行模型路由，将两个业务头继续转发给 new-api</td>
+<td></td>
+</tr>
+<tr>
+<td>new-api</td>
+<td><code>/mnt/d/project/new-api</code></td>
+<td>接收业务头，将值写入消费日志或错误日志的 <code>app_id/chat_id</code> 字段</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-最终结论">2. 最终结论</h2>
+<p>四端当前约定如下：</p>
+<ol>
+<li>新请求统一使用 <code>X-App-Id</code> 和 <code>X-Chat-Id</code>。</li>
+<li>HTTP 请求头名称大小写不敏感，因此 <code>X-APP-ID</code>、<code>X-App-Id</code> 和 <code>x-app-id</code> 在 HTTP 语义上是同一个头。</li>
+<li>连字符和下划线不是同一个字符。<code>X-App-Id</code> 与 <code>X_APP_Id</code> 是两个不同的请求头。</li>
+<li>FastGPT 当前发送连字符格式 <code>X-APP-ID</code>、<code>X-CHAT-ID</code>。</li>
+<li>AI Proxy 入站同时兼容连字符格式和旧下划线格式，出站统一写成 <code>X-App-Id</code>、<code>X-Chat-Id</code>。</li>
+<li>llm-router 的 <code>/v1/chat/completions</code> 仅通过白名单透传这两个业务头；不会无条件复制全部请求头。</li>
+<li>new-api 兼容多种历史命名，但推荐并优先读取连字符格式。</li>
+<li>new-api 将标识写入 <code>logs.app_id</code> 和 <code>logs.chat_id</code>。如果配置了 <code>LOG_SQL_DSN</code>，必须去日志库查询，而不是只查主库。</li>
+</ol>
+<h2 id="3-主链路总览">3. 主链路总览</h2>
+<p>FastGPT 当前模型调用代码使用 OpenAI SDK 的 <code>chat.completions.create()</code>，因此默认业务链路是 <code>/v1/chat/completions</code>：</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant W as FastGPT Workflow    participant F as FastGPT LLM Client    participant A as AI Proxy    participant R as llm-router    participant N as new-api    participant D as new-api LOG_DB
+    W-&gt;&gt;W: AsyncLocalStorage 保存 appId/chatId    W-&gt;&gt;F: 调用工作流中的 LLM 节点
+    F-&gt;&gt;A: POST /v1/chat/completions&lt;br/&gt;X-App-Id + X-Chat-Id    A-&gt;&gt;A: 渠道选择、请求体转换、重建 HTTP 请求
+    A-&gt;&gt;R: POST /v1/chat/completions&lt;br/&gt;统一的 X-App-Id + X-Chat-Id    R-&gt;&gt;R: 意图识别和目标模型选择
+    R-&gt;&gt;N: POST /v1/chat/completions&lt;br/&gt;白名单转发 X-App-Id + X-Chat-Id    N-&gt;&gt;N: TokenAuth 后记录入站标识
+    N-&gt;&gt;D: 写入 logs.app_id / logs.chat_id
+
+</code></pre>
+<p>各跳的核心契约：</p>
+<table>
+<thead>
+<tr>
+<th>跳转</th>
+<th>路径</th>
+<th>入站格式</th>
+<th>出站格式</th>
+<th>处理方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FastGPT -&gt; AI Proxy</td>
+<td><code>/v1/chat/completions</code></td>
+<td>无上游入站，值来自工作流上下文</td>
+<td><code>X-APP-ID</code>、<code>X-CHAT-ID</code></td>
+<td>OpenAI SDK 自定义 headers</td>
+</tr>
+<tr>
+<td>AI Proxy -&gt; llm-router</td>
+<td><code>/v1/chat/completions</code></td>
+<td>连字符优先，兼容旧下划线</td>
+<td><code>X-App-Id</code>、<code>X-Chat-Id</code></td>
+<td>显式白名单复制</td>
+</tr>
+<tr>
+<td>llm-router -&gt; new-api</td>
+<td><code>/v1/chat/completions</code></td>
+<td>大小写不敏感读取连字符头</td>
+<td><code>X-App-Id</code>、<code>X-Chat-Id</code></td>
+<td>显式白名单复制</td>
+</tr>
+<tr>
+<td>new-api -&gt; LOG_DB</td>
+<td>内部调用</td>
+<td>兼容多种连字符和下划线别名</td>
+<td>数据库字段</td>
+<td>写入消费日志和错误日志</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-请求头协议">4. 请求头协议</h2>
+<h3 id="41-标准名称">4.1 标准名称</h3>
+<pre><code class="language-http">X-App-Id: fastgpt-app-example
+X-Chat-Id: fastgpt-chat-example
+
+</code></pre>
+<p>字段含义：</p>
+<table>
+<thead>
+<tr>
+<th>请求头</th>
+<th>含义</th>
+<th>来源</th>
+<th>最终字段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>X-App-Id</code></td>
+<td>FastGPT 当前运行的应用或工作流 ID</td>
+<td><code>runningAppInfo.id</code></td>
+<td><code>logs.app_id</code></td>
+</tr>
+<tr>
+<td><code>X-Chat-Id</code></td>
+<td>FastGPT 当前会话 ID</td>
+<td>工作流调度参数 <code>chatId</code></td>
+<td><code>logs.chat_id</code></td>
+</tr>
+</tbody>
+</table>
+<p>这两个字段是业务追踪信息，不参与模型鉴权。鉴权仍由 <code>Authorization: Bearer ...</code> 独立完成。</p>
+<h3 id="42-为什么不用下划线">4.2 为什么不用下划线</h3>
+<p>最初实现使用了 <code>X_APP_Id</code> 和 <code>X_Chat_Id</code>。本地服务直连时可以工作，但经过 Nginx 等代理时可能丢失，因为 Nginx 默认不接受带下划线的请求头。典型表现是：</p>
+<ul>
+<li>FastGPT 日志显示已经发送；</li>
+<li>本地直连链路能够入库；</li>
+<li>生产经过网关后，后端服务看不到这两个头；</li>
+<li>请求本身仍能成功，只有 <code>app_id/chat_id</code> 为空。</li>
+</ul>
+<figure class="article-media"><a href="./images/fastgpt-workflow-identifiers/new-api-identifiers-empty.png" target="_blank" rel="noopener"><img src="./images/fastgpt-workflow-identifiers/new-api-identifiers-empty.png" alt="new-api 收到空的工作流标识" loading="lazy"></a><figcaption>修复前：下划线请求头经过网关后，new-api 收到的 App ID 与 Chat ID 均为空</figcaption></figure>
+<p>最终统一改成连字符格式，避免依赖网关的 <code>underscores_in_headers on</code> 配置。保留旧格式兼容仅用于平滑升级，不应继续作为新客户端的发送格式。</p>
+<h3 id="43-值的约束">4.3 值的约束</h3>
+<ul>
+<li>空值不发送，也不覆盖后续已有值。</li>
+<li>FastGPT 发送前使用 <code>String(...)</code> 转成字符串。</li>
+<li>new-api 数据库字段类型为 <code>varchar(128)</code>，正常 ID 应控制在 128 字符以内。</li>
+<li>new-api 的诊断日志会将标识截断到 128 个 Unicode 字符，避免异常请求造成超长日志。</li>
+<li>不应把用户密钥、Authorization 或其他凭证放进这两个字段。</li>
+</ul>
+<h2 id="5-fastgpt-端实现">5. FastGPT 端实现</h2>
+<h3 id="51-工作流上下文保存标识">5.1 工作流上下文保存标识</h3>
+<p>文件：<code>packages/service/core/workflow/utils/context.ts</code></p>
+<p>FastGPT 使用 Node.js <code>AsyncLocalStorage</code> 保存一次工作流执行的上下文：</p>
+<pre><code class="language-ts">type ContextType = {  queryUrlTypeMap: Record&lt;string, ChatFileTypeEnum&gt;;
+  mcpClientMemory: Record&lt;string, MCPClient&gt;;
+  appId?: string;
+  chatId?: string;
+};
+
+</code></pre>
+<p>文件：<code>packages/service/core/workflow/dispatch/index.ts</code></p>
+<p>工作流开始执行时，把当前应用和会话写入上下文：</p>
+<pre><code class="language-ts">runWithContext(
+  {    queryUrlTypeMap: {},    mcpClientMemory: {},    appId: String(runningAppInfo.id),    chatId  },  () =&gt; runWorkflow(...));
+
+</code></pre>
+<p>使用 <code>AsyncLocalStorage</code> 的原因是 LLM 请求函数位于较深的调用层，不需要给所有中间函数增加 <code>appId/chatId</code> 参数，同时不同并发工作流仍持有各自独立的上下文。</p>
+<h3 id="52-构造-llm-请求头">5.2 构造 LLM 请求头</h3>
+<p>文件：<code>packages/service/core/ai/llm/request.ts</code></p>
+<p>在调用 OpenAI SDK 前，通过 <code>getWorkflowContextSafe()</code> 安全读取上下文：</p>
+<pre><code class="language-ts">const workflowContext = getWorkflowContextSafe();
+const workflowHeaders: Record&lt;string, string&gt; = {};
+
+if (workflowContext?.appId) {
+  workflowHeaders['X-APP-ID'] = String(workflowContext.appId);}
+if (workflowContext?.chatId) {
+  workflowHeaders['X-CHAT-ID'] = String(workflowContext.chatId);}
+
+</code></pre>
+<p>然后合并请求头并交给 SDK：</p>
+<pre><code class="language-ts">const requestHeaders: NonNullable&lt;OpenAI.RequestOptions['headers']&gt; = {
+  ...workflowHeaders,  ...options?.headers,  ...(modelData.requestAuth    ? { Authorization: `Bearer ${modelData.requestAuth}` }    : {})};
+
+await ai.chat.completions.create(body, {
+  ...options,  ...(modelData.requestUrl ? { path: modelData.requestUrl } : {}),  headers: requestHeaders});
+
+</code></pre>
+<p>合并顺序需要注意：<code>options.headers</code> 位于 <code>workflowHeaders</code> 之后，因此调用方显式传入同名请求头时可以覆盖上下文值。<code>requestAuth</code> 最后合并，只影响 Authorization。</p>
+<h3 id="53-fastgpt-如何找到-ai-proxy">5.3 FastGPT 如何找到 AI Proxy</h3>
+<p>文件：<code>packages/service/core/ai/config.ts</code></p>
+<p>当配置了 <code>AIPROXY_API_ENDPOINT</code> 时，默认 OpenAI Base URL 为：</p>
+<pre><code class="language-text">${AIPROXY_API_ENDPOINT}/v1
+
+</code></pre>
+<p>Docker Compose 中通常配置：</p>
+<pre><code class="language-yaml">environment:
+  AIPROXY_API_ENDPOINT: http://aiproxy:3000  AIPROXY_API_TOKEN: &lt;与 AI Proxy ADMIN_KEY 对应的令牌&gt;
+
+</code></pre>
+<p>因此 SDK 最终请求：</p>
+<pre><code class="language-text">http://aiproxy:3000/v1/chat/completions
+
+</code></pre>
+<p>需要特别注意 Base URL 的优先级：</p>
+<pre><code class="language-text">userKey.baseUrl
+  &gt; global.systemEnv.oneapiUrl  &gt; AIPROXY_API_ENDPOINT/v1  &gt; OPENAI_BASE_URL  &gt; https://api.openai.com/v1
+
+</code></pre>
+<p>如果线上给用户或团队配置了自定义 <code>baseUrl</code>，请求可能绕过 AI Proxy。这是“代码相同，但本地能入库、生产不能入库”的重要检查项。</p>
+<h3 id="54-fastgpt-诊断日志">5.4 FastGPT 诊断日志</h3>
+<p>当前代码会打印：</p>
+<pre><code class="language-text">[FastGPT][LLM HTTP request headers] {
+  model: 'gpt-5',  headers: {    'X-APP-ID': '...',    'X-CHAT-ID': '...'  }}
+
+</code></pre>
+<p>该日志只能证明 FastGPT 在调用 OpenAI SDK 时构造了这两个字段，不能单独证明字段已经穿过 Docker 网络、反向代理和后续服务。</p>
+<h3 id="55-fastgpt-相关提交">5.5 FastGPT 相关提交</h3>
+<table>
+<thead>
+<tr>
+<th>提交</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>4606b274d</code></td>
+<td>增加工作流上下文中的 <code>appId/chatId</code>，并在 LLM 请求中发送旧下划线头</td>
+</tr>
+<tr>
+<td><code>107fd7ec5</code></td>
+<td>将请求头变量补成与 OpenAI SDK 一致的显式类型</td>
+</tr>
+<tr>
+<td><code>436cc7c81</code></td>
+<td>将发送格式从下划线改成代理兼容的连字符格式</td>
+</tr>
+</tbody>
+</table>
+<h2 id="6-ai-proxy-端实现">6. AI Proxy 端实现</h2>
+<h3 id="61-为什么必须显式透传">6.1 为什么必须显式透传</h3>
+<p>AI Proxy 不会直接复用 FastGPT 的原始 <code>http.Request</code>。它会完成以下工作：</p>
+<ol>
+<li>解析请求体和模型信息；</li>
+<li>选择渠道；</li>
+<li>由 adaptor 转换请求体；</li>
+<li>根据渠道 Base URL 创建一个新的上游 <code>http.Request</code>；</li>
+<li>由 adaptor 重新设置 Authorization、Content-Type 等请求头；</li>
+<li>调用上游渠道。</li>
+</ol>
+<p>因为第 4 步创建了新请求，自定义入站请求头不会自然出现在新请求中。不能把“请求体透传”和“请求头透传”视为同一件事，必须在新请求构造完成后显式复制业务头。</p>
+<h3 id="62-请求头映射和兼容策略">6.2 请求头映射和兼容策略</h3>
+<p>文件：<code>core/relay/controller/dohelper.go</code></p>
+<p>当前映射：</p>
+<pre><code class="language-go">const (
+    workflowAppIDHeader  = &quot;X-App-Id&quot;    workflowChatIDHeader = &quot;X-Chat-Id&quot;)
+
+var workflowHeaderMappings = [...]struct {
+    outbound string    inbound  []string}{
+    {outbound: workflowAppIDHeader, inbound: []string{workflowAppIDHeader, &quot;X_APP_Id&quot;}},    {outbound: workflowChatIDHeader, inbound: []string{workflowChatIDHeader, &quot;X_Chat_Id&quot;}},}
+
+</code></pre>
+<p>处理规则：</p>
+<ul>
+<li>入站优先读取标准连字符格式；</li>
+<li>标准格式为空时，兼容旧下划线格式；</li>
+<li>如果两种格式同时存在，标准格式优先；</li>
+<li>出站始终使用 <code>X-App-Id</code> 和 <code>X-Chat-Id</code>；</li>
+<li><code>X-Not-Allowed</code> 等其他任意自定义头不会因为这段逻辑被放行。</li>
+</ul>
+<p>复制发生在 adaptor 完成常规请求头设置之后：</p>
+<pre><code class="language-go">maps.Copy(req.Header, convertedHeader)
+adaptor.SetupRequestHeader(...)
+copyWorkflowHeaders(c, req)
+
+</code></pre>
+<p>这样既不会把 FastGPT 的旧 Authorization 错误透传给模型供应商，也能避免 adaptor 重建请求头时覆盖业务标识。</p>
+<h3 id="63-ai-proxy-调试日志">6.3 AI Proxy 调试日志</h3>
+<p>当 <code>DEBUG=true</code> 时，AI Proxy 在真正调用上游前记录：</p>
+<pre><code class="language-text">relay workflow headers
+in_x_app_id=&quot;...&quot;
+in_x_chat_id=&quot;...&quot;
+out_x_app_id=&quot;...&quot;
+out_x_chat_id=&quot;...&quot;
+out_authorization_set=&quot;true&quot;
+out_content_type=&quot;application/json&quot;
+
+</code></pre>
+<p>字段解释：</p>
+<ul>
+<li><code>in_*</code>：AI Proxy 从 FastGPT 入站请求中读到的值；</li>
+<li><code>out_*</code>：AI Proxy 构造完上游请求后实际准备发送的值；</li>
+<li><code>out_authorization_set</code>：只记录是否存在 Authorization，不打印密钥；</li>
+<li><code>out_content_length_header</code>：用于排查请求体重建问题，与业务 ID 无直接关系。</li>
+</ul>
+<p>Docker 中开启调试：</p>
+<pre><code class="language-yaml">services:
+  aiproxy:    environment:      DEBUG: &quot;true&quot;
+
+</code></pre>
+<p>修改后需要重新创建容器：</p>
+<pre><code class="language-bash">docker compose up -d --force-recreate aiproxydocker compose logs -f --tail=100 aiproxy
+</code></pre>
+<h3 id="64-ai-proxy-测试">6.4 AI Proxy 测试</h3>
+<p>文件：<code>core/relay/controller/dohelper_test.go</code></p>
+<p>测试覆盖：</p>
+<ol>
+<li>标准连字符入站能够转发；</li>
+<li>旧下划线入站仍然兼容；</li>
+<li>两种格式同时存在时，标准格式优先；</li>
+<li>非白名单头不会转发；</li>
+<li>Content-Type 等原有请求头行为不受影响。</li>
+</ol>
+<p>验证命令：</p>
+<pre><code class="language-bash">cd /mnt/d/project/aiproxy/coremise exec go@1.26.5 -- go test ./relay/controller
+</code></pre>
+<h3 id="65-ai-proxy-相关提交">6.5 AI Proxy 相关提交</h3>
+<table>
+<thead>
+<tr>
+<th>提交</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>4f16b3d</code></td>
+<td>首次增加旧下划线工作流请求头透传和 DEBUG 入站/出站日志</td>
+</tr>
+<tr>
+<td><code>3445844</code></td>
+<td>支持标准连字符头，保留旧格式兼容，并统一出站格式</td>
+</tr>
+</tbody>
+</table>
+<h2 id="7-llm-router-端实现">7. llm-router 端实现</h2>
+<h3 id="71-v1chatcompletions-入站日志">7.1 <code>/v1/chat/completions</code> 入站日志</h3>
+<p>文件：<code>main.py</code></p>
+<p>请求进入后立即生成 llm-router 自己的 <code>request_id</code>，并记录全部入站请求头：</p>
+<pre><code class="language-text">【请求头-入站】ID=req_xxx | Headers={...}
+
+</code></pre>
+<p>日志使用 <code>utils/header_logging.py</code> 中的 <code>sanitize_headers_for_log()</code> 脱敏：</p>
+<ul>
+<li>Authorization 仅保留认证方案，例如 <code>Bearer ***</code>；</li>
+<li>Cookie、API Key、token、secret 等敏感字段统一显示为 <code>***</code>；</li>
+<li><code>X-App-Id</code> 和 <code>X-Chat-Id</code> 保留原值，便于本次链路定位。</li>
+</ul>
+<h3 id="72-chat-completions-白名单转发">7.2 Chat Completions 白名单转发</h3>
+<p>llm-router 完成意图识别和目标模型选择后，重新构造上游请求头：</p>
+<pre><code class="language-python">headers = {
+    &quot;Authorization&quot;: f&quot;Bearer {user_api_key}&quot;,    &quot;Content-Type&quot;: &quot;application/json&quot;}
+
+for header_name in (&quot;X-App-Id&quot;, &quot;X-Chat-Id&quot;):
+    header_value = request.headers.get(header_name)    if header_value is not None:        headers[header_name] = header_value
+</code></pre>
+<p>Starlette/FastAPI 对请求头的读取不区分大小写，所以 AI Proxy 发出的 <code>X-App-Id</code> 可以稳定读取。</p>
+<p>出站地址：</p>
+<pre><code class="language-text">${UPSTREAM_BASE_URL}/chat/completions
+
+</code></pre>
+<p>发送前记录：</p>
+<pre><code class="language-text">【请求头-出站】ID=req_xxx | Headers={...}
+
+</code></pre>
+<p>入站与出站使用同一个 llm-router <code>request_id</code>，可以直接对比：</p>
+<ul>
+<li>入站没有、出站没有：问题在 AI Proxy 之前或中间网关；</li>
+<li>入站有、出站没有：问题在 llm-router 请求头构造；</li>
+<li>入站有、出站也有：继续检查 new-api 入站和数据库写入。</li>
+</ul>
+<h3 id="73-v1responses-的差异">7.3 <code>/v1/responses</code> 的差异</h3>
+<p>llm-router 同时实现了 <code>/v1/responses</code>。该路径不是 FastGPT 当前 <code>chat.completions.create()</code> 的默认调用路径，但可供其他客户端或显式配置使用。</p>
+<p>Responses 路径会复制原始请求头，排除以下逐跳或必须重算的字段：</p>
+<pre><code class="language-text">host
+content-length
+connection
+
+</code></pre>
+<p>随后设置：</p>
+<pre><code class="language-text">content-type: application/json
+accept-encoding: identity
+
+</code></pre>
+<p>最后通过 <code>httpx.build_request()</code> 构造实际请求，并记录：</p>
+<pre><code class="language-text">【Responses请求头-入站】ID=resp_xxx | Headers={...}
+【Responses请求头-出站】ID=resp_xxx | Headers={...}
+
+</code></pre>
+<p>因此 Responses 当前是“排除少数头后整体转发”，Chat Completions 则是“只转发两个业务头的白名单策略”。从安全和可维护性看，业务标识应继续依赖标准的两个连字符头，不应依赖 Responses 的全量复制行为。</p>
+<h3 id="74-llm-router-相关提交">7.4 llm-router 相关提交</h3>
+<table>
+<thead>
+<tr>
+<th>提交</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>154873e</code></td>
+<td>在 Chat Completions 和 Responses 增加入站/出站请求头日志，并为 Chat Completions 增加业务头白名单</td>
+</tr>
+<tr>
+<td><code>418f409</code></td>
+<td>抽取统一请求头脱敏函数，避免诊断日志泄露凭证</td>
+</tr>
+</tbody>
+</table>
+<p>当前测试缺口：仓库中尚未发现针对请求头白名单和脱敏函数的自动化测试。后续应补充大小写、空值、敏感字段脱敏和 Responses 排除头测试。</p>
+<h2 id="8-new-api-端实现">8. new-api 端实现</h2>
+<h3 id="81-入站中间件位置">8.1 入站中间件位置</h3>
+<p>文件：<code>router/relay-router.go</code></p>
+<p>new-api 在 <code>/v1</code> Relay 路由中按以下顺序注册中间件：</p>
+<pre><code class="language-text">RouteTag
+-&gt; SystemPerformanceCheck
+-&gt; TokenAuth
+-&gt; WorkflowIdentifierLog
+-&gt; ModelRequestRateLimit
+-&gt; Distribute
+-&gt; Relay
+
+</code></pre>
+<p><code>WorkflowIdentifierLog</code> 位于 <code>TokenAuth</code> 之后，因此只有通过鉴权并继续执行的请求才会进入该诊断中间件。401 请求没有该日志是符合当前中间件顺序的。</p>
+<h3 id="82-接收兼容格式">8.2 接收兼容格式</h3>
+<p>文件：<code>middleware/workflow_identifier_log.go</code>、<code>model/log.go</code></p>
+<p>new-api 对 App ID 依次兼容：</p>
+<pre><code class="language-text">X-App-Id
+X-App-ID
+X_APP_Id
+X_APP_ID
+X-AppId
+X_AppId
+
+</code></pre>
+<p>对 Chat ID 依次兼容：</p>
+<pre><code class="language-text">X-Chat-Id
+X-Chat-ID
+X_Chat_Id
+X_CHAT_ID
+X-ChatId
+X_ChatId
+
+</code></pre>
+<p>Go 的 <code>http.Header</code> 本身大小写不敏感，因此部分大小写别名在行为上等价；保留这些名称主要用于兼容历史写法。连字符和下划线仍然不等价。</p>
+<p>诊断中间件还会查看普通头 <code>appid/app_id/appId</code>、<code>chatid/chat_id/chatId</code> 以及同名 Query 参数，但当前数据库写入逻辑只调用 <code>relayWorkflowAppId()</code> 和 <code>relayWorkflowChatId()</code>，也就是只使用 <code>X-*</code> 系列请求头。普通头和 Query 参数只用于诊断，不会作为当前落库兜底。</p>
+<h3 id="83-入站和落库日志">8.3 入站和落库日志</h3>
+<p>请求通过 TokenAuth 后：</p>
+<pre><code class="language-text">workflow identifiers received:
+x_app_id=&quot;...&quot;,
+x_chat_id=&quot;...&quot;,
+appid=&quot;&quot;,
+chatid=&quot;&quot;,
+query_appid=&quot;&quot;,
+query_chatid=&quot;&quot;,
+method=POST,
+path=&quot;/v1/chat/completions&quot;
+
+</code></pre>
+<p>消费日志或错误日志准备写库前：</p>
+<pre><code class="language-text">workflow identifiers database write:
+log_type=consume,
+app_id=&quot;...&quot;,
+chat_id=&quot;...&quot;
+
+</code></pre>
+<p>或：</p>
+<pre><code class="language-text">workflow identifiers database write:
+log_type=error,
+app_id=&quot;...&quot;,
+chat_id=&quot;...&quot;
+
+</code></pre>
+<p>第一条证明 new-api 收到了请求头，第二条证明写入 GORM 模型前字段仍然存在。若第二条有值但数据库查询为空，应重点检查 LOG_DB、事务错误、数据库实例和镜像版本，而不是继续怀疑前面的代理。</p>
+<h3 id="84-数据库字段和写入时机">8.4 数据库字段和写入时机</h3>
+<p>文件：<code>model/log.go</code></p>
+<pre><code class="language-go">AppId  string `json:&quot;app_id,omitempty&quot; gorm:&quot;type:varchar(128);index;default:''&quot;`
+ChatId string `json:&quot;chat_id,omitempty&quot; gorm:&quot;type:varchar(128);index;default:''&quot;`
+
+</code></pre>
+<p>写入位置：</p>
+<ul>
+<li><code>RecordConsumeLog()</code>：正常完成并记录消费日志时写入；</li>
+<li><code>RecordErrorLog()</code>：请求失败并记录错误日志时写入。</li>
+</ul>
+<p>如果 <code>LogConsumeEnabled</code> 为 false，<code>RecordConsumeLog()</code> 会直接返回，不会产生正常消费日志。这种情况下不能通过消费日志判断请求头是否传到 new-api，应查看入站诊断日志或错误日志。</p>
+<h3 id="85-主库和日志库">8.5 主库和日志库</h3>
+<p>new-api 使用两个 GORM 变量：</p>
+<pre><code class="language-text">DB      主业务数据库
+LOG_DB  日志数据库
+
+</code></pre>
+<p>规则：</p>
+<ul>
+<li>未设置 <code>LOG_SQL_DSN</code>：<code>LOG_DB = DB</code>，日志和业务数据在同一个库；</li>
+<li>设置了 <code>LOG_SQL_DSN</code>：日志写入独立日志库；</li>
+<li><code>logs.app_id/chat_id</code> 应在 <code>LOG_DB</code> 对应的 <code>logs</code> 表中查询。</li>
+</ul>
+<p>这是生产环境最容易误判的点之一：本地通常只设置 <code>SQL_DSN</code>，所以查询主库能看到数据；生产可能设置了 <code>LOG_SQL_DSN</code>，此时查主库会误以为没有入库。</p>
+<p>启动时主节点会通过 GORM <code>AutoMigrate(&amp;Log{})</code> 创建或更新字段。发布新镜像后应确认迁移完成，并检查：</p>
+<pre><code class="language-sql">SELECT column_name, data_type, character_maximum_length
+FROM information_schema.columns
+WHERE table_name = 'logs'
+  AND column_name IN ('app_id', 'chat_id');
+
+</code></pre>
+<p>查询数据示例：</p>
+<pre><code class="language-sql">SELECT
+    id,    created_at,    request_id,    app_id,    chat_id,    model_name,    typeFROM logs
+WHERE app_id = '&lt;测试 app id&gt;'   OR chat_id = '&lt;测试 chat id&gt;'ORDER BY id DESC
+LIMIT 20;
+
+</code></pre>
+<h3 id="86-new-api-测试和提交">8.6 new-api 测试和提交</h3>
+<p>文件：<code>model/log_team_test.go</code></p>
+<p><code>TestRecordConsumeLog_StoresRelayWorkflowHeaders</code> 验证标准 App ID 头和旧下划线 Chat ID 头都能写入数据库。</p>
+<table>
+<thead>
+<tr>
+<th>提交</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>5842f0a3</code></td>
+<td>在日志表增加 <code>app_id/chat_id</code>，消费日志和错误日志读取并写入业务头，增加单元测试</td>
+</tr>
+<tr>
+<td><code>4c30a259</code></td>
+<td>增加鉴权后的入站诊断中间件和写库前日志</td>
+</tr>
+</tbody>
+</table>
+<h2 id="9-v1chatcompletions-与-v1responses">9. <code>/v1/chat/completions</code> 与 <code>/v1/responses</code></h2>
+<h3 id="91-当前-fastgpt-默认路径">9.1 当前 FastGPT 默认路径</h3>
+<p>当前 FastGPT 代码明确调用：</p>
+<pre><code class="language-ts">ai.chat.completions.create(...)
+
+</code></pre>
+<p>所以默认是：</p>
+<pre><code class="language-text">FastGPT /v1/chat/completions
+-&gt; AI Proxy /v1/chat/completions
+-&gt; llm-router /v1/chat/completions
+-&gt; new-api /v1/chat/completions
+
+</code></pre>
+<p>如果 <code>modelData.requestUrl</code> 被显式配置，SDK 的请求 path 可能变化，因此排障时应同时检查模型配置。不能只根据代码中的默认方法推断线上实际 URL。</p>
+<h3 id="92-responses-路径">9.2 Responses 路径</h3>
+<p>AI Proxy、llm-router 和 new-api 都注册了 <code>/v1/responses</code>：</p>
+<pre><code class="language-text">客户端 /v1/responses-&gt; AI Proxy /v1/responses
+-&gt; llm-router /v1/responses
+-&gt; new-api /v1/responses
+
+</code></pre>
+<p>AI Proxy 的统一 <code>prepareAndDoRequest()</code> 路径同样执行 <code>copyWorkflowHeaders()</code>，所以两个业务头也适用于 Responses。llm-router 的 Responses 实现会保留这两个头，new-api 的 <code>/v1</code> 诊断中间件和 Relay 日志写入也适用于该路径。</p>
+<p>但必须区分“链路支持 Responses”和“FastGPT 当前默认使用 Responses”。当前证据只证明前者，不证明 FastGPT 默认走 Responses。</p>
+<h2 id="10-本次联调中出现的问题">10. 本次联调中出现的问题</h2>
+<h3 id="101-误以为用户数据会自动透传">10.1 误以为用户数据会自动透传</h3>
+<p>最初关注点是“FastGPT 传入的数据是否透传给 AI Proxy 上游”。请求体由 adaptor 转换，Headers 则在新请求中重建。即使请求体成功到达模型，自定义请求头也可能完全丢失。</p>
+<p>解决方式：在 AI Proxy 的 adaptor 完成标准请求头设置后，增加严格白名单复制。</p>
+<h3 id="102-下划线请求头本地正常、生产丢失">10.2 下划线请求头本地正常、生产丢失</h3>
+<p>初版 FastGPT 和 AI Proxy 使用 <code>X_APP_Id/X_Chat_Id</code>。本地服务直连时没有网关过滤，所以可以写入测试库；生产链路经过 Nginx 或其他代理后可能将带下划线的头判为无效。</p>
+<p>解决方式：</p>
+<ul>
+<li>FastGPT 改发 <code>X-APP-ID/X-CHAT-ID</code>；</li>
+<li>AI Proxy 出站统一为 <code>X-App-Id/X-Chat-Id</code>；</li>
+<li>AI Proxy 和 new-api 保留旧格式兼容。</li>
+</ul>
+<h3 id="103-只有-gin-访问日志看不到业务头">10.3 只有 GIN 访问日志，看不到业务头</h3>
+<p>AI Proxy 默认 GIN 日志只显示状态码、耗时、路径、模型和 token 统计，不会打印任意请求头。看到 <code>/v1/chat/completions</code> 返回 200 并不能证明两个标识已经转发。</p>
+<p>解决方式：增加只在 <code>DEBUG=true</code> 时启用的 <code>relay workflow headers</code> 日志，并分别打印入站值和最终出站值。</p>
+<h3 id="104-本地能入库生产不能入库">10.4 本地能入库，生产不能入库</h3>
+<p>这个现象不能直接证明 llm-router 没问题，只能证明“本地所走的那条网络路径和配置”能够工作。生产仍可能存在：</p>
+<ol>
+<li>FastGPT 生产镜像不是包含最新提交的镜像；</li>
+<li>FastGPT 自定义 <code>userKey.baseUrl</code> 或系统 <code>oneapiUrl</code> 绕过 AI Proxy；</li>
+<li>生产网关过滤旧下划线头；</li>
+<li>AI Proxy 镜像不是包含白名单改动的版本；</li>
+<li>AI Proxy 渠道 Base URL 指向了不同 llm-router；</li>
+<li>llm-router 的 <code>UPSTREAM_BASE_URL</code> 指向了不同 new-api；</li>
+<li>new-api 镜像未包含新字段或未完成迁移；</li>
+<li>生产设置了 <code>LOG_SQL_DSN</code>，实际查询了错误数据库；</li>
+<li><code>LogConsumeEnabled</code> 关闭，正常消费日志根本没有创建；</li>
+<li>多副本部署中只有部分 Pod 或容器更新，流量命中了旧实例。</li>
+</ol>
+<p>正确做法是按四端日志逐跳判断，而不是根据“本地 llm-router 未改代码也能入库”跳过线上 llm-router 和网络路径检查。</p>
+<h3 id="105-ai-proxy-容器已启动但端口暂时拒绝连接">10.5 AI Proxy 容器已启动，但端口暂时拒绝连接</h3>
+<p>曾出现 FastGPT 请求：</p>
+<pre><code class="language-text">connect ECONNREFUSED aiproxy:3000
+
+</code></pre>
+<p>同时 AI Proxy 正在执行数据库迁移，PostgreSQL 的 <code>ALTER TABLE logs ...</code> 耗时几十秒。在迁移和初始化完成前，进程尚未监听 3000 端口；Docker 显示 <code>Started</code> 只表示容器进程已启动，不代表应用已 Ready。</p>
+<p>解决方式：</p>
+<ul>
+<li>保留并使用 <code>/api/status</code> healthcheck；</li>
+<li>FastGPT 对 AI Proxy 使用 <code>depends_on: condition: service_healthy</code>（同一 Compose 时）；</li>
+<li>发布后等待 health 状态再测试；</li>
+<li>不要在迁移尚未结束时根据第一次 <code>ECONNREFUSED</code> 判断网络配置错误。</li>
+</ul>
+<h3 id="106-docker-私有仓库-httphttps-不匹配">10.6 Docker 私有仓库 HTTP/HTTPS 不匹配</h3>
+<p>拉取私有镜像时出现：</p>
+<pre><code class="language-text">http: server gave HTTP response to HTTPS client
+
+</code></pre>
+<p>原因是 Docker 默认通过 HTTPS 访问私有仓库，而仓库只提供 HTTP。还出现过 <code>insecure-registries</code> 配置的是一个 IP，但镜像地址使用另一个 IP 的情况。</p>
+<p>解决方式：在 Docker daemon 配置中把“镜像名称实际使用的仓库 IP:端口”加入 <code>insecure-registries</code>，重启 Docker，再执行 <code>docker compose pull aiproxy</code>。</p>
+<h3 id="107-镜像构建依赖下载超时">10.7 镜像构建依赖下载超时</h3>
+<p>构建 AI Proxy 镜像时先后出现：</p>
+<ul>
+<li>pnpm 从 <code>registry.npmjs.org</code> 下载包 <code>ETIMEDOUT</code>；</li>
+<li><code>go install github.com/swaggo/swag/...</code> 访问 <code>proxy.golang.org</code> 超时；</li>
+<li><code>scripts/swag.sh</code> 后续提示 <code>swag: not found</code>。</li>
+</ul>
+<p>Dockerfile 后续增加：</p>
+<pre><code class="language-text">pnpm registry = https://registry.npmmirror.com
+pnpm fetch retries = 5
+GOPROXY = https://goproxy.cn,direct
+
+</code></pre>
+<p>相关提交：</p>
+<table>
+<thead>
+<tr>
+<th>提交</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>da1a32d</code></td>
+<td>配置 pnpm 国内镜像和下载重试</td>
+</tr>
+<tr>
+<td><code>b69d0fb</code></td>
+<td>配置 Go 国内模块代理</td>
+</tr>
+</tbody>
+</table>
+<p>这类错误发生在镜像构建阶段，与业务头代码无关，但会导致线上继续运行旧镜像，从而表现为“代码明明改了，生产却不生效”。</p>
+<h3 id="108-部署目录和-compose-文件不一致">10.8 部署目录和 Compose 文件不一致</h3>
+<p>Jenkins 远程脚本曾进入：</p>
+<pre><code class="language-text">/root/docker/aiproxy
+
+</code></pre>
+<p>但实际 Compose 文件位于 FastGPT 部署目录：</p>
+<pre><code class="language-text">/root/docker/fastgpt/docker-compose.yml
+
+</code></pre>
+<p>结果依次出现 <code>cd: 没有那个文件或目录</code> 和 <code>no configuration file provided</code>。AI Proxy 已经作为 FastGPT Compose 中的 service 时，不需要再单独维护第二份 AI Proxy Compose。</p>
+<p>正确发布示例：</p>
+<pre><code class="language-bash">cd /root/docker/fastgptdocker compose pull aiproxydocker compose up -d --no-deps aiproxydocker compose logs -f --tail=100 aiproxy
+</code></pre>
+<h3 id="109-docker-logs-参数位置错误">10.9 <code>docker logs</code> 参数位置错误</h3>
+<p>错误命令：</p>
+<pre><code class="language-bash">docker logs -f --tail 6cf50e61f92d
+</code></pre>
+<p><code>--tail</code> 后面需要的是行数，容器 ID 被误当成行数，因此 Docker 报“需要一个容器参数”。正确写法：</p>
+<pre><code class="language-bash">docker logs -f --tail 100 6cf50e61f92d
+</code></pre>
+<p>Compose 场景优先使用：</p>
+<pre><code class="language-bash">docker compose logs -f --tail=100 aiproxy
+</code></pre>
+<h3 id="1010-本地-go-toolchain-不可用">10.10 本地 Go toolchain 不可用</h3>
+<p>AI Proxy 的 <code>core/go.mod</code> 声明：</p>
+<pre><code class="language-text">go 1.26
+
+</code></pre>
+<p>旧 Go 命令尝试自动下载 <code>go1.26</code> 时出现 <code>toolchain not available</code>。安装 mise 的 Go 1.26.5 后，直接执行 <code>go version</code> 仍可能命中系统旧 Go，因为 <code>mise use</code> 写入配置不等于当前 shell 已完成激活。</p>
+<p>稳定运行方式：</p>
+<pre><code class="language-bash">cd /mnt/d/project/aiproxy/coremise exec go@1.26.5 -- go run . -listen 0.0.0.0:3001
+</code></pre>
+<p>代码修改后，<code>go run</code> 进程不会自动热重载，需要停止并重新运行；Docker 环境则需要重新构建镜像并重建容器。</p>
+<h2 id="11-docker-网络与配置检查">11. Docker 网络与配置检查</h2>
+<h3 id="111-fastgpt-ai-proxy">11.1 FastGPT -&gt; AI Proxy</h3>
+<p>FastGPT 和 AI Proxy 必须处于同一个 Docker 网络，并能通过 service name 访问：</p>
+<pre><code class="language-text">http://aiproxy:3000
+
+</code></pre>
+<p>宿主机端口映射如 <code>3010:3000</code> 只用于宿主机访问。容器之间应使用容器端口 3000，不应使用宿主机映射端口 3010。</p>
+<h3 id="112-ai-proxy-llm-router">11.2 AI Proxy -&gt; llm-router</h3>
+<p>该地址通常配置在 AI Proxy 渠道的 Base URL 中。应确认：</p>
+<ul>
+<li>Base URL 指向生产 llm-router；</li>
+<li>路径基准包含正确的 <code>/v1</code>；</li>
+<li>AI Proxy 容器和 llm-router 容器共享网络，或路由地址可从容器内访问；</li>
+<li>渠道测试和真实 FastGPT 请求命中的是同一个渠道。</li>
+</ul>
+<h3 id="113-llm-router-new-api">11.3 llm-router -&gt; new-api</h3>
+<p>llm-router 通过环境变量指定：</p>
+<pre><code class="language-text">UPSTREAM_BASE_URL=http://new-api:&lt;port&gt;/v1
+
+</code></pre>
+<p>实际 Chat Completions 地址为：</p>
+<pre><code class="language-text">${UPSTREAM_BASE_URL}/chat/completions
+
+</code></pre>
+<p>实际 Responses 地址为：</p>
+<pre><code class="language-text">${UPSTREAM_BASE_URL}/responses
+
+</code></pre>
+<p>如果两个服务位于不同 Compose 项目，要么使用共同的 external network，要么使用目标主机可达地址。仅仅容器名相同，不代表跨 Compose 网络一定能解析。</p>
+<h2 id="12-推荐的逐跳排障流程">12. 推荐的逐跳排障流程</h2>
+<p>每次测试使用一组容易识别且唯一的值：</p>
+<pre><code class="language-text">X-App-Id: debug-app-20260714-001
+X-Chat-Id: debug-chat-20260714-001
+
+</code></pre>
+<h3 id="第-1-步确认-fastgpt-构造请求头">第 1 步：确认 FastGPT 构造请求头</h3>
+<p>查找：</p>
+<pre><code class="language-text">[FastGPT][LLM HTTP request headers]
+
+</code></pre>
+<p>判断：</p>
+<ul>
+<li>两个值都有：继续查 AI Proxy；</li>
+<li>值为空：检查工作流是否通过 <code>dispatchWorkFlow()</code> 运行、上下文是否存在；</li>
+<li>日志完全没有：检查生产镜像是否包含 FastGPT 相关提交，或调用是否绕过该 LLM 请求函数。</li>
+</ul>
+<h3 id="第-2-步确认-ai-proxy-入站和出站">第 2 步：确认 AI Proxy 入站和出站</h3>
+<p>临时设置 <code>DEBUG=true</code>，查找：</p>
+<pre><code class="language-text">relay workflow headers
+
+</code></pre>
+<p>判断矩阵：</p>
+<table>
+<thead>
+<tr>
+<th>AI Proxy 入站</th>
+<th>AI Proxy 出站</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>空</td>
+<td>空</td>
+<td>FastGPT 到 AI Proxy 之间丢失，或请求未命中该 AI Proxy</td>
+</tr>
+<tr>
+<td>有</td>
+<td>空</td>
+<td>AI Proxy 映射/镜像版本问题</td>
+</tr>
+<tr>
+<td>有</td>
+<td>有</td>
+<td>AI Proxy 已完成职责，继续检查 llm-router</td>
+</tr>
+</tbody>
+</table>
+<h3 id="第-3-步对比-llm-router-入站和出站">第 3 步：对比 llm-router 入站和出站</h3>
+<p>使用同一个 <code>ID=req_xxx</code> 对比：</p>
+<pre><code class="language-text">【请求头-入站】
+【请求头-出站】
+
+</code></pre>
+<p>判断：</p>
+<ul>
+<li>入站为空：检查 AI Proxy 渠道地址、中间网关、实际 llm-router 实例；</li>
+<li>入站有、出站空：检查 llm-router 是否为最新镜像以及白名单代码；</li>
+<li>两边都有：继续检查 new-api。</li>
+</ul>
+<h3 id="第-4-步确认-new-api-入站">第 4 步：确认 new-api 入站</h3>
+<p>查找：</p>
+<pre><code class="language-text">workflow identifiers received
+
+</code></pre>
+<p>若 llm-router 出站有值但 new-api 入站为空，检查：</p>
+<ul>
+<li><code>UPSTREAM_BASE_URL</code> 是否指向预期 new-api；</li>
+<li>中间是否还有 Nginx、Ingress 或 API Gateway；</li>
+<li>是否命中了旧 new-api 副本；</li>
+<li>请求是否鉴权失败，导致未进入 <code>WorkflowIdentifierLog</code>。</li>
+</ul>
+<h3 id="第-5-步确认-new-api-写库前字段">第 5 步：确认 new-api 写库前字段</h3>
+<p>查找：</p>
+<pre><code class="language-text">workflow identifiers database write
+
+</code></pre>
+<p>判断：</p>
+<ul>
+<li>入站有、写库前也有：链路传递成功，检查数据库；</li>
+<li>入站有、没有写库日志：检查是否创建消费/错误日志、<code>LogConsumeEnabled</code> 和请求执行分支；</li>
+<li>写库前为空：检查实际运行代码和请求 context 是否被替换。</li>
+</ul>
+<h3 id="第-6-步查正确的日志数据库">第 6 步：查正确的日志数据库</h3>
+<p>先检查容器是否配置 <code>LOG_SQL_DSN</code>，然后在对应 <code>LOG_DB</code> 查询 <code>logs</code> 表。还应确认：</p>
+<ul>
+<li><code>app_id/chat_id</code> 列已经迁移；</li>
+<li>查询连接的是生产实例和正确 schema；</li>
+<li>查询时间范围、时区和测试值正确；</li>
+<li>多副本是否共享同一日志库。</li>
+</ul>
+<h2 id="13-分段-curl-验证">13. 分段 Curl 验证</h2>
+<p>以下示例中的令牌必须使用测试环境令牌，不要把真实令牌写入脚本、文档或日志。</p>
+<h3 id="131-直接请求-ai-proxy">13.1 直接请求 AI Proxy</h3>
+<pre><code class="language-bash">curl -N http://aiproxy:3000/v1/chat/completions \  -H 'Authorization: Bearer &lt;aiproxy-token&gt;' \  -H 'Content-Type: application/json' \  -H 'X-App-Id: debug-app-aiproxy' \  -H 'X-Chat-Id: debug-chat-aiproxy' \  --data '{&quot;model&quot;:&quot;gpt-5&quot;,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;只回复 ok&quot;}],&quot;stream&quot;:false}'
+</code></pre>
+<h3 id="132-直接请求-llm-router">13.2 直接请求 llm-router</h3>
+<pre><code class="language-bash">curl -N http://llm-router:&lt;port&gt;/v1/chat/completions \  -H 'Authorization: Bearer &lt;new-api-compatible-token&gt;' \  -H 'Content-Type: application/json' \  -H 'X-App-Id: debug-app-router' \  -H 'X-Chat-Id: debug-chat-router' \  --data '{&quot;model&quot;:&quot;gpt-5&quot;,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;只回复 ok&quot;}],&quot;stream&quot;:false}'
+</code></pre>
+<h3 id="133-直接请求-new-api">13.3 直接请求 new-api</h3>
+<pre><code class="language-bash">curl -N http://new-api:&lt;port&gt;/v1/chat/completions \  -H 'Authorization: Bearer &lt;new-api-token&gt;' \  -H 'Content-Type: application/json' \  -H 'X-App-Id: debug-app-new-api' \  -H 'X-Chat-Id: debug-chat-new-api' \  --data '{&quot;model&quot;:&quot;gpt-5&quot;,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;只回复 ok&quot;}],&quot;stream&quot;:false}'
+</code></pre>
+<p>分段测试的意义：</p>
+<ul>
+<li>直接 new-api 能入库：new-api 接收和数据库功能正常；</li>
+<li>直接 llm-router 能入库：llm-router -&gt; new-api 正常；</li>
+<li>直接 AI Proxy 能入库：AI Proxy -&gt; llm-router -&gt; new-api 正常；</li>
+<li>只有完整 FastGPT 链路失败：重点检查 FastGPT 上下文、Base URL 优先级和 FastGPT 到 AI Proxy 之间的网关。</li>
+</ul>
+<h2 id="14-发布检查清单">14. 发布检查清单</h2>
+<h3 id="141-代码和镜像">14.1 代码和镜像</h3>
+<ul>
+<li>[ ] FastGPT 镜像包含 <code>4606b274d</code>、<code>107fd7ec5</code>、<code>436cc7c81</code> 或等价代码。</li>
+<li>[ ] AI Proxy 镜像包含 <code>4f16b3d</code>、<code>3445844</code> 或等价代码。</li>
+<li>[ ] llm-router 镜像包含 <code>154873e</code>、<code>418f409</code> 或等价代码。</li>
+<li>[ ] new-api 镜像包含 <code>5842f0a3</code>、<code>4c30a259</code> 或等价代码。</li>
+<li>[ ] Compose 使用的 image tag/digest 确实是刚构建和推送的版本。</li>
+<li>[ ] 所有副本已经滚动到新镜像，不存在旧实例继续接流量。</li>
+</ul>
+<h3 id="142-配置和网络">14.2 配置和网络</h3>
+<ul>
+<li>[ ] FastGPT 的 <code>AIPROXY_API_ENDPOINT</code> 指向当前 AI Proxy。</li>
+<li>[ ] 没有意外的 <code>userKey.baseUrl</code> 或 <code>oneapiUrl</code> 覆盖默认地址。</li>
+<li>[ ] AI Proxy 渠道 Base URL 指向当前 llm-router。</li>
+<li>[ ] llm-router 的 <code>UPSTREAM_BASE_URL</code> 指向当前 new-api <code>/v1</code>。</li>
+<li>[ ] 容器间使用容器端口，不误用宿主机映射端口。</li>
+<li>[ ] 中间 Nginx/Ingress 不会删除 <code>X-App-Id/X-Chat-Id</code>。</li>
+</ul>
+<h3 id="143-数据库和日志">14.3 数据库和日志</h3>
+<ul>
+<li>[ ] new-api 的 <code>logs</code> 表已有 <code>app_id/chat_id</code> 列和索引。</li>
+<li>[ ] 已确认是否设置 <code>LOG_SQL_DSN</code>，并在正确日志库查询。</li>
+<li>[ ] 已确认 <code>LogConsumeEnabled</code> 的生产值。</li>
+<li>[ ] AI Proxy 和 new-api 数据库迁移已经完成，服务 healthcheck 通过。</li>
+<li>[ ] 调试结束后评估是否关闭高详细度日志，避免长期输出业务标识。</li>
+</ul>
+<h2 id="15-安全和可观测性注意事项">15. 安全和可观测性注意事项</h2>
+<ol>
+<li>不得打印完整 Authorization、API Key、Cookie、token 或 secret。</li>
+<li>llm-router 已统一脱敏凭证；新增请求头日志时应继续复用 <code>sanitize_headers_for_log()</code>。</li>
+<li>AI Proxy 只记录 <code>out_authorization_set</code>，不记录 Authorization 内容。</li>
+<li><code>appId/chatId</code> 虽不是鉴权凭证，仍可能属于业务追踪数据，应控制日志权限和保留期限。</li>
+<li>生产排障应使用专门测试 App/Chat ID，不要在工单或群聊中粘贴真实用户会话内容。</li>
+<li>当前各服务的 request ID 并未完全统一。跨端定位主要依赖唯一的 App/Chat ID、时间窗口和模型名；后续可考虑增加统一 Trace ID。</li>
+</ol>
+<h2 id="16-后续建议">16. 后续建议</h2>
+<ol>
+<li>给 FastGPT 增加单元测试，验证有工作流上下文和无上下文时的 Header 构造。</li>
+<li>给 llm-router 增加测试，覆盖 Chat Completions 白名单、大小写、空值和敏感头脱敏。</li>
+<li>给 new-api 增加中间件测试，验证鉴权后入站日志和 128 字符截断。</li>
+<li>在镜像中注入 Git SHA，并在启动日志输出，避免只靠 <code>latest</code> 判断版本。</li>
+<li>生产发布尽量使用不可变 tag 或 digest，不要长期依赖 <code>latest</code>。</li>
+<li>为 FastGPT、AI Proxy、llm-router、new-api 统一传递一个 <code>X-Trace-Id</code>，降低多副本环境的跨端日志关联成本。</li>
+<li>如果没有业务需要，llm-router 的 Responses 路径可考虑从“复制多数请求头”收紧为明确白名单，减少无关客户端头进入上游。</li>
+</ol>
+<h2 id="17-验收标准">17. 验收标准</h2>
+<p>一次完整对话满足以下条件即可认为链路打通：</p>
+<ol>
+<li>FastGPT 日志显示非空的 <code>X-APP-ID/X-CHAT-ID</code>；</li>
+<li>AI Proxy DEBUG 日志中 <code>in_*</code> 和 <code>out_*</code> 与 FastGPT 值一致；</li>
+<li>llm-router 同一请求的入站和出站日志都包含相同值；</li>
+<li>new-api <code>workflow identifiers received</code> 日志包含相同值；</li>
+<li>new-api <code>workflow identifiers database write</code> 日志包含相同值；</li>
+<li>正确 LOG_DB 的 <code>logs.app_id/logs.chat_id</code> 查询到相同值；</li>
+<li>正常流式和非流式请求均不影响原有模型响应、鉴权和 token 统计。</li>
+</ol>
+<p>nginx 传参携带下划线时可能丢失；改用连字符请求头后，链路恢复正常。</p>
+<figure class="article-media"><a href="./images/fastgpt-workflow-identifiers/new-api-identifiers-received.png" target="_blank" rel="noopener"><img src="./images/fastgpt-workflow-identifiers/new-api-identifiers-received.png" alt="new-api 收到标准工作流标识" loading="lazy"></a><figcaption>改用连字符请求头后，new-api 成功接收 X-App-Id 与 X-Chat-Id</figcaption></figure>
+<figure class="article-media"><a href="./images/fastgpt-workflow-identifiers/llm-router-responses-headers.png" target="_blank" rel="noopener"><img src="./images/fastgpt-workflow-identifiers/llm-router-responses-headers.png" alt="llm-router Responses 请求头透传日志" loading="lazy"></a><figcaption>llm-router 的 Responses 入站、出站请求头对比</figcaption></figure>
+<figure class="article-media"><a href="./images/fastgpt-workflow-identifiers/llm-router-chat-headers.png" target="_blank" rel="noopener"><img src="./images/fastgpt-workflow-identifiers/llm-router-chat-headers.png" alt="llm-router Chat Completions 请求头日志" loading="lazy"></a><figcaption>Chat Completions 修复前的入站、出站请求头对比</figcaption></figure>
+<figure class="article-media"><a href="./images/fastgpt-workflow-identifiers/log-db-workflow-identifiers.png" target="_blank" rel="noopener"><img src="./images/fastgpt-workflow-identifiers/log-db-workflow-identifiers.png" alt="日志数据库中的 app_id 和 chat_id" loading="lazy"></a><figcaption>LOG_DB 中成功落库的 app_id 与 chat_id</figcaption></figure>
+
+    </article>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script src="./theme.js"></script>
+</body>
+</html>
