@@ -113,15 +113,41 @@
 </ol>
 <h2 id="3-主链路总览">3. 主链路总览</h2>
 <p>FastGPT 当前模型调用代码使用 OpenAI SDK 的 <code>chat.completions.create()</code>，因此默认业务链路是 <code>/v1/chat/completions</code>：</p>
-<pre><code class="language-mermaid">sequenceDiagram
-    participant W as FastGPT Workflow    participant F as FastGPT LLM Client    participant A as AI Proxy    participant R as llm-router    participant N as new-api    participant D as new-api LOG_DB
-    W-&gt;&gt;W: AsyncLocalStorage 保存 appId/chatId    W-&gt;&gt;F: 调用工作流中的 LLM 节点
-    F-&gt;&gt;A: POST /v1/chat/completions&lt;br/&gt;X-App-Id + X-Chat-Id    A-&gt;&gt;A: 渠道选择、请求体转换、重建 HTTP 请求
-    A-&gt;&gt;R: POST /v1/chat/completions&lt;br/&gt;统一的 X-App-Id + X-Chat-Id    R-&gt;&gt;R: 意图识别和目标模型选择
-    R-&gt;&gt;N: POST /v1/chat/completions&lt;br/&gt;白名单转发 X-App-Id + X-Chat-Id    N-&gt;&gt;N: TokenAuth 后记录入站标识
-    N-&gt;&gt;D: 写入 logs.app_id / logs.chat_id
-
-</code></pre>
+<figure class="sequence-diagram" data-sequence-diagram>
+  <figcaption class="sequence-diagram-header">
+    <span>
+      <strong class="sequence-diagram-title">请求链路时序图</strong>
+      <span class="sequence-diagram-route">FastGPT → AI Proxy → llm-router → new-api → LOG_DB</span>
+    </span>
+    <span class="sequence-diagram-controls" role="group" aria-label="时序图缩放控制">
+      <button type="button" data-diagram-zoom-out title="缩小时序图" aria-label="缩小时序图">−</button>
+      <output data-diagram-zoom-output aria-live="polite">100%</output>
+      <button type="button" data-diagram-zoom-in title="放大时序图" aria-label="放大时序图">+</button>
+      <button class="sequence-diagram-reset" type="button" data-diagram-reset title="恢复为 100%" aria-label="重置时序图缩放">重置</button>
+    </span>
+  </figcaption>
+  <div class="sequence-diagram-viewport" tabindex="0" aria-label="FastGPT 工作流标识传递时序图；放大后可拖动查看">
+    <div class="sequence-diagram-stage">
+      <pre class="mermaid" aria-label="FastGPT 工作流标识从工作流传递到日志数据库的时序图">sequenceDiagram
+    participant W as FastGPT Workflow
+    participant F as FastGPT LLM Client
+    participant A as AI Proxy
+    participant R as llm-router
+    participant N as new-api
+    participant D as new-api LOG_DB
+    W-&gt;&gt;W: AsyncLocalStorage 保存 appId/chatId
+    W-&gt;&gt;F: 调用工作流中的 LLM 节点
+    F-&gt;&gt;A: POST /v1/chat/completions&lt;br/&gt;X-App-Id + X-Chat-Id
+    A-&gt;&gt;A: 渠道选择、请求体转换、重建 HTTP 请求
+    A-&gt;&gt;R: POST /v1/chat/completions&lt;br/&gt;统一的 X-App-Id + X-Chat-Id
+    R-&gt;&gt;R: 意图识别和目标模型选择
+    R-&gt;&gt;N: POST /v1/chat/completions&lt;br/&gt;白名单转发 X-App-Id + X-Chat-Id
+    N-&gt;&gt;N: TokenAuth 后记录入站标识
+    N-&gt;&gt;D: 写入 logs.app_id / logs.chat_id</pre>
+    </div>
+  </div>
+  <p class="sequence-diagram-hint">拖动画布查看 · Ctrl/⌘ + 滚轮缩放 · 按 0 重置</p>
+</figure>
 <p>各跳的核心契约：</p>
 <table>
 <thead>
@@ -944,5 +970,6 @@ X-Chat-Id: debug-chat-20260714-001
   </main>
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script src="./theme.js"></script>
+  <script type="module" src="./diagrams.js"></script>
 </body>
 </html>
