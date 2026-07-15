@@ -2,7 +2,12 @@ import { resources } from "../../../utils/resources";
 import { Mesh, Matrix4, Vector3, BufferAttribute, Group, SkinnedMesh } from "three";
 //import { renderTarget } from "../../core/renderTarget";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { getMaterial as getHologramMaterial, uniforms as hologramUniforms } from "./hologram-material";
+import {
+  getAccessoryMaterial as getHologramAccessoryMaterial,
+  getMaterial as getHologramMaterial,
+  uniforms as hologramUniforms,
+} from "./hologram-material";
+import { hair } from "./hair";
 import gsap from "gsap";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { sceneWeights } from "../../../animations/scenes";
@@ -82,6 +87,7 @@ const setupMesh = () => {
 
   avatar.transform.add(transform);
   transform.add(mesh);
+  hair.initHologram(mesh, getHologramAccessoryMaterial());
 };
 
 const tick = () => {

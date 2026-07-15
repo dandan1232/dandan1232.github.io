@@ -8,9 +8,15 @@ import type { Material, Object3D, ShaderMaterial } from "three";
 const HAIR_COLOR = 0x8e6b58;
 const HAIR_TIE_COLOR = 0xFFA500;
 
-let root: Group | null = null;
-let leftPonytail: Group | null = null;
-let rightPonytail: Group | null = null;
+type HairInstance = {
+  root: Group;
+  leftPonytail: Group;
+  rightPonytail: Group;
+};
+
+let solidHair: HairInstance | null = null;
+let hologramHair: HairInstance | null = null;
+let isTicking = false;
 
 const geometries = new Set<SphereGeometry | TorusGeometry | TubeGeometry>();
 const materials = new Set<ShaderMaterial>();
@@ -156,26 +162,47 @@ const addPonytail = (parent: Group, side: -1 | 1, hairMaterial: ShaderMaterial, 
 
 const tick = () => {
   const time = gsap.ticker.time;
-  if (leftPonytail) {
-    leftPonytail.rotation.z = Math.sin(time * 1.55) * 0.035;
-    leftPonytail.rotation.x = Math.sin(time * 1.2 + 0.5) * 0.018;
+  [solidHair, hologramHair].forEach((instance) => {
+    if (!instance) return;
+    instance.leftPonytail.rotation.z = Math.sin(time * 1.55) * 0.035;
+    instance.leftPonytail.rotation.x = Math.sin(time * 1.2 + 0.5) * 0.018;
+    instance.rightPonytail.rotation.z = -Math.sin(time * 1.55 + 0.35) * 0.035;
+    instance.rightPonytail.rotation.x = Math.sin(time * 1.2 + 0.85) * 0.018;
+  });
+};
+
+const createHair = (
+  avatarMesh: Object3D,
+  name: string,
+  hairMaterial: ShaderMaterial,
+  tieMaterial: ShaderMaterial,
+) => {
+  const headBone = avatarMesh.getObjectByName("headBone");
+  if (!headBone) {
+    console.warn(`${name} could not find headBone`);
+    return null;
   }
-  if (rightPonytail) {
-    rightPonytail.rotation.z = -Math.sin(time * 1.55 + 0.35) * 0.035;
-    rightPonytail.rotation.x = Math.sin(time * 1.2 + 0.85) * 0.018;
+
+  const root = new Group();
+  root.name = name;
+
+  addHairCap(root, hairMaterial);
+  addBangs(root, hairMaterial);
+  addFaceFramingLocks(root, hairMaterial);
+  const leftPonytail = addPonytail(root, -1, hairMaterial, tieMaterial);
+  const rightPonytail = addPonytail(root, 1, hairMaterial, tieMaterial);
+
+  headBone.add(root);
+  if (!isTicking) {
+    gsap.ticker.add(tick);
+    isTicking = true;
   }
+
+  return { root, leftPonytail, rightPonytail };
 };
 
 const init = (avatarMesh: Object3D, sharedUniforms: SharedAvatarUniforms) => {
-  if (root) return;
-  const headBone = avatarMesh.getObjectByName("headBone");
-  if (!headBone) {
-    console.warn("Avatar hair could not find headBone");
-    return;
-  }
-
-  root = new Group();
-  root.name = "avatar-hair";
+  if (solidHair) return;
 
   const hairMaterial = createAccessoryMaterial({
     color: HAIR_COLOR,
@@ -190,27 +217,34 @@ const init = (avatarMesh: Object3D, sharedUniforms: SharedAvatarUniforms) => {
   materials.add(hairMaterial);
   materials.add(tieMaterial);
 
-  addHairCap(root, hairMaterial);
-  addBangs(root, hairMaterial);
-  addFaceFramingLocks(root, hairMaterial);
-  leftPonytail = addPonytail(root, -1, hairMaterial, tieMaterial);
-  rightPonytail = addPonytail(root, 1, hairMaterial, tieMaterial);
+  solidHair = createHair(avatarMesh, "avatar-hair", hairMaterial, tieMaterial);
+};
 
-  headBone.add(root);
-  gsap.ticker.add(tick);
+const initHologram = (avatarMesh: Object3D, hologramMaterial: ShaderMaterial) => {
+  if (hologramHair) return;
+  hologramHair = createHair(
+    avatarMesh,
+    "avatar-hair-hologram",
+    hologramMaterial,
+    hologramMaterial,
+  );
 };
 
 const destroy = () => {
-  gsap.ticker.remove(tick);
-  root?.removeFromParent();
-  root?.clear();
+  if (isTicking) {
+    gsap.ticker.remove(tick);
+    isTicking = false;
+  }
+  [solidHair, hologramHair].forEach((instance) => {
+    instance?.root.removeFromParent();
+    instance?.root.clear();
+  });
   geometries.forEach((geometry) => geometry.dispose());
   materials.forEach((material) => material.dispose());
   geometries.clear();
   materials.clear();
-  root = null;
-  leftPonytail = null;
-  rightPonytail = null;
+  solidHair = null;
+  hologramHair = null;
 };
 
-export const hair = { init, destroy };
+export const hair = { init, initHologram, destroy };
