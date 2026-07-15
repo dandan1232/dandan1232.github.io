@@ -5,7 +5,8 @@ import { createAccessoryMaterial, type SharedAvatarUniforms } from "./accessory-
 
 import type { Material, Object3D, ShaderMaterial } from "three";
 
-const HAIR_TIE_COLOR = 0xff9fba;
+const HAIR_COLOR = 0x8e6b58;
+const HAIR_TIE_COLOR = 0xFFA500;
 
 let root: Group | null = null;
 let leftPonytail: Group | null = null;
@@ -177,8 +178,8 @@ const init = (avatarMesh: Object3D, sharedUniforms: SharedAvatarUniforms) => {
   root.name = "avatar-hair";
 
   const hairMaterial = createAccessoryMaterial({
-    color: 0xffffff,
-    matcap: resources.items["matcap-black"],
+    color: HAIR_COLOR,
+    matcap: resources.items["matcap-white"],
     sharedUniforms,
   });
   const tieMaterial = createAccessoryMaterial({
