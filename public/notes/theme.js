@@ -65,47 +65,76 @@ const NOTES_GROUPS = [
   }
 ];
 
-const darkThemeConfig = {
-  particles: {
-    number: { value: 60, density: { enable: true, value_area: 900 } },
-    color: { value: "#ff8400" },
-    shape: { type: "circle" },
-    opacity: { value: 0.32, random: true, anim: { enable: true, speed: 0.7, opacity_min: 0.08, sync: false } },
-    size: { value: 2.4, random: true },
-    line_linked: { enable: true, distance: 140, color: "#ff8400", opacity: 0.18, width: 1 },
-    move: { enable: true, speed: 1.1, direction: "none", random: true, out_mode: "out" }
-  },
-  interactivity: {
-    detect_on: "window",
-    events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-    modes: { repulse: { distance: 100, duration: 0.4 }, push: { particles_nb: 4 } }
-  },
-  retina_detect: true
+const MIGRATION_SCENES = {
+  dark: "NIGHT",
+  pink: "WARM"
 };
 
-const pinkThemeConfig = {
-  particles: {
-    number: { value: 40, density: { enable: true, value_area: 800 } },
-    color: { value: "#ff8400" },
-    shape: { type: "circle" },
-    opacity: { value: 0.24, random: true, anim: { enable: true, speed: 0.8, opacity_min: 0.06, sync: false } },
-    size: { value: 3.2, random: true, anim: { enable: true, speed: 1.4, size_min: 1, sync: false } },
-    line_linked: { enable: false },
-    move: { enable: true, speed: 0.8, direction: "top", random: true, straight: false, out_mode: "out", bounce: false }
-  },
-  interactivity: {
-    detect_on: "window",
-    events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-    modes: { repulse: { distance: 120, duration: 0.4 }, push: { particles_nb: 4 } }
-  },
-  retina_detect: true
-};
+let migrationFrame = null;
+let migrationHost = null;
+let migrationPointerFrame = 0;
+let latestPointer = null;
+let migrationTransitionTimer = 0;
+
+function postToMigration(message) {
+  migrationFrame?.contentWindow?.postMessage(message, window.location.origin);
+}
+
+function syncMigrationScene(theme, animate = true) {
+  if (!migrationFrame) return;
+  const scene = MIGRATION_SCENES[theme] || MIGRATION_SCENES.dark;
+  if (migrationFrame.dataset.scene === scene) return;
+  migrationFrame.dataset.scene = scene;
+
+  if (animate && migrationHost) {
+    migrationHost.classList.add("is-switching");
+    window.clearTimeout(migrationTransitionTimer);
+    migrationTransitionTimer = window.setTimeout(() => {
+      migrationHost?.classList.remove("is-switching");
+    }, 520);
+  }
+
+  postToMigration({ type: "migration:scene", scene });
+}
+
+function queueMigrationPointer(event) {
+  if (event.pointerType === "touch") return;
+  latestPointer = { type: "migration:pointer", x: event.clientX, y: event.clientY, active: true };
+  if (migrationPointerFrame) return;
+
+  migrationPointerFrame = window.requestAnimationFrame(() => {
+    postToMigration(latestPointer);
+    migrationPointerFrame = 0;
+  });
+}
+
+function initMigrationBackground(theme) {
+  migrationHost = document.getElementById("particles-js");
+  if (!migrationHost) {
+    migrationHost = document.createElement("div");
+    migrationHost.id = "particles-js";
+    document.body.prepend(migrationHost);
+  }
+
+  migrationHost.setAttribute("aria-hidden", "true");
+  migrationFrame = document.createElement("iframe");
+  migrationFrame.className = "migration-background-frame";
+  migrationFrame.dataset.scene = MIGRATION_SCENES[theme] || MIGRATION_SCENES.dark;
+  migrationFrame.src = `./migration/background.html?scene=${migrationFrame.dataset.scene}`;
+  migrationFrame.tabIndex = -1;
+  migrationFrame.setAttribute("aria-hidden", "true");
+  migrationFrame.setAttribute("title", "");
+  migrationFrame.addEventListener("load", () => syncMigrationScene(theme, false));
+  migrationHost.replaceChildren(migrationFrame);
+
+  window.addEventListener("pointermove", queueMigrationPointer, { passive: true });
+  document.documentElement.addEventListener("pointerleave", () => {
+    latestPointer = { type: "migration:pointer", active: false };
+    postToMigration(latestPointer);
+  });
+}
 
 function applyTheme(theme) {
-  if (window.pJSDom && window.pJSDom[0]) {
-    window.pJSDom[0].pJS.fn.vendors.destroypJS();
-    window.pJSDom = [];
-  }
   htmlEl.dataset.theme = theme;
   if (toggleBtn) {
     const isDark = theme === "dark";
@@ -114,15 +143,13 @@ function applyTheme(theme) {
     toggleBtn.setAttribute("aria-label", toggleBtn.title);
     toggleBtn.setAttribute("aria-pressed", String(!isDark));
   }
-  const config = theme === "pink" ? pinkThemeConfig : darkThemeConfig;
-  if (typeof particlesJS === "function") {
-    particlesJS("particles-js", config);
-  }
+  syncMigrationScene(theme);
   localStorage.setItem("theme", theme);
 }
 
 function currentFileName() {
   const path = window.location.pathname.replace(/\\/g, "/");
+  if (path.endsWith("/")) return "index.html";
   const segments = path.split("/").filter(Boolean);
   return segments.length ? segments[segments.length - 1] : "index.html";
 }
@@ -333,8 +360,9 @@ if (toggleBtn) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  initMigrationBackground(savedTheme);
   initDetailSidebar();
   initImageLightbox();
-  const savedTheme = localStorage.getItem("theme") || "dark";
   applyTheme(savedTheme);
 });

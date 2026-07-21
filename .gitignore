@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local planning and agent design context
+.impeccable.md
+docs/plans/

@@ -1,6 +1,6 @@
 :root {
   --bg-dark: #15120f;
-  --bg-card: rgba(34, 29, 24, 0.88);
+  --bg-card: rgba(28, 25, 24, 0.8);
   --bg-card-solid: #221d18;
   --accent: #ff9838;
   --accent-soft: rgba(255, 152, 56, 0.14);
@@ -12,11 +12,14 @@
   --transition-fast: 0.25s ease-out;
   --card-hover-gradient: linear-gradient(135deg, rgba(255, 152, 56, 0.13), rgba(34, 29, 24, 0.98));
   --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(255, 152, 56, 0.2), transparent 55%);
+  --migration-wash: rgba(12, 14, 22, 0.42);
+  --migration-opacity: 0.92;
+  --migration-filter: saturate(0.82) contrast(0.94) brightness(0.82);
 }
 
 [data-theme="pink"] {
   --bg-dark: #f5efe6;
-  --bg-card: rgba(241, 229, 213, 0.82);
+  --bg-card: rgba(246, 240, 230, 0.76);
   --bg-card-solid: #f1e5d5;
   --accent: #ff8400;
   --accent-soft: rgba(255, 132, 0, 0.14);
@@ -26,6 +29,9 @@
   --shadow-soft: 0 18px 45px rgba(45, 42, 36, 0.12);
   --card-hover-gradient: linear-gradient(135deg, rgba(255, 132, 0, 0.1), rgba(241, 229, 213, 0.96));
   --card-before-gradient: radial-gradient(circle at 10% 0%, rgba(255, 132, 0, 0.18), transparent 55%);
+  --migration-wash: rgba(246, 240, 230, 0.1);
+  --migration-opacity: 1;
+  --migration-filter: saturate(0.9) contrast(0.92) brightness(1.01);
 }
 
 * {
@@ -46,20 +52,55 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
+  isolation: isolate;
 }
 
 #particles-js {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
   background-color: var(--bg-dark);
   transition: background-color var(--transition-fast);
+}
+
+#particles-js::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--migration-wash);
+  pointer-events: none;
+  transition: background-color 420ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.migration-background-frame {
+  position: absolute;
+  inset: -1%;
+  width: 102%;
+  height: 102%;
+  border: 0;
+  opacity: var(--migration-opacity);
+  filter: var(--migration-filter);
+  pointer-events: none;
+  transform: scale(1.01);
+  transform-origin: center;
+  transition:
+    opacity 420ms cubic-bezier(0.25, 1, 0.5, 1),
+    filter 420ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+#particles-js.is-switching .migration-background-frame {
+  opacity: 0.28;
 }
 
 .wrap {
   max-width: 980px;
   margin: 0 auto;
   padding: 28px 20px 60px;
+  position: relative;
+  z-index: 1;
 }
 
 .topbar {
@@ -137,6 +178,8 @@ body {
   padding: 18px;
   position: relative;
   overflow: hidden;
+  -webkit-backdrop-filter: blur(12px) saturate(0.9);
+  backdrop-filter: blur(12px) saturate(0.9);
   transition: all var(--transition-fast);
 }
 
@@ -808,5 +851,32 @@ body.notes-detail.sidebar-open .notes-sidebar-overlay {
 @media (max-width: 1024px) {
   .notes-sidebar {
     width: min(86vw, 300px);
+  }
+}
+
+@media (max-width: 640px) {
+  .card,
+  .article {
+    -webkit-backdrop-filter: blur(7px) saturate(0.88);
+    backdrop-filter: blur(7px) saturate(0.88);
+  }
+
+  .migration-background-frame {
+    filter: saturate(0.76) contrast(0.92) brightness(0.9);
+  }
+
+  [data-theme="pink"] .migration-background-frame {
+    filter: saturate(0.82) contrast(0.9) brightness(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .migration-background-frame,
+  #particles-js::after {
+    transition: none;
   }
 }
