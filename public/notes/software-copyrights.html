@@ -106,6 +106,51 @@
       color: var(--text-main);
     }
 
+    .record-content {
+      min-width: 0;
+    }
+
+    .record-title {
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.65;
+      text-wrap: pretty;
+    }
+
+    .record-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 10px;
+      margin-top: 7px;
+    }
+
+    .record-badge,
+    .record-meta-text {
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .record-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .record-meta-text {
+      color: var(--text-muted);
+    }
+
+    .record-number {
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
     .source-note {
       margin-top: 14px;
       color: var(--text-muted);
@@ -141,7 +186,7 @@
     </div>
 
     <article class="article">
-      <p class="meta">Intellectual Property · 2021-08 至 2026-05</p>
+      <p class="meta">Intellectual Property · 2021-08 至 2026-05-09</p>
       <h1>软件著作权与专利清单</h1>
       <p class="intro-copy">按时间整理近年软件著作权登记与相关专利记录，覆盖车载系统、AI、多模态、Vue / UniApp、企业管理系统等方向。</p>
       <div class="summary-grid">
@@ -168,20 +213,44 @@
         </div>
         <ol class="record-list">
           <li class="record-item">
-            <div class="record-date">2026-05</div>
-            <div class="record-text">软著-基于多维人格建模的多模态情感陪伴交互系统（第一作者）</div>
+            <div class="record-date">2026-05-09</div>
+            <div class="record-content">
+              <div class="record-title">基于多模态的车载AI问答与数字人服务系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">第一作者</span>
+              </div>
+            </div>
+          </li>
+          <li class="record-item">
+            <div class="record-date">2026-05-09</div>
+            <div class="record-content">
+              <div class="record-title">基于多维人格建模的多模态情感陪伴交互系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">第一作者</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2026-05</div>
-            <div class="record-text">软著-基于多模态的车载AI问答与数字人服务系统（第一作者）</div>
-          </li>
-          <li class="record-item">
-            <div class="record-date">2026-05</div>
-            <div class="record-text">专利-面向多知识库隔离场景的知识图谱构建与查询方法系统（第一作者）</div>
+            <div class="record-content">
+              <div class="record-title">面向多知识库隔离场景的知识图谱构建与查询方法系统</div>
+              <div class="record-meta">
+                <span class="record-badge">专利</span>
+                <span class="record-meta-text">第一作者</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2026-02</div>
-            <div class="record-text">软著-基于uni-app的车机驾驶成本分析与账本管理系统（第一作者）</div>
+            <div class="record-content">
+              <div class="record-title">基于uni-app的车机驾驶成本分析与账本管理系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">第一作者</span>
+              </div>
+            </div>
           </li>
         </ol>
       </div>
@@ -194,31 +263,86 @@
         <ol class="record-list">
           <li class="record-item">
             <div class="record-date">2025-10</div>
-            <div class="record-text">软著-基于UniApp的多场景到期提醒与管理系统（第一作者）登记号：2026SR0473705</div>
+            <div class="record-content">
+              <div class="record-title">基于UniApp的多场景到期提醒与管理系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">第一作者</span>
+                <span class="record-meta-text record-number">登记号：2026SR0473705</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2025-09</div>
-            <div class="record-text">软著-基于微信小程序的智能到期提醒系统（第一作者）登记号：2026SR0473671</div>
+            <div class="record-content">
+              <div class="record-title">基于微信小程序的智能到期提醒系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">第一作者</span>
+                <span class="record-meta-text record-number">登记号：2026SR0473671</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2025-09</div>
-            <div class="record-text">软著-基于Vue3+TypeScript的集成化开发者工具集系统代码（第一作者）登记号：2026SR0473711</div>
+            <div class="record-content">
+              <div class="record-title">基于Vue3+TypeScript的集成化开发者工具集系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">第一作者</span>
+                <span class="record-meta-text record-number">登记号：2026SR0473711</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2025-09</div>
-            <div class="record-text">软著-基于Android平台的DriveBoard中控面板管理系统（车机一体化 HMI）（第一作者）登记号：2026SR0473656</div>
+            <div class="record-content">
+              <div class="record-title">基于Android平台的DriveBoard中控面板管理系统（车机一体化 HMI）</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">第一作者</span>
+                <span class="record-meta-text record-number">登记号：2026SR0473656</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2025-08</div>
-            <div class="record-text">软著-基于知识图谱与向量融合的知识增强问答系统[简称：图向智答]V1.0 （第一作者）登记号：2025SR1563801</div>
+            <div class="record-content">
+              <div class="record-title">基于知识图谱与向量融合的知识增强问答系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">简称：图向智答</span>
+                <span class="record-meta-text">版本：V1.0</span>
+                <span class="record-meta-text">第一作者 · 伯泰克</span>
+                <span class="record-meta-text record-number">登记号：2025SR1563801</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2025-08</div>
-            <div class="record-text">软著-基于Android平台的车载计时系统[简称：CarTimer]V1.0 2025SR1563801（第一作者） 登记号：2025SR1633062</div>
+            <div class="record-content">
+              <div class="record-title">基于Android平台的车载计时系统</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">简称：CarTimer</span>
+                <span class="record-meta-text">版本：V1.0</span>
+                <span class="record-meta-text">第一作者 · 伯泰克</span>
+                <span class="record-meta-text record-number">登记号：2025SR1633062</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2025-06</div>
-            <div class="record-text">软著-基于Python的服务器运维管理与恢复工具软件[简称:数据处理工具]1.0 （第一作者）登记号：2025SR1057226</div>
+            <div class="record-content">
+              <div class="record-title">基于Python的服务器运维管理与恢复工具软件</div>
+              <div class="record-meta">
+                <span class="record-badge">软件著作权</span>
+                <span class="record-meta-text">简称：数据处理工具</span>
+                <span class="record-meta-text">版本：1.0</span>
+                <span class="record-meta-text">第一作者 · 伯泰克</span>
+                <span class="record-meta-text record-number">登记号：2025SR1057226</span>
+              </div>
+            </div>
           </li>
           <li class="record-item">
             <div class="record-date">2025-04</div>
