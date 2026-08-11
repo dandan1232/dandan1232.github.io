@@ -548,6 +548,23 @@ pre code {
   height: auto;
 }
 
+.sequence-diagram .mermaid svg text,
+.sequence-diagram .mermaid svg tspan,
+.sequence-diagram .mermaid svg .nodeLabel,
+.sequence-diagram .mermaid svg .edgeLabel,
+.sequence-diagram .mermaid svg .label,
+.sequence-diagram .mermaid svg foreignObject div {
+  color: #f6efe7 !important;
+  fill: #f6efe7 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.sequence-diagram .mermaid svg .edgeLabel,
+.sequence-diagram .mermaid svg .edgeLabel p {
+  background-color: #1b1713 !important;
+}
+
 .sequence-diagram-hint {
   margin: 0;
   padding: 8px 14px 10px;

@@ -120,14 +120,37 @@ async function initMermaidDiagrams() {
       securityLevel: "strict",
       theme: "base",
       fontFamily: 'Urbanist, "Noto Sans SC", sans-serif',
+      themeCSS: `
+        .nodeLabel,
+        .edgeLabel,
+        .label,
+        .cluster-label,
+        .messageText,
+        .actor,
+        .noteText,
+        foreignObject div,
+        text,
+        tspan {
+          color: #f6efe7 !important;
+          fill: #f6efe7 !important;
+          opacity: 1 !important;
+        }
+        .edgeLabel,
+        .edgeLabel p {
+          background-color: #1b1713 !important;
+        }
+      `,
       themeVariables: {
         background: "#1b1713",
+        textColor: "#f6efe7",
         primaryColor: "#2f2721",
         primaryTextColor: "#f6efe7",
         primaryBorderColor: "#ff9838",
         lineColor: "#c4b6a7",
         secondaryColor: "#3a2e25",
+        secondaryTextColor: "#f6efe7",
         tertiaryColor: "#221d18",
+        tertiaryTextColor: "#f6efe7",
         actorBkg: "#2a231d",
         actorBorder: "#ff9838",
         actorTextColor: "#f6efe7",
