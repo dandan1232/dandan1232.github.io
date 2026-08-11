@@ -12,6 +12,7 @@ const NOTES_GROUPS = [
     id: "ai",
     label: "AI 应用",
     items: [
+      { title: "LearnSphere AI 主动回忆学习平台", href: "./learnsphere-ai-active-recall.html" },
       { title: "大模型应用开发基础", href: "./llm-app-dev-fundamentals.html" },
       { title: "RAG 从 0 到 1 落地笔记", href: "./rag-from-0-to-1-practice.html" },
       { title: "FastGPT 工作流标识全链路透传", href: "./fastgpt-workflow-identifiers.html" },

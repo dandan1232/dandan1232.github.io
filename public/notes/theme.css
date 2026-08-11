@@ -855,6 +855,10 @@ body.notes-detail.sidebar-open .notes-sidebar-overlay {
 }
 
 @media (max-width: 640px) {
+  body.notes-detail .topbar {
+    padding-left: 72px;
+  }
+
   .card,
   .article {
     -webkit-backdrop-filter: blur(7px) saturate(0.88);
