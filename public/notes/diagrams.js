@@ -118,6 +118,7 @@ async function initMermaidDiagrams() {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: "strict",
+      htmlLabels: false,
       theme: "base",
       fontFamily: 'Urbanist, "Noto Sans SC", sans-serif',
       themeCSS: `
@@ -174,6 +175,9 @@ async function initMermaidDiagrams() {
         messageMargin: 34,
         diagramMarginX: 24,
         diagramMarginY: 18,
+      },
+      flowchart: {
+        useMaxWidth: false,
       },
     });
 
