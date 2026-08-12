@@ -6,6 +6,7 @@ import { sceneWeights, sceneWeightsInOut } from "../../../animations/scenes";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { face } from "./face";
 import { hair } from "./hair";
+import { outfit } from "./outfit";
 import { leftDesktop as avatarLeftDesktop } from "./left-desktop";
 import matcapVertexShader from "../../shaders/avatar-matcap/vertex.glsl";
 import matcapFragmentShader from "../../shaders/avatar-matcap/fragment.glsl";
@@ -33,6 +34,7 @@ const init = () => {
   setupMesh();
   if (mesh) {
     hair.init(mesh, uniforms);
+    outfit.init(mesh, uniforms);
   }
   animations.init();
   face.init();
@@ -171,6 +173,7 @@ const destroy = () => {
   //mesh = null;
   //transform.clear();
   hair.destroy();
+  outfit.destroy();
   face.destroy();
   gsap.ticker.remove(tick);
 };

@@ -8,6 +8,7 @@ import {
   uniforms as hologramUniforms,
 } from "./hologram-material";
 import { hair } from "./hair";
+import { outfit } from "./outfit";
 import gsap from "gsap";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { sceneWeights } from "../../../animations/scenes";
@@ -88,6 +89,7 @@ const setupMesh = () => {
   avatar.transform.add(transform);
   transform.add(mesh);
   hair.initHologram(mesh, getHologramAccessoryMaterial());
+  outfit.initHologram(mesh, getHologramAccessoryMaterial());
 };
 
 const tick = () => {

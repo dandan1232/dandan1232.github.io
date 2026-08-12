@@ -5,8 +5,8 @@ import { createAccessoryMaterial, type SharedAvatarUniforms } from "./accessory-
 
 import type { Material, Object3D, ShaderMaterial } from "three";
 
-const HAIR_COLOR = 0x8e6b58;
-const HAIR_TIE_COLOR = 0xFFA500;
+const HAIR_COLOR = 0x704638;
+const HAIR_TIE_COLOR = 0xffc95f;
 
 type HairInstance = {
   root: Group;
@@ -81,14 +81,14 @@ const addHairCap = (parent: Group, material: ShaderMaterial) => {
 const addBangs = (parent: Group, material: ShaderMaterial) => {
   const bangGeometry = rememberGeometry(new SphereGeometry(1, 20, 12));
   const bangs = [
-    { x: -0.31, y: 0.47, rotation: -0.12, scale: [0.3, 0.2, 0.075] },
-    { x: 0, y: 0.45, rotation: 0, scale: [0.25, 0.19, 0.08] },
-    { x: 0.31, y: 0.47, rotation: 0.12, scale: [0.3, 0.2, 0.075] },
+    { x: -0.29, y: 0.45, rotation: -0.12, scale: [0.27, 0.18, 0.065] },
+    { x: 0, y: 0.43, rotation: 0, scale: [0.23, 0.17, 0.07] },
+    { x: 0.29, y: 0.45, rotation: 0.12, scale: [0.27, 0.18, 0.065] },
   ] as const;
 
   bangs.forEach((bang, index) => {
     const mesh = addMesh(parent, `hair-bang-${index + 1}`, bangGeometry, material);
-    mesh.position.set(bang.x, bang.y, 0.493);
+    mesh.position.set(bang.x, bang.y, 0.475);
     mesh.rotation.z = bang.rotation;
     mesh.scale.set(bang.scale[0], bang.scale[1], bang.scale[2]);
   });
@@ -108,11 +108,11 @@ const addFaceFramingLocks = (parent: Group, material: ShaderMaterial) => {
       parent,
       side < 0 ? "hair-face-lock-left" : "hair-face-lock-right",
       [
-        new Vector3(side * 0.51, 0.65, 0.28),
-        new Vector3(side * 0.59, 0.2, 0.39),
-        new Vector3(side * 0.55, -0.26, 0.32),
+        new Vector3(side * 0.49, 0.61, 0.27),
+        new Vector3(side * 0.55, 0.18, 0.37),
+        new Vector3(side * 0.51, -0.2, 0.31),
       ],
-      0.065,
+      0.052,
       material,
     );
   });
@@ -121,7 +121,7 @@ const addFaceFramingLocks = (parent: Group, material: ShaderMaterial) => {
 const addPonytail = (parent: Group, side: -1 | 1, hairMaterial: ShaderMaterial, tieMaterial: ShaderMaterial) => {
   const pivot = new Group();
   pivot.name = side < 0 ? "hair-ponytail-left" : "hair-ponytail-right";
-  pivot.position.set(side * 0.63, 0.35, -0.45);
+  pivot.position.set(side * 0.59, 0.34, -0.39);
   parent.add(pivot);
 
   createTube(
@@ -129,32 +129,27 @@ const addPonytail = (parent: Group, side: -1 | 1, hairMaterial: ShaderMaterial, 
     `${pivot.name}-main`,
     [
       new Vector3(0, 0, 0),
-      new Vector3(side * 0.15, -0.18, -0.06),
-      new Vector3(side * 0.21, -0.58, -0.09),
-      new Vector3(side * 0.14, -1.03, -0.01),
+      new Vector3(side * 0.12, -0.17, -0.05),
+      new Vector3(side * 0.17, -0.52, -0.08),
+      new Vector3(side * 0.1, -0.88, -0.01),
     ],
-    0.13,
+    0.105,
     hairMaterial,
   );
 
   const tip = addMesh(pivot, `${pivot.name}-tip`, rememberGeometry(new SphereGeometry(1, 14, 10)), hairMaterial);
-  tip.position.set(side * 0.14, -1.03, -0.01);
-  tip.scale.set(0.13, 0.17, 0.13);
+  tip.position.set(side * 0.1, -0.88, -0.01);
+  tip.scale.set(0.105, 0.145, 0.105);
 
-  const tie = addMesh(
-    pivot,
-    `${pivot.name}-tie`,
-    rememberGeometry(new TorusGeometry(0.105, 0.033, 8, 20)),
-    tieMaterial,
-  );
+  const tie = addMesh(pivot, `${pivot.name}-tie`, rememberGeometry(new TorusGeometry(0.09, 0.028, 8, 20)), tieMaterial);
   tie.position.z = 0.035;
 
   const bowGeometry = rememberGeometry(new SphereGeometry(1, 12, 8));
   ([-1, 1] as const).forEach((direction) => {
     const bow = addMesh(pivot, `${pivot.name}-bow-${direction < 0 ? "left" : "right"}`, bowGeometry, tieMaterial);
-    bow.position.set(direction * 0.125, 0.01, 0.04);
+    bow.position.set(direction * 0.105, 0.01, 0.04);
     bow.rotation.z = direction * 0.28;
-    bow.scale.set(0.105, 0.062, 0.045);
+    bow.scale.set(0.09, 0.055, 0.04);
   });
 
   return pivot;
@@ -171,12 +166,7 @@ const tick = () => {
   });
 };
 
-const createHair = (
-  avatarMesh: Object3D,
-  name: string,
-  hairMaterial: ShaderMaterial,
-  tieMaterial: ShaderMaterial,
-) => {
+const createHair = (avatarMesh: Object3D, name: string, hairMaterial: ShaderMaterial, tieMaterial: ShaderMaterial) => {
   const headBone = avatarMesh.getObjectByName("headBone");
   if (!headBone) {
     console.warn(`${name} could not find headBone`);
@@ -222,12 +212,7 @@ const init = (avatarMesh: Object3D, sharedUniforms: SharedAvatarUniforms) => {
 
 const initHologram = (avatarMesh: Object3D, hologramMaterial: ShaderMaterial) => {
   if (hologramHair) return;
-  hologramHair = createHair(
-    avatarMesh,
-    "avatar-hair-hologram",
-    hologramMaterial,
-    hologramMaterial,
-  );
+  hologramHair = createHair(avatarMesh, "avatar-hair-hologram", hologramMaterial, hologramMaterial);
 };
 
 const destroy = () => {
