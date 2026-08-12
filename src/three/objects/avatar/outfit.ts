@@ -9,6 +9,7 @@ const DRESS_HIGHLIGHT = 0xffb2c7;
 
 type OutfitInstance = {
   root: Group;
+  skirt: Mesh;
 };
 
 let solidOutfit: OutfitInstance | null = null;
@@ -43,6 +44,7 @@ const addSkirt = (root: Group, dressMaterial: ShaderMaterial) => {
   ];
   const skirt = addMesh(root, "avatar-skirt", rememberGeometry(new LatheGeometry(skirtProfile, 24)), dressMaterial);
   skirt.scale.z = 0.82;
+  return skirt;
 };
 
 const createOutfit = (avatarMesh: Object3D, name: string, dressMaterial: ShaderMaterial) => {
@@ -54,10 +56,10 @@ const createOutfit = (avatarMesh: Object3D, name: string, dressMaterial: ShaderM
 
   const root = new Group();
   root.name = name;
-  addSkirt(root, dressMaterial);
+  const skirt = addSkirt(root, dressMaterial);
   hipsBone.add(root);
 
-  return { root };
+  return { root, skirt };
 };
 
 const init = (avatarMesh: Object3D, sharedUniforms: SharedAvatarUniforms) => {
@@ -79,6 +81,17 @@ const initHologram = (avatarMesh: Object3D, hologramMaterial: ShaderMaterial) =>
   hologramOutfit = createOutfit(avatarMesh, "avatar-outfit-hologram", hologramMaterial);
 };
 
+const update = (standingProgress: number) => {
+  if (!solidOutfit) return;
+
+  // The desk chair surrounds the hips in the intro pose. Keep the rigid skirt
+  // folded away until the chair has rotated clear and the avatar is standing.
+  const reveal = Math.max(0, Math.min(1, (standingProgress - 0.45) / 0.4));
+  const easedReveal = reveal * reveal * (3 - 2 * reveal);
+  solidOutfit.skirt.visible = easedReveal > 0.001;
+  solidOutfit.skirt.scale.set(easedReveal, easedReveal, 0.82 * easedReveal);
+};
+
 const destroy = () => {
   [solidOutfit, hologramOutfit].forEach((instance) => {
     instance?.root.removeFromParent();
@@ -92,4 +105,4 @@ const destroy = () => {
   hologramOutfit = null;
 };
 
-export const outfit = { init, initHologram, destroy };
+export const outfit = { init, initHologram, update, destroy };

@@ -144,6 +144,7 @@ const tick = () => {
   animations.update();
 
   const isContact = sceneWeights.contact > 0.001;
+  outfit.update(isContact ? 1 : tIdleIntensity.value);
 
   if (isContact) {
     transform.position.copy(contactPosition);
