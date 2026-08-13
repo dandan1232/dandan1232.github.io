@@ -30,7 +30,7 @@ const blinkFrame = { value: 0 };
 const uniforms = { uFrame: { value: 0 } };
 
 const sceneFrames: Record<"intro" | "contact", keyof typeof FRAME_INDEXES> = {
-  intro: "default-0",
+  intro: "proud-0",
   contact: "sleeping",
 };
 
@@ -77,7 +77,7 @@ const canBlink = (): boolean => {
       return true;
     }
   } else {
-    if (sceneFrames.intro.startsWith("default")) {
+    if (sceneFrames.intro.startsWith("default") || sceneFrames.intro.startsWith("proud")) {
       return true;
     }
   }
@@ -98,7 +98,7 @@ const wave = () => {
 
   const RESET_AFTER = 3;
   tl.set(sceneFrames, { intro: "proud-0" }, 0);
-  tl.set(sceneFrames, { intro: "default-0" }, RESET_AFTER);
+  tl.set(sceneFrames, { intro: "proud-0" }, RESET_AFTER);
 
   return tl;
 };
@@ -113,10 +113,10 @@ const tick = () => {
   } else {
     const isAbout = sceneWeights.about > 0.1;
     if (isAbout) {
-      uniforms.uFrame.value = FRAME_INDEXES["default-0"];
+      uniforms.uFrame.value = FRAME_INDEXES["proud-0"];
     } else {
-      const name = sceneFrames.intro.startsWith("default")
-        ? `default-${Math.round(blinkFrame.value)}`
+      const name = sceneFrames.intro.startsWith("default") || sceneFrames.intro.startsWith("proud")
+        ? `${sceneFrames.intro.split("-")[0]}-${Math.round(blinkFrame.value)}`
         : sceneFrames.intro;
       uniforms.uFrame.value = FRAME_INDEXES[name as keyof typeof FRAME_INDEXES];
     }

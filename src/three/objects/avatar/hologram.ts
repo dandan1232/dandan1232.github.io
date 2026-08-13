@@ -17,7 +17,9 @@ import { aboutProgress } from "../../../animations/transitions/about";
 
 import type { Material, BufferGeometry, Object3D, Skeleton } from "three";
 
-const GEOMETRY_NAMES: string[] = ["black", "gray", "skin", "white", "head", "brain"];
+// The original `black` mesh is a pair of trousers. Bare animated legs are
+// supplied by the procedural outfit so the scan state matches the dress.
+const GEOMETRY_NAMES: string[] = ["gray", "skin", "white", "head", "brain"];
 
 let mesh: SkinnedMesh | null = null;
 let material: Material | null = null;

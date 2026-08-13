@@ -5,8 +5,8 @@ import { createAccessoryMaterial, type SharedAvatarUniforms } from "./accessory-
 
 import type { Material, Object3D, ShaderMaterial } from "three";
 
-const HAIR_COLOR = 0x704638;
-const HAIR_TIE_COLOR = 0xffc95f;
+const HAIR_COLOR = 0x56352d;
+const HAIR_TIE_COLOR = 0xf05f8b;
 
 type HairInstance = {
   root: Group;
@@ -94,6 +94,16 @@ const addBangs = (parent: Group, material: ShaderMaterial) => {
   });
 };
 
+const addAhoge = (parent: Group, material: ShaderMaterial) => {
+  createTube(
+    parent,
+    "hair-ahoge",
+    [new Vector3(0, 0.98, -0.08), new Vector3(-0.03, 1.12, -0.02), new Vector3(0.04, 1.19, 0.02)],
+    0.025,
+    material,
+  );
+};
+
 const createTube = (parent: Group, name: string, points: Vector3[], radius: number, material: ShaderMaterial) =>
   addMesh(
     parent,
@@ -121,7 +131,7 @@ const addFaceFramingLocks = (parent: Group, material: ShaderMaterial) => {
 const addPonytail = (parent: Group, side: -1 | 1, hairMaterial: ShaderMaterial, tieMaterial: ShaderMaterial) => {
   const pivot = new Group();
   pivot.name = side < 0 ? "hair-ponytail-left" : "hair-ponytail-right";
-  pivot.position.set(side * 0.59, 0.34, -0.39);
+  pivot.position.set(side * 0.63, 0.34, -0.14);
   parent.add(pivot);
 
   createTube(
@@ -129,27 +139,30 @@ const addPonytail = (parent: Group, side: -1 | 1, hairMaterial: ShaderMaterial, 
     `${pivot.name}-main`,
     [
       new Vector3(0, 0, 0),
-      new Vector3(side * 0.12, -0.17, -0.05),
-      new Vector3(side * 0.17, -0.52, -0.08),
-      new Vector3(side * 0.1, -0.88, -0.01),
+      new Vector3(side * 0.2, -0.05, -0.02),
+      new Vector3(side * 0.34, -0.27, 0),
+      new Vector3(side * 0.36, -0.55, 0.05),
+      new Vector3(side * 0.25, -0.82, 0.12),
+      new Vector3(side * 0.08, -0.94, 0.18),
     ],
-    0.105,
+    0.135,
     hairMaterial,
   );
 
   const tip = addMesh(pivot, `${pivot.name}-tip`, rememberGeometry(new SphereGeometry(1, 14, 10)), hairMaterial);
-  tip.position.set(side * 0.1, -0.88, -0.01);
-  tip.scale.set(0.105, 0.145, 0.105);
+  tip.position.set(side * 0.08, -0.94, 0.18);
+  tip.rotation.z = side * 0.35;
+  tip.scale.set(0.135, 0.18, 0.13);
 
-  const tie = addMesh(pivot, `${pivot.name}-tie`, rememberGeometry(new TorusGeometry(0.09, 0.028, 8, 20)), tieMaterial);
+  const tie = addMesh(pivot, `${pivot.name}-tie`, rememberGeometry(new TorusGeometry(0.105, 0.035, 8, 20)), tieMaterial);
   tie.position.z = 0.035;
 
   const bowGeometry = rememberGeometry(new SphereGeometry(1, 12, 8));
   ([-1, 1] as const).forEach((direction) => {
     const bow = addMesh(pivot, `${pivot.name}-bow-${direction < 0 ? "left" : "right"}`, bowGeometry, tieMaterial);
-    bow.position.set(direction * 0.105, 0.01, 0.04);
+    bow.position.set(direction * 0.11, 0.01, 0.04);
     bow.rotation.z = direction * 0.28;
-    bow.scale.set(0.09, 0.055, 0.04);
+    bow.scale.set(0.075, 0.048, 0.035);
   });
 
   return pivot;
@@ -178,6 +191,7 @@ const createHair = (avatarMesh: Object3D, name: string, hairMaterial: ShaderMate
 
   addHairCap(root, hairMaterial);
   addBangs(root, hairMaterial);
+  addAhoge(root, hairMaterial);
   addFaceFramingLocks(root, hairMaterial);
   const leftPonytail = addPonytail(root, -1, hairMaterial, tieMaterial);
   const rightPonytail = addPonytail(root, 1, hairMaterial, tieMaterial);
