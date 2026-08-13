@@ -7,8 +7,7 @@ import {
   getMaterial as getHologramMaterial,
   uniforms as hologramUniforms,
 } from "./hologram-material";
-import { hair } from "./hair";
-import { outfit } from "./outfit";
+import { character } from "./character";
 import gsap from "gsap";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { sceneWeights } from "../../../animations/scenes";
@@ -74,6 +73,7 @@ const setupGeometry = () => {
 const setupMesh = () => {
   if (mesh) return;
   material = getHologramMaterial();
+  material.visible = false;
   mesh = new SkinnedMesh(geometry!, material!);
   mesh.bind(skeleton!, new Matrix4());
   mesh.add(skeleton!.bones[0] as Object3D);
@@ -88,8 +88,7 @@ const setupMesh = () => {
 
   avatar.transform.add(transform);
   transform.add(mesh);
-  hair.initHologram(mesh, getHologramAccessoryMaterial());
-  outfit.initHologram(mesh, getHologramAccessoryMaterial());
+  character.initHologram(mesh, getHologramAccessoryMaterial());
 };
 
 const tick = () => {

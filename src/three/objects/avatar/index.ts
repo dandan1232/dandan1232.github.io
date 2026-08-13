@@ -5,8 +5,7 @@ import { animations } from "./animations";
 import { sceneWeights, sceneWeightsInOut } from "../../../animations/scenes";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { face } from "./face";
-import { hair } from "./hair";
-import { outfit } from "./outfit";
+import { character } from "./character";
 import { leftDesktop as avatarLeftDesktop } from "./left-desktop";
 import matcapVertexShader from "../../shaders/avatar-matcap/vertex.glsl";
 import matcapFragmentShader from "../../shaders/avatar-matcap/fragment.glsl";
@@ -27,14 +26,13 @@ const waypointsPosition = new Vector3();
 const waypointsRotation = new Euler();
 const transform = new Group();
 const uniforms = { uProgress: { value: 0 }, uAmbientStrength: { value: 0 } };
-const contactPosition = new Vector3(0, -13, 0);
+const contactPosition = new Vector3(0, -13.25, 0);
 const contactRotation = new Euler(0, -Math.PI, 0);
 
 const init = () => {
   setupMesh();
   if (mesh) {
-    hair.init(mesh, uniforms);
-    outfit.init(mesh, uniforms);
+    character.init(mesh, uniforms);
   }
   animations.init();
   face.init();
@@ -110,6 +108,7 @@ const setupMesh = () => {
 
   mesh.traverse((child) => {
     if (child instanceof Mesh) {
+      child.visible = false;
       const mat = getMaterial(child.name);
       if (!mat) return;
       child.material = mat;
@@ -144,7 +143,7 @@ const tick = () => {
   animations.update();
 
   const isContact = sceneWeights.contact > 0.001;
-  outfit.update(isContact ? 1 : tIdleIntensity.value);
+  character.update(isContact ? 1 : tIdleIntensity.value);
 
   if (isContact) {
     transform.position.copy(contactPosition);
@@ -173,8 +172,7 @@ const tick = () => {
 const destroy = () => {
   //mesh = null;
   //transform.clear();
-  hair.destroy();
-  outfit.destroy();
+  character.destroy();
   face.destroy();
   gsap.ticker.remove(tick);
 };
