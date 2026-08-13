@@ -1,6 +1,6 @@
 import { avatar } from ".";
 import { avatarHologram } from "./hologram";
-import { AnimationAction, AnimationMixer, LoopOnce, LoopPingPong } from "three";
+import { AnimationAction, AnimationClip, AnimationMixer, LoopOnce, LoopPingPong } from "three";
 import gsap from "gsap";
 import { resources } from "../../../utils/resources";
 import { sceneWeights } from "../../../animations/scenes";
@@ -10,7 +10,7 @@ import { playSound } from "../../../features/sounds/utils/sounds";
 import { isFeatureEnabled } from "../../../utils/features";
 import { stopSnoreRepetition } from "../../../features/sounds/core/contact";
 
-import type { AnimationClip, Object3D } from "three";
+import type { KeyframeTrack, Object3D } from "three";
 
 let mixer: AnimationMixer;
 let activeAction: string | null = null;
@@ -37,6 +37,26 @@ const getActionFromMesh = (name: string) => {
   const action = resource.animations.find((animation: AnimationClip) => animation.name === name);
   if (!action) throw new Error("[AvatarAnimations] Action not found");
   return action;
+};
+
+const getContactWaveClip = () => {
+  const standingClip = getActionFromMesh("t-idle");
+  const waveClip = getActionFromMesh("wave");
+  const rightArmBones = [
+    "rightShoulder",
+    "rightarmBone",
+    "rightForearmBone",
+    "rightHandBone",
+    "bone-right-hand",
+    "rightHandIndex2Bone",
+  ];
+  const isRightArmTrack = (trackName: string) =>
+    rightArmBones.some((boneName) => trackName.startsWith(`${boneName}.`));
+
+  return new AnimationClip("contact-wave", -1, [
+    ...standingClip.tracks.filter((track: KeyframeTrack) => !isRightArmTrack(track.name)),
+    ...waveClip.tracks.filter((track: KeyframeTrack) => isRightArmTrack(track.name)),
+  ]);
 };
 
 const setupActions = () => {
@@ -74,8 +94,10 @@ const setupActions = () => {
   actions.set("wake-up", wake);
 
   //contact-idle
-  const contactIdle = mixer.clipAction(getActionFromMesh("contact-idle"));
+  const contactIdle = mixer.clipAction(getContactWaveClip());
   contactIdle.loop = LoopPingPong;
+  contactIdle.weight = 0;
+  contactIdle.play();
   actions.set("contact-idle", contactIdle);
 
   //wave
@@ -199,9 +221,9 @@ const updateContact = () => {
   setWeight("desktop-idle", 0);
   setWeight("left-desktop", 0);
   setWeight("t-idle", 0);
-  setWeight("sleeping", 1);
+  setWeight("sleeping", 0);
   setWeight("contact-idle", 1);
-  setWeight("wake-up", 1);
+  setWeight("wake-up", 0);
   setWeight("wave", 0);
 };
 

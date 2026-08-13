@@ -84,7 +84,8 @@ const assignMatcap = (child: Mesh): boolean => {
     tex = resources.items["matcap-white"];
     tint = 0xff9fba;
   } else if (child.name === "skin") {
-    tex = resources.items["matcap-skin"];
+    tex = resources.items["matcap-white"];
+    tint = 0xffe6dc;
   } else if (child.name === "white") {
     tex = resources.items["matcap-white"];
   }

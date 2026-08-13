@@ -41,6 +41,7 @@ type CharacterMaterials = {
 type CharacterInstance = {
   roots: Group[];
   skirt: Group;
+  seatedSkirt: Group | null;
   leftPonytail: Group;
   rightPonytail: Group;
 };
@@ -114,7 +115,7 @@ const addHead = (headBone: Object3D, name: string, m: CharacterMaterials) => {
   root.name = `${name}-head`;
   headBone.add(root);
 
-  addEllipsoid(root, `${name}-hair-back`, [0, 0.34, -0.12], [0.79, 0.73, 0.7], m.hair);
+  addEllipsoid(root, `${name}-hair-back`, [0, 0.34, -0.08], [0.8, 0.74, 0.74], m.hair);
   addEllipsoid(root, `${name}-face`, [0, 0.27, 0.05], [0.68, 0.62, 0.6], m.skin, 25);
 
   ([-1, 1] as const).forEach((side) => {
@@ -131,17 +132,25 @@ const addHead = (headBone: Object3D, name: string, m: CharacterMaterials) => {
   ] as const;
   bangs.forEach(([x, y, rotation, sx, sy], index) => {
     const bang = addMesh(root, `${name}-bang-${index}`, bangGeometry, m.hair, 27);
-    bang.position.set(x, y, 0.57);
+    bang.position.set(x, y, 0.6);
     bang.rotation.z = rotation;
-    bang.scale.set(sx, sy, 0.085);
+    bang.scale.set(sx, sy, 0.11);
   });
 
   ([-1, 1] as const).forEach((side) => {
+    addEllipsoid(
+      root,
+      `${name}-hair-bridge-${side}`,
+      [side * 0.55, 0.33, 0.16],
+      [0.23, 0.43, 0.34],
+      m.hair,
+      26,
+    );
     const lock = addEllipsoid(
       root,
       `${name}-face-lock-${side}`,
-      [side * 0.56, 0.16, 0.48],
-      [0.11, 0.34, 0.09],
+      [side * 0.56, 0.16, 0.54],
+      [0.12, 0.35, 0.12],
       m.hair,
       27,
     );
@@ -242,12 +251,12 @@ const addHead = (headBone: Object3D, name: string, m: CharacterMaterials) => {
     ponytail.name = `${name}-ponytail-${side < 0 ? "left" : "right"}`;
     root.add(ponytail);
 
-    addEllipsoid(ponytail, `${ponytail.name}-tie`, [side * 0.69, 0.35, 0], [0.13, 0.13, 0.11], m.dress);
+    addEllipsoid(ponytail, `${ponytail.name}-tie`, [side * 0.67, 0.35, 0.02], [0.15, 0.15, 0.14], m.dress);
     const upper = addEllipsoid(
       ponytail,
       `${ponytail.name}-upper`,
-      [side * 0.82, 0.12, -0.06],
-      [0.24, 0.36, 0.21],
+      [side * 0.79, 0.12, -0.04],
+      [0.25, 0.37, 0.23],
       m.hair,
     );
     upper.rotation.z = side * -0.23;
@@ -327,6 +336,41 @@ const addSkirt = (hipsBone: Object3D, name: string, m: CharacterMaterials) => {
   return root;
 };
 
+const addSeatedSkirt = (spineBone: Object3D, name: string, m: CharacterMaterials) => {
+  const root = new Group();
+  root.name = `${name}-seated-skirt`;
+  root.position.set(0, -0.38, 0.01);
+  spineBone.add(root);
+
+  const skirtProfile = [
+    new Vector2(0.4, 0),
+    new Vector2(0.48, -0.14),
+    new Vector2(0.55, -0.36),
+    new Vector2(0.58, -0.56),
+    new Vector2(0.55, -0.62),
+    new Vector2(0, -0.62),
+  ];
+  const skirt = addMesh(
+    root,
+    `${name}-seated-skirt-main`,
+    rememberGeometry(new LatheGeometry(skirtProfile, 36)),
+    m.dress,
+  );
+  skirt.scale.z = 0.58;
+
+  const hem = addEllipsoid(
+    root,
+    `${name}-seated-skirt-hem`,
+    [0, -0.58, 0],
+    [0.56, 0.06, 0.33],
+    m.dressLight,
+    25,
+  );
+  hem.scale.z = 0.58;
+  addEllipsoid(root, `${name}-seated-belt`, [0, 0, 0], [0.42, 0.035, 0.25], m.dress, 26);
+  return root;
+};
+
 const addLimb = (
   bone: Object3D,
   name: string,
@@ -361,36 +405,33 @@ const addLeg = (
   name: string,
   m: CharacterMaterials,
 ) => {
-  const upper = addLimb(upperBone, `${name}-${side}-upper-leg`, 0.17, 0.51, m.skin);
-  const lower = addLimb(lowerBone, `${name}-${side}-lower-leg`, 0.155, 0.62, m.skin);
-  addEllipsoid(lower, `${name}-${side}-knee`, [0, 0.015, 0], [0.177, 0.177, 0.177], m.skin);
+  const upper = addLimb(upperBone, `${name}-${side}-upper-leg`, 0.18, 0.56, m.skin);
+  const lower = addLimb(lowerBone, `${name}-${side}-lower-leg`, 0.165, 0.67, m.skin);
+  addEllipsoid(lower, `${name}-${side}-knee`, [0, 0.015, 0], [0.19, 0.19, 0.19], m.skin);
 
   const sock = addMesh(
     lower,
     `${name}-${side}-sock`,
-    rememberGeometry(new CapsuleGeometry(0.175, 0.19, 8, 18)),
+    rememberGeometry(new CapsuleGeometry(0.18, 0.27, 8, 18)),
     m.sock,
   );
-  sock.position.y = 0.73;
-  addEllipsoid(
-    lower,
-    `${name}-${side}-sock-band`,
-    [0, 0.58, 0],
-    [0.178, 0.042, 0.178],
-    m.dressLight,
-    26,
-  );
+  sock.position.y = 0.74;
+  [0.54, 0.61].forEach((y, stripeIndex) => {
+    addEllipsoid(
+      lower,
+      `${name}-${side}-sock-stripe-${stripeIndex}`,
+      [0, y, 0],
+      [0.183, 0.025, 0.183],
+      m.dressLight,
+      26,
+    );
+  });
 
   const foot = new Group();
   foot.name = `${name}-${side}-shoe`;
-  const shoe = addMesh(
-    foot,
-    `${name}-${side}-shoe-upper`,
-    rememberGeometry(new CapsuleGeometry(0.22, 0.27, 10, 22)),
-    m.shoe,
-  );
-  shoe.position.y = 0.27;
-  shoe.scale.z = 1.08;
+  addEllipsoid(foot, `${name}-${side}-ankle-sock`, [0, 0.03, 0], [0.19, 0.2, 0.185], m.sock);
+  const shoe = addEllipsoid(foot, `${name}-${side}-shoe-upper`, [0, 0.27, 0], [0.24, 0.34, 0.23], m.shoe);
+  shoe.rotation.x = -0.08;
   const toe = addEllipsoid(foot, `${name}-${side}-shoe-toe`, [0, 0.45, 0.02], [0.23, 0.2, 0.235], m.sole, 26);
   toe.rotation.x = -0.18;
   addEllipsoid(foot, `${name}-${side}-shoe-sole`, [0, 0.27, -0.13], [0.235, 0.34, 0.075], m.sole, 25);
@@ -406,6 +447,27 @@ const addLeg = (
   });
   footBone.add(foot);
   return [upper, lower, foot];
+};
+
+const addHologramLegs = (hipsBone: Object3D, name: string, m: CharacterMaterials) => {
+  const root = new Group();
+  root.name = `${name}-symmetric-legs`;
+  hipsBone.add(root);
+
+  ([-1, 1] as const).forEach((side) => {
+    const leg = new Group();
+    leg.name = `${name}-${side < 0 ? "left" : "right"}-continuous-leg`;
+    leg.position.set(side * 0.38, 0.78, 0);
+    root.add(leg);
+
+    addCapsule(leg, `${leg.name}-skin`, 0.165, 0.58, m.skin);
+    addEllipsoid(leg, `${leg.name}-sock`, [0, 0.69, 0], [0.175, 0.25, 0.17], m.sock);
+    const shoe = addEllipsoid(leg, `${leg.name}-shoe`, [0, 0.92, 0.08], [0.235, 0.29, 0.25], m.shoe);
+    shoe.rotation.x = -0.12;
+    addEllipsoid(leg, `${leg.name}-toe`, [0, 1.06, 0.16], [0.225, 0.15, 0.22], m.sole, 26);
+  });
+
+  return root;
 };
 
 const getRequiredBones = (avatarMesh: Object3D) => {
@@ -431,7 +493,12 @@ const getRequiredBones = (avatarMesh: Object3D) => {
   return bones as Record<(typeof names)[number], Object3D>;
 };
 
-const createCharacter = (avatarMesh: Object3D, name: string, m: CharacterMaterials) => {
+const createCharacter = (
+  avatarMesh: Object3D,
+  name: string,
+  m: CharacterMaterials,
+  mode: "solid" | "hologram",
+) => {
   const bones = getRequiredBones(avatarMesh);
   if (!bones) {
     console.warn(`${name} could not find the required character bones`);
@@ -442,16 +509,22 @@ const createCharacter = (avatarMesh: Object3D, name: string, m: CharacterMateria
   const roots = [head.root, addTorso(bones.spine2Bone, name, m)];
   const skirt = addSkirt(bones.hipsBone, name, m);
   roots.push(skirt);
+  const seatedSkirt = mode === "solid" ? addSeatedSkirt(bones.spine2Bone, name, m) : null;
+  if (seatedSkirt) roots.push(seatedSkirt);
   roots.push(addArm(bones.leftArmBone, `${name}-left`, m));
   roots.push(addArm(bones.rightarmBone, `${name}-right`, m));
-  roots.push(...addLeg(bones.leftUpLegBone, bones.leftLegBone, bones.leftFootBone, "left", name, m));
-  roots.push(...addLeg(bones.rightUpLegBone, bones.rightLegBone, bones.rightFootBone, "right", name, m));
+  if (mode === "hologram") {
+    roots.push(addHologramLegs(bones.hipsBone, name, m));
+  } else {
+    roots.push(...addLeg(bones.leftUpLegBone, bones.leftLegBone, bones.leftFootBone, "left", name, m));
+    roots.push(...addLeg(bones.rightUpLegBone, bones.rightLegBone, bones.rightFootBone, "right", name, m));
+  }
 
   if (!isTicking) {
     gsap.ticker.add(tick);
     isTicking = true;
   }
-  return { roots, skirt, leftPonytail: head.leftPonytail, rightPonytail: head.rightPonytail };
+  return { roots, skirt, seatedSkirt, leftPonytail: head.leftPonytail, rightPonytail: head.rightPonytail };
 };
 
 const makeMaterial = (
@@ -471,8 +544,8 @@ const makeMaterial = (
 };
 
 const createSolidMaterials = (sharedUniforms: SharedAvatarUniforms): CharacterMaterials => ({
-  skin: makeMaterial(0xffffff, sharedUniforms, "matcap-skin"),
-  skinWarm: makeMaterial(0xffeee2, sharedUniforms, "matcap-skin"),
+  skin: makeMaterial(0xffeee7, sharedUniforms, "matcap-white", 0xfffaf6),
+  skinWarm: makeMaterial(0xffe3da, sharedUniforms, "matcap-white", 0xfff5ef),
   blush: makeMaterial(0xffa0a8, sharedUniforms),
   hair: makeMaterial(0x9b604d, sharedUniforms, "matcap-white", 0xc48770),
   hairSoft: makeMaterial(0x7d493b, sharedUniforms),
@@ -512,7 +585,7 @@ const createHologramMaterials = (material: ShaderMaterial): CharacterMaterials =
 
 const init = (avatarMesh: Object3D, sharedUniforms: SharedAvatarUniforms) => {
   if (solidCharacter) return;
-  solidCharacter = createCharacter(avatarMesh, "reference-girl", createSolidMaterials(sharedUniforms));
+  solidCharacter = createCharacter(avatarMesh, "reference-girl", createSolidMaterials(sharedUniforms), "solid");
 };
 
 const initHologram = (avatarMesh: Object3D, hologramMaterial: ShaderMaterial) => {
@@ -521,18 +594,23 @@ const initHologram = (avatarMesh: Object3D, hologramMaterial: ShaderMaterial) =>
     avatarMesh,
     "reference-girl-hologram",
     createHologramMaterials(hologramMaterial),
+    "hologram",
   );
 };
 
 const update = (standingProgress: number) => {
   if (!solidCharacter) return;
-  const reveal = Math.max(0, Math.min(1, (standingProgress - 0.48) / 0.32));
-  const eased = reveal * reveal * (3 - 2 * reveal);
-  const seated = 1 - eased;
-  solidCharacter.skirt.visible = true;
-  solidCharacter.skirt.position.set(0, -0.04 * seated, 0.1 * seated);
-  solidCharacter.skirt.rotation.x = -0.22 * seated;
-  solidCharacter.skirt.scale.set(1 + 0.08 * seated, 0.56 + 0.44 * eased, 1 + 0.28 * seated);
+  const skirtReveal = Math.max(0, Math.min(1, (standingProgress - 0.48) / 0.32));
+  const standingSkirt = skirtReveal * skirtReveal * (3 - 2 * skirtReveal);
+  solidCharacter.skirt.visible = standingSkirt > 0.002;
+  solidCharacter.skirt.position.set(0, 0, 0);
+  solidCharacter.skirt.rotation.x = 0;
+  solidCharacter.skirt.scale.set(standingSkirt, standingSkirt, 0.82 * standingSkirt);
+  if (solidCharacter.seatedSkirt) {
+    solidCharacter.seatedSkirt.visible = standingSkirt < 0.998;
+    const seatedScale = 1 - standingSkirt;
+    solidCharacter.seatedSkirt.scale.set(seatedScale, seatedScale, seatedScale);
+  }
 };
 
 function tick() {
