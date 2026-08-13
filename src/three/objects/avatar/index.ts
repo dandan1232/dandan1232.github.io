@@ -99,6 +99,26 @@ const assignMatcap = (child: Mesh): boolean => {
   return false;
 };
 
+const keepContinuousArms = (child: Mesh) => {
+  const geometry = child.geometry.clone();
+  const position = geometry.getAttribute("position");
+  const sourceIndex = geometry.getIndex();
+  if (!position || !sourceIndex) return;
+
+  const keptTriangles: number[] = [];
+  for (let index = 0; index < sourceIndex.count; index += 3) {
+    const a = sourceIndex.getX(index);
+    const b = sourceIndex.getX(index + 1);
+    const c = sourceIndex.getX(index + 2);
+    if (position.getY(a) > 4.4 && position.getY(b) > 4.4 && position.getY(c) > 4.4) {
+      keptTriangles.push(a, b, c);
+    }
+  }
+
+  geometry.setIndex(keptTriangles);
+  child.geometry = geometry;
+};
+
 const setupMesh = () => {
   if (mesh) return;
   const resource = resources.items["avatar-model"];
@@ -108,7 +128,8 @@ const setupMesh = () => {
 
   mesh.traverse((child) => {
     if (child instanceof Mesh) {
-      child.visible = false;
+      child.visible = child.name === "skin";
+      if (child.name === "skin") keepContinuousArms(child);
       const mat = getMaterial(child.name);
       if (!mat) return;
       child.material = mat;

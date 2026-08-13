@@ -9,14 +9,11 @@ import {
 } from "./hologram-material";
 import { character } from "./character";
 import gsap from "gsap";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { sceneWeights } from "../../../animations/scenes";
 import { avatar } from ".";
 import { aboutProgress } from "../../../animations/transitions/about";
 
 import type { Material, BufferGeometry, Object3D, Skeleton } from "three";
-
-const GEOMETRY_NAMES: string[] = ["black", "gray", "skin", "white", "head", "brain"];
 
 let mesh: SkinnedMesh | null = null;
 let material: Material | null = null;
@@ -45,18 +42,24 @@ const setupSkeleton = () => {
 const setupGeometry = () => {
   if (geometry) return;
   const resource = resources.items["avatar-model"];
-  const geometries: BufferGeometry[] = [];
+  const skin = resource.scene.children[0].getObjectByName("skin") as Mesh;
+  const armGeometry = skin.geometry.clone();
+  const sourcePosition = armGeometry.getAttribute("position");
+  const sourceIndex = armGeometry.getIndex();
+  if (!sourcePosition || !sourceIndex) return;
 
-  resource.scene.children[0].traverse((child: Object3D) => {
-    if (child instanceof Mesh && GEOMETRY_NAMES.includes(child.name)) {
-      const geometry = child.geometry.clone();
-      geometries.push(geometry);
+  const keptTriangles: number[] = [];
+  for (let index = 0; index < sourceIndex.count; index += 3) {
+    const a = sourceIndex.getX(index);
+    const b = sourceIndex.getX(index + 1);
+    const c = sourceIndex.getX(index + 2);
+    if (sourcePosition.getY(a) > 4.4 && sourcePosition.getY(b) > 4.4 && sourcePosition.getY(c) > 4.4) {
+      keptTriangles.push(a, b, c);
     }
-  });
+  }
 
-  //geometry = mergeGeometries(geometries).toNonIndexed();
-  geometry = mergeGeometries(geometries);
-  geometry.toNonIndexed();
+  armGeometry.setIndex(keptTriangles);
+  geometry = armGeometry.toNonIndexed();
 
   const vectors = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
 
@@ -73,7 +76,7 @@ const setupGeometry = () => {
 const setupMesh = () => {
   if (mesh) return;
   material = getHologramMaterial();
-  material.visible = false;
+  material.visible = true;
   mesh = new SkinnedMesh(geometry!, material!);
   mesh.bind(skeleton!, new Matrix4());
   mesh.add(skeleton!.bones[0] as Object3D);

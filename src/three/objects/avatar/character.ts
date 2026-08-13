@@ -7,7 +7,6 @@ import {
   Shape,
   ShapeGeometry,
   SphereGeometry,
-  TorusGeometry,
   TubeGeometry,
   CatmullRomCurve3,
   Vector2,
@@ -324,9 +323,7 @@ const addSkirt = (hipsBone: Object3D, name: string, m: CharacterMaterials) => {
   const hem = addMesh(root, `${name}-skirt-hem`, rememberGeometry(new LatheGeometry(hemProfile, 36)), m.dressLight, 25);
   hem.scale.z = 0.82;
 
-  const belt = addMesh(root, `${name}-belt`, rememberGeometry(new TorusGeometry(0.44, 0.035, 12, 36)), m.dressDark, 26);
-  belt.rotation.x = Math.PI / 2;
-  belt.scale.z = 0.82;
+  addEllipsoid(root, `${name}-belt`, [0, 0.025, 0], [0.46, 0.055, 0.31], m.dressDark, 26);
   return root;
 };
 
@@ -346,19 +343,14 @@ const addLimb = (
 
 const addArm = (
   upperBone: Object3D,
-  forearmBone: Object3D,
-  handBone: Object3D,
   name: string,
   m: CharacterMaterials,
 ) => {
-  const upper = addLimb(upperBone, `${name}-upper-arm`, 0.15, 0.37, m.skin);
-  addEllipsoid(upper, `${name}-puff-sleeve`, [0, 0.12, 0], [0.245, 0.255, 0.225], m.dress);
-  const forearm = addLimb(forearmBone, `${name}-forearm`, 0.135, 0.23, m.skin);
-  const hand = new Group();
-  hand.name = `${name}-hand`;
-  addEllipsoid(hand, `${name}-hand-mesh`, [0, 0.1, 0], [0.13, 0.18, 0.1], m.skin);
-  handBone.add(hand);
-  return [upper, forearm, hand];
+  const sleeve = new Group();
+  sleeve.name = `${name}-sleeve`;
+  upperBone.add(sleeve);
+  addEllipsoid(sleeve, `${name}-puff-sleeve`, [0, 0.12, 0], [0.245, 0.255, 0.225], m.dress);
+  return sleeve;
 };
 
 const addLeg = (
@@ -371,6 +363,7 @@ const addLeg = (
 ) => {
   const upper = addLimb(upperBone, `${name}-${side}-upper-leg`, 0.17, 0.51, m.skin);
   const lower = addLimb(lowerBone, `${name}-${side}-lower-leg`, 0.155, 0.62, m.skin);
+  addEllipsoid(lower, `${name}-${side}-knee`, [0, 0.015, 0], [0.177, 0.177, 0.177], m.skin);
 
   const sock = addMesh(
     lower,
@@ -379,15 +372,14 @@ const addLeg = (
     m.sock,
   );
   sock.position.y = 0.73;
-  const sockBand = addMesh(
+  addEllipsoid(
     lower,
     `${name}-${side}-sock-band`,
-    rememberGeometry(new TorusGeometry(0.17, 0.025, 10, 28)),
+    [0, 0.58, 0],
+    [0.178, 0.042, 0.178],
     m.dressLight,
     26,
   );
-  sockBand.position.y = 0.58;
-  sockBand.rotation.x = Math.PI / 2;
 
   const foot = new Group();
   foot.name = `${name}-${side}-shoe`;
@@ -450,8 +442,8 @@ const createCharacter = (avatarMesh: Object3D, name: string, m: CharacterMateria
   const roots = [head.root, addTorso(bones.spine2Bone, name, m)];
   const skirt = addSkirt(bones.hipsBone, name, m);
   roots.push(skirt);
-  roots.push(...addArm(bones.leftArmBone, bones.leftForeArmBone, bones.leftHandBone, `${name}-left`, m));
-  roots.push(...addArm(bones.rightarmBone, bones.rightForearmBone, bones.rightHandBone, `${name}-right`, m));
+  roots.push(addArm(bones.leftArmBone, `${name}-left`, m));
+  roots.push(addArm(bones.rightarmBone, `${name}-right`, m));
   roots.push(...addLeg(bones.leftUpLegBone, bones.leftLegBone, bones.leftFootBone, "left", name, m));
   roots.push(...addLeg(bones.rightUpLegBone, bones.rightLegBone, bones.rightFootBone, "right", name, m));
 
@@ -536,8 +528,11 @@ const update = (standingProgress: number) => {
   if (!solidCharacter) return;
   const reveal = Math.max(0, Math.min(1, (standingProgress - 0.48) / 0.32));
   const eased = reveal * reveal * (3 - 2 * reveal);
-  solidCharacter.skirt.visible = eased > 0.001;
-  solidCharacter.skirt.scale.setScalar(eased);
+  const seated = 1 - eased;
+  solidCharacter.skirt.visible = true;
+  solidCharacter.skirt.position.set(0, -0.04 * seated, 0.1 * seated);
+  solidCharacter.skirt.rotation.x = -0.22 * seated;
+  solidCharacter.skirt.scale.set(1 + 0.08 * seated, 0.56 + 0.44 * eased, 1 + 0.28 * seated);
 };
 
 function tick() {
