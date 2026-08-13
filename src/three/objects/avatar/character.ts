@@ -46,6 +46,8 @@ type CharacterInstance = {
   rightPonytail: Group;
 };
 
+type CharacterMode = "solid" | "hologram";
+
 let solidCharacter: CharacterInstance | null = null;
 let hologramCharacter: CharacterInstance | null = null;
 let isTicking = false;
@@ -115,8 +117,13 @@ const addHead = (headBone: Object3D, name: string, m: CharacterMaterials) => {
   root.name = `${name}-head`;
   headBone.add(root);
 
-  addEllipsoid(root, `${name}-hair-back`, [0, 0.34, -0.08], [0.8, 0.74, 0.74], m.hair);
+  // Keep the rear hair shell safely behind the face.  The old near-spherical
+  // shell reached the same Z plane as the eyes and swept across the face when
+  // the head turned.
+  addEllipsoid(root, `${name}-hair-back`, [0, 0.36, -0.24], [0.78, 0.73, 0.46], m.hair);
   addEllipsoid(root, `${name}-face`, [0, 0.27, 0.05], [0.68, 0.62, 0.6], m.skin, 25);
+
+  addEllipsoid(root, `${name}-hair-crown`, [0, 0.72, 0.06], [0.6, 0.33, 0.4], m.hair, 26);
 
   ([-1, 1] as const).forEach((side) => {
     addEllipsoid(root, `${name}-ear-${side}`, [side * 0.65, 0.26, 0.04], [0.115, 0.16, 0.09], m.skinWarm, 25);
@@ -124,33 +131,33 @@ const addHead = (headBone: Object3D, name: string, m: CharacterMaterials) => {
 
   const bangGeometry = rememberGeometry(new SphereGeometry(1, 26, 18));
   const bangs = [
-    [-0.46, 0.57, -0.15, 0.24, 0.31],
-    [-0.24, 0.63, -0.08, 0.25, 0.36],
-    [0, 0.66, 0, 0.25, 0.38],
-    [0.24, 0.63, 0.08, 0.25, 0.36],
-    [0.46, 0.57, 0.15, 0.24, 0.31],
+    [-0.46, 0.66, -0.18, 0.2, 0.25],
+    [-0.24, 0.72, -0.09, 0.21, 0.29],
+    [0, 0.75, 0, 0.21, 0.3],
+    [0.24, 0.72, 0.09, 0.21, 0.29],
+    [0.46, 0.66, 0.18, 0.2, 0.25],
   ] as const;
   bangs.forEach(([x, y, rotation, sx, sy], index) => {
     const bang = addMesh(root, `${name}-bang-${index}`, bangGeometry, m.hair, 27);
-    bang.position.set(x, y, 0.6);
+    bang.position.set(x, y, 0.625);
     bang.rotation.z = rotation;
-    bang.scale.set(sx, sy, 0.11);
+    bang.scale.set(sx, sy, 0.065);
   });
 
   ([-1, 1] as const).forEach((side) => {
     addEllipsoid(
       root,
       `${name}-hair-bridge-${side}`,
-      [side * 0.55, 0.33, 0.16],
-      [0.23, 0.43, 0.34],
+      [side * 0.53, 0.43, 0.31],
+      [0.27, 0.5, 0.22],
       m.hair,
       26,
     );
     const lock = addEllipsoid(
       root,
       `${name}-face-lock-${side}`,
-      [side * 0.56, 0.16, 0.54],
-      [0.12, 0.35, 0.12],
+      [side * 0.51, 0.28, 0.55],
+      [0.16, 0.44, 0.1],
       m.hair,
       27,
     );
@@ -313,24 +320,24 @@ const addSkirt = (hipsBone: Object3D, name: string, m: CharacterMaterials) => {
   const skirtProfile = [
     new Vector2(0.42, 0),
     new Vector2(0.46, 0.12),
-    new Vector2(0.54, 0.36),
-    new Vector2(0.66, 0.67),
-    new Vector2(0.74, 0.82),
-    new Vector2(0.71, 0.88),
-    new Vector2(0, 0.88),
+    new Vector2(0.53, 0.3),
+    new Vector2(0.62, 0.46),
+    new Vector2(0.69, 0.52),
+    new Vector2(0.67, 0.56),
+    new Vector2(0, 0.56),
   ];
   const skirt = addMesh(root, `${name}-skirt-main`, rememberGeometry(new LatheGeometry(skirtProfile, 36)), m.dress);
-  skirt.scale.z = 0.82;
+  skirt.scale.z = 0.95;
 
   const hemProfile = [
-    new Vector2(0.67, 0.75),
-    new Vector2(0.76, 0.84),
-    new Vector2(0.78, 0.9),
-    new Vector2(0.73, 0.96),
-    new Vector2(0, 0.96),
+    new Vector2(0.62, 0.48),
+    new Vector2(0.7, 0.53),
+    new Vector2(0.72, 0.57),
+    new Vector2(0.68, 0.61),
+    new Vector2(0, 0.61),
   ];
   const hem = addMesh(root, `${name}-skirt-hem`, rememberGeometry(new LatheGeometry(hemProfile, 36)), m.dressLight, 25);
-  hem.scale.z = 0.82;
+  hem.scale.z = 0.95;
 
   addEllipsoid(root, `${name}-belt`, [0, 0.025, 0], [0.46, 0.055, 0.31], m.dressDark, 26);
   return root;
@@ -378,14 +385,25 @@ const addLimb = (
 
 const addArm = (
   upperBone: Object3D,
+  forearmBone: Object3D,
+  handBone: Object3D,
   name: string,
   m: CharacterMaterials,
 ) => {
   const sleeve = new Group();
   sleeve.name = `${name}-sleeve`;
   upperBone.add(sleeve);
-  addEllipsoid(sleeve, `${name}-puff-sleeve`, [0, 0.12, 0], [0.245, 0.255, 0.225], m.dress);
-  return sleeve;
+  addEllipsoid(sleeve, `${name}-puff-sleeve`, [0, 0.13, 0], [0.225, 0.245, 0.21], m.dress);
+
+  const upper = addLimb(upperBone, `${name}-upper-arm`, 0.14, 0.34, m.skin);
+  const forearm = addLimb(forearmBone, `${name}-forearm`, 0.13, 0.25, m.skin);
+  addEllipsoid(forearm, `${name}-elbow`, [0, 0.015, 0], [0.145, 0.145, 0.145], m.skin);
+
+  const hand = new Group();
+  hand.name = `${name}-hand`;
+  handBone.add(hand);
+  addEllipsoid(hand, `${name}-palm`, [0, 0.11, 0], [0.15, 0.21, 0.13], m.skinWarm, 26);
+  return [sleeve, upper, forearm, hand];
 };
 
 const addLeg = (
@@ -396,9 +414,11 @@ const addLeg = (
   name: string,
   m: CharacterMaterials,
 ) => {
-  const upper = addLimb(upperBone, `${name}-${side}-upper-leg`, 0.18, 0.56, m.skin);
+  // Give the thigh enough length to read as a leg below the skirt instead of
+  // exposing only the rounded end of the capsule.
+  lowerBone.position.y *= 1.18;
+  const upper = addLimb(upperBone, `${name}-${side}-upper-leg`, 0.165, 0.68, m.skin);
   const lower = addLimb(lowerBone, `${name}-${side}-lower-leg`, 0.165, 0.67, m.skin);
-  addEllipsoid(lower, `${name}-${side}-knee`, [0, 0.015, 0], [0.19, 0.19, 0.19], m.skin);
 
   const sock = addMesh(
     lower,
@@ -448,14 +468,14 @@ const addHologramLegs = (hipsBone: Object3D, name: string, m: CharacterMaterials
   ([-1, 1] as const).forEach((side) => {
     const leg = new Group();
     leg.name = `${name}-${side < 0 ? "left" : "right"}-continuous-leg`;
-    leg.position.set(side * 0.38, 0.78, 0);
+    leg.position.set(side * 0.38, 0.58, 0);
     root.add(leg);
 
-    addCapsule(leg, `${leg.name}-skin`, 0.165, 0.58, m.skin);
-    addEllipsoid(leg, `${leg.name}-sock`, [0, 0.69, 0], [0.175, 0.25, 0.17], m.sock);
-    const shoe = addEllipsoid(leg, `${leg.name}-shoe`, [0, 0.92, 0.08], [0.235, 0.29, 0.25], m.shoe);
+    addCapsule(leg, `${leg.name}-skin`, 0.165, 0.72, m.skin);
+    addEllipsoid(leg, `${leg.name}-sock`, [0, 0.86, 0], [0.175, 0.27, 0.17], m.sock);
+    const shoe = addEllipsoid(leg, `${leg.name}-shoe`, [0, 1.13, 0.08], [0.235, 0.31, 0.25], m.shoe);
     shoe.rotation.x = -0.12;
-    addEllipsoid(leg, `${leg.name}-toe`, [0, 1.06, 0.16], [0.225, 0.15, 0.22], m.sole, 26);
+    addEllipsoid(leg, `${leg.name}-toe`, [0, 1.29, 0.16], [0.225, 0.15, 0.22], m.sole, 26);
   });
 
   return root;
@@ -488,7 +508,7 @@ const createCharacter = (
   avatarMesh: Object3D,
   name: string,
   m: CharacterMaterials,
-  mode: "solid" | "hologram",
+  mode: CharacterMode,
 ) => {
   const bones = getRequiredBones(avatarMesh);
   if (!bones) {
@@ -502,8 +522,8 @@ const createCharacter = (
   roots.push(skirt);
   const seatedSkirt = mode === "solid" ? addSeatedSkirt(bones.spine2Bone, name, m) : null;
   if (seatedSkirt) roots.push(seatedSkirt);
-  roots.push(addArm(bones.leftArmBone, `${name}-left`, m));
-  roots.push(addArm(bones.rightarmBone, `${name}-right`, m));
+  roots.push(...addArm(bones.leftArmBone, bones.leftForeArmBone, bones.leftHandBone, `${name}-left`, m));
+  roots.push(...addArm(bones.rightarmBone, bones.rightForearmBone, bones.rightHandBone, `${name}-right`, m));
   if (mode === "hologram") {
     roots.push(addHologramLegs(bones.hipsBone, name, m));
   } else {
@@ -596,12 +616,23 @@ const update = (standingProgress: number) => {
   solidCharacter.skirt.visible = standingSkirt > 0.002;
   solidCharacter.skirt.position.set(0, 0, 0);
   solidCharacter.skirt.rotation.x = 0;
-  solidCharacter.skirt.scale.set(standingSkirt, standingSkirt, 0.82 * standingSkirt);
+  solidCharacter.skirt.scale.setScalar(standingSkirt);
   if (solidCharacter.seatedSkirt) {
     solidCharacter.seatedSkirt.visible = standingSkirt < 0.998;
     const seatedScale = 1 - standingSkirt;
     solidCharacter.seatedSkirt.scale.set(seatedScale, seatedScale, seatedScale);
   }
+};
+
+const setRootsVisible = (roots: Group[], visible: boolean) => {
+  roots.forEach((root) => {
+    root.visible = visible;
+  });
+};
+
+const setMode = (mode: "solid" | "hologram" | "transition") => {
+  if (solidCharacter) setRootsVisible(solidCharacter.roots, mode !== "hologram");
+  if (hologramCharacter) setRootsVisible(hologramCharacter.roots, mode !== "solid");
 };
 
 function tick() {
@@ -632,4 +663,4 @@ const destroy = () => {
   hologramCharacter = null;
 };
 
-export const character = { init, initHologram, update, destroy };
+export const character = { init, initHologram, update, setMode, destroy };

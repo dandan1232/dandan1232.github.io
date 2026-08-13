@@ -44,22 +44,8 @@ const setupGeometry = () => {
   const resource = resources.items["avatar-model"];
   const skin = resource.scene.children[0].getObjectByName("skin") as Mesh;
   const armGeometry = skin.geometry.clone();
-  const sourcePosition = armGeometry.getAttribute("position");
-  const sourceIndex = armGeometry.getIndex();
-  if (!sourcePosition || !sourceIndex) return;
-
-  const keptTriangles: number[] = [];
-  for (let index = 0; index < sourceIndex.count; index += 3) {
-    const a = sourceIndex.getX(index);
-    const b = sourceIndex.getX(index + 1);
-    const c = sourceIndex.getX(index + 2);
-    if (sourcePosition.getY(a) > 4.4 && sourcePosition.getY(b) > 4.4 && sourcePosition.getY(c) > 4.4) {
-      keptTriangles.push(a, b, c);
-    }
-  }
-
-  armGeometry.setIndex(keptTriangles);
   geometry = armGeometry.toNonIndexed();
+  geometry.setDrawRange(0, 0);
 
   const vectors = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
 

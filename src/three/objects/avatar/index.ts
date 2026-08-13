@@ -100,26 +100,6 @@ const assignMatcap = (child: Mesh): boolean => {
   return false;
 };
 
-const keepContinuousArms = (child: Mesh) => {
-  const geometry = child.geometry.clone();
-  const position = geometry.getAttribute("position");
-  const sourceIndex = geometry.getIndex();
-  if (!position || !sourceIndex) return;
-
-  const keptTriangles: number[] = [];
-  for (let index = 0; index < sourceIndex.count; index += 3) {
-    const a = sourceIndex.getX(index);
-    const b = sourceIndex.getX(index + 1);
-    const c = sourceIndex.getX(index + 2);
-    if (position.getY(a) > 4.4 && position.getY(b) > 4.4 && position.getY(c) > 4.4) {
-      keptTriangles.push(a, b, c);
-    }
-  }
-
-  geometry.setIndex(keptTriangles);
-  child.geometry = geometry;
-};
-
 const setupMesh = () => {
   if (mesh) return;
   const resource = resources.items["avatar-model"];
@@ -129,8 +109,7 @@ const setupMesh = () => {
 
   mesh.traverse((child) => {
     if (child instanceof Mesh) {
-      child.visible = child.name === "skin";
-      if (child.name === "skin") keepContinuousArms(child);
+      child.visible = false;
       const mat = getMaterial(child.name);
       if (!mat) return;
       child.material = mat;
@@ -166,6 +145,15 @@ const tick = () => {
 
   const isContact = sceneWeights.contact > 0.001;
   character.update(isContact ? 1 : tIdleIntensity.value);
+  character.setMode(
+    isContact
+      ? "solid"
+      : sceneWeights.about > 0.001 && aboutProgress.value > 0.998
+        ? "hologram"
+        : aboutProgress.value > 0.001
+          ? "transition"
+          : "solid",
+  );
 
   if (isContact) {
     transform.position.copy(contactPosition);
