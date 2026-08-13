@@ -339,16 +339,16 @@ const addSkirt = (hipsBone: Object3D, name: string, m: CharacterMaterials) => {
 const addSeatedSkirt = (spineBone: Object3D, name: string, m: CharacterMaterials) => {
   const root = new Group();
   root.name = `${name}-seated-skirt`;
-  root.position.set(0, -0.38, 0.01);
+  root.position.set(0, -0.24, 0.01);
   spineBone.add(root);
 
   const skirtProfile = [
     new Vector2(0.4, 0),
-    new Vector2(0.48, -0.14),
-    new Vector2(0.55, -0.36),
-    new Vector2(0.58, -0.56),
-    new Vector2(0.55, -0.62),
-    new Vector2(0, -0.62),
+    new Vector2(0.46, -0.08),
+    new Vector2(0.5, -0.18),
+    new Vector2(0.52, -0.28),
+    new Vector2(0.49, -0.32),
+    new Vector2(0, -0.32),
   ];
   const skirt = addMesh(
     root,
@@ -356,17 +356,8 @@ const addSeatedSkirt = (spineBone: Object3D, name: string, m: CharacterMaterials
     rememberGeometry(new LatheGeometry(skirtProfile, 36)),
     m.dress,
   );
-  skirt.scale.z = 0.58;
+  skirt.scale.z = 0.54;
 
-  const hem = addEllipsoid(
-    root,
-    `${name}-seated-skirt-hem`,
-    [0, -0.58, 0],
-    [0.56, 0.06, 0.33],
-    m.dressLight,
-    25,
-  );
-  hem.scale.z = 0.58;
   addEllipsoid(root, `${name}-seated-belt`, [0, 0, 0], [0.42, 0.035, 0.25], m.dress, 26);
   return root;
 };
