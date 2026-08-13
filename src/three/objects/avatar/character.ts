@@ -1,6 +1,7 @@
 import {
   CapsuleGeometry,
   CircleGeometry,
+  CylinderGeometry,
   Group,
   LatheGeometry,
   Mesh,
@@ -92,23 +93,6 @@ const addEllipsoid = (
   );
   mesh.position.set(...position);
   mesh.scale.set(...scale);
-  return mesh;
-};
-
-const addCapsule = (
-  parent: Object3D,
-  name: string,
-  radius: number,
-  segmentLength: number,
-  material: Material,
-) => {
-  const mesh = addMesh(
-    parent,
-    name,
-    rememberGeometry(new CapsuleGeometry(radius, segmentLength, 10, 20)),
-    material,
-  );
-  mesh.position.y = segmentLength / 2 + radius;
   return mesh;
 };
 
@@ -346,16 +330,19 @@ const addSkirt = (hipsBone: Object3D, name: string, m: CharacterMaterials) => {
 const addSeatedSkirt = (spineBone: Object3D, name: string, m: CharacterMaterials) => {
   const root = new Group();
   root.name = `${name}-seated-skirt`;
-  root.position.set(0, -0.24, 0.01);
+  // Keep the seated skirt on the lap side of the body. A centred, circular
+  // skirt intersects the chair back as the torso turns and looks as if the
+  // dress is growing through the chair.
+  root.position.set(0, -0.2, 0.32);
   spineBone.add(root);
 
   const skirtProfile = [
-    new Vector2(0.4, 0),
-    new Vector2(0.46, -0.08),
-    new Vector2(0.5, -0.18),
-    new Vector2(0.52, -0.28),
-    new Vector2(0.49, -0.32),
-    new Vector2(0, -0.32),
+    new Vector2(0.43, 0),
+    new Vector2(0.5, -0.08),
+    new Vector2(0.59, -0.18),
+    new Vector2(0.68, -0.29),
+    new Vector2(0.66, -0.35),
+    new Vector2(0, -0.35),
   ];
   const skirt = addMesh(
     root,
@@ -363,22 +350,46 @@ const addSeatedSkirt = (spineBone: Object3D, name: string, m: CharacterMaterials
     rememberGeometry(new LatheGeometry(skirtProfile, 36)),
     m.dress,
   );
-  skirt.scale.z = 0.54;
+  skirt.scale.z = 0.5;
 
-  addEllipsoid(root, `${name}-seated-belt`, [0, 0, 0], [0.42, 0.035, 0.25], m.dress, 26);
+  const hemProfile = [
+    new Vector2(0.61, -0.27),
+    new Vector2(0.68, -0.31),
+    new Vector2(0.7, -0.36),
+    new Vector2(0.65, -0.4),
+    new Vector2(0, -0.4),
+  ];
+  const hem = addMesh(
+    root,
+    `${name}-seated-skirt-hem`,
+    rememberGeometry(new LatheGeometry(hemProfile, 36)),
+    m.dressLight,
+    25,
+  );
+  hem.scale.z = 0.5;
+
+  addEllipsoid(root, `${name}-seated-belt`, [0, 0, 0], [0.42, 0.04, 0.28], m.dressDark, 26);
   return root;
 };
 
-const addLimb = (
+const addTaperedLimb = (
   bone: Object3D,
   name: string,
-  radius: number,
-  segmentLength: number,
+  length: number,
+  topRadius: number,
+  bottomRadius: number,
+  startOffset: number,
   material: Material,
 ) => {
   const root = new Group();
   root.name = name;
-  addCapsule(root, `${name}-mesh`, radius, segmentLength, material);
+  const limb = addMesh(
+    root,
+    `${name}-mesh`,
+    rememberGeometry(new CylinderGeometry(topRadius, bottomRadius, length, 28, 8, false)),
+    material,
+  );
+  limb.position.y = length / 2 + startOffset;
   bone.add(root);
   return root;
 };
@@ -389,20 +400,25 @@ const addArm = (
   handBone: Object3D,
   name: string,
   m: CharacterMaterials,
+  fillSolidElbow: boolean,
 ) => {
   const sleeve = new Group();
   sleeve.name = `${name}-sleeve`;
   upperBone.add(sleeve);
   addEllipsoid(sleeve, `${name}-puff-sleeve`, [0, 0.13, 0], [0.225, 0.245, 0.21], m.dress);
 
-  const upper = addLimb(upperBone, `${name}-upper-arm`, 0.14, 0.34, m.skin);
-  const forearm = addLimb(forearmBone, `${name}-forearm`, 0.13, 0.25, m.skin);
-  addEllipsoid(forearm, `${name}-elbow`, [0, 0.015, 0], [0.145, 0.145, 0.145], m.skin);
+  // Extend both pieces through the bone pivot. Their intersection follows the
+  // elbow bend without exposing the round "beads" used by capsule ends.
+  const upper = addTaperedLimb(upperBone, `${name}-upper-arm`, 0.76, 0.12, 0.145, -0.025, m.skin);
+  const forearm = addTaperedLimb(forearmBone, `${name}-forearm`, 0.6, 0.115, 0.135, -0.06, m.skin);
+  if (fillSolidElbow) {
+    addEllipsoid(forearm, `${name}-elbow-fill`, [0, 0, 0], [0.128, 0.132, 0.128], m.skin);
+  }
 
   const hand = new Group();
   hand.name = `${name}-hand`;
   handBone.add(hand);
-  addEllipsoid(hand, `${name}-palm`, [0, 0.11, 0], [0.15, 0.21, 0.13], m.skinWarm, 26);
+  addEllipsoid(hand, `${name}-palm`, [0, 0.1, 0], [0.142, 0.205, 0.125], m.skinWarm, 26);
   return [sleeve, upper, forearm, hand];
 };
 
@@ -417,8 +433,8 @@ const addLeg = (
   // Give the thigh enough length to read as a leg below the skirt instead of
   // exposing only the rounded end of the capsule.
   lowerBone.position.y *= 1.18;
-  const upper = addLimb(upperBone, `${name}-${side}-upper-leg`, 0.165, 0.68, m.skin);
-  const lower = addLimb(lowerBone, `${name}-${side}-lower-leg`, 0.165, 0.67, m.skin);
+  const upper = addTaperedLimb(upperBone, `${name}-${side}-upper-leg`, 1.1, 0.145, 0.175, -0.025, m.skin);
+  const lower = addTaperedLimb(lowerBone, `${name}-${side}-lower-leg`, 1.1, 0.14, 0.17, -0.065, m.skin);
 
   const sock = addMesh(
     lower,
@@ -458,27 +474,6 @@ const addLeg = (
   });
   footBone.add(foot);
   return [upper, lower, foot];
-};
-
-const addHologramLegs = (hipsBone: Object3D, name: string, m: CharacterMaterials) => {
-  const root = new Group();
-  root.name = `${name}-symmetric-legs`;
-  hipsBone.add(root);
-
-  ([-1, 1] as const).forEach((side) => {
-    const leg = new Group();
-    leg.name = `${name}-${side < 0 ? "left" : "right"}-continuous-leg`;
-    leg.position.set(side * 0.38, 0.58, 0);
-    root.add(leg);
-
-    addCapsule(leg, `${leg.name}-skin`, 0.165, 0.72, m.skin);
-    addEllipsoid(leg, `${leg.name}-sock`, [0, 0.86, 0], [0.175, 0.27, 0.17], m.sock);
-    const shoe = addEllipsoid(leg, `${leg.name}-shoe`, [0, 1.13, 0.08], [0.235, 0.31, 0.25], m.shoe);
-    shoe.rotation.x = -0.12;
-    addEllipsoid(leg, `${leg.name}-toe`, [0, 1.29, 0.16], [0.225, 0.15, 0.22], m.sole, 26);
-  });
-
-  return root;
 };
 
 const getRequiredBones = (avatarMesh: Object3D) => {
@@ -522,14 +517,17 @@ const createCharacter = (
   roots.push(skirt);
   const seatedSkirt = mode === "solid" ? addSeatedSkirt(bones.spine2Bone, name, m) : null;
   if (seatedSkirt) roots.push(seatedSkirt);
-  roots.push(...addArm(bones.leftArmBone, bones.leftForeArmBone, bones.leftHandBone, `${name}-left`, m));
-  roots.push(...addArm(bones.rightarmBone, bones.rightForearmBone, bones.rightHandBone, `${name}-right`, m));
-  if (mode === "hologram") {
-    roots.push(addHologramLegs(bones.hipsBone, name, m));
-  } else {
-    roots.push(...addLeg(bones.leftUpLegBone, bones.leftLegBone, bones.leftFootBone, "left", name, m));
-    roots.push(...addLeg(bones.rightUpLegBone, bones.rightLegBone, bones.rightFootBone, "right", name, m));
-  }
+  roots.push(
+    ...addArm(bones.leftArmBone, bones.leftForeArmBone, bones.leftHandBone, `${name}-left`, m, mode === "solid"),
+  );
+  roots.push(
+    ...addArm(bones.rightarmBone, bones.rightForearmBone, bones.rightHandBone, `${name}-right`, m, mode === "solid"),
+  );
+  // Solid and hologram characters must use the same bone-driven silhouette.
+  // A separate pair of hologram legs drifted from the animation and caused
+  // missing shoes and left/right mismatches during the reveal.
+  roots.push(...addLeg(bones.leftUpLegBone, bones.leftLegBone, bones.leftFootBone, "left", name, m));
+  roots.push(...addLeg(bones.rightUpLegBone, bones.rightLegBone, bones.rightFootBone, "right", name, m));
 
   if (!isTicking) {
     gsap.ticker.add(tick);

@@ -29,8 +29,7 @@ void main() {
     color = uColor * diffuse + uHighlight * rim;
 #endif
 
-    // Fade the solid character as one silhouette.  A height-based cut made a
-    // leg or forearm disappear on its own during the hologram transition.
-    float solidOpacity = 1.0 - smoothstep(0.82, 0.995, uProgress);
-    gl_FragColor = vec4(applyAmbient(color), solidOpacity);
+    // Complement the hologram shader's height reveal so the converted region
+    // is cyan immediately instead of keeping its pink/skin material underneath.
+    gl_FragColor = vec4(applyAmbient(color), getProgress());
 }

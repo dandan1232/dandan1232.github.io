@@ -10,7 +10,7 @@ import { playSound } from "../../../features/sounds/utils/sounds";
 import { isFeatureEnabled } from "../../../utils/features";
 import { stopSnoreRepetition } from "../../../features/sounds/core/contact";
 
-import type { KeyframeTrack, Object3D } from "three";
+import type { Object3D } from "three";
 
 let mixer: AnimationMixer;
 let activeAction: string | null = null;
@@ -37,26 +37,6 @@ const getActionFromMesh = (name: string) => {
   const action = resource.animations.find((animation: AnimationClip) => animation.name === name);
   if (!action) throw new Error("[AvatarAnimations] Action not found");
   return action;
-};
-
-const getContactWaveClip = () => {
-  const standingClip = getActionFromMesh("t-idle");
-  const waveClip = getActionFromMesh("wave");
-  const rightArmBones = [
-    "rightShoulder",
-    "rightarmBone",
-    "rightForearmBone",
-    "rightHandBone",
-    "bone-right-hand",
-    "rightHandIndex2Bone",
-  ];
-  const isRightArmTrack = (trackName: string) =>
-    rightArmBones.some((boneName) => trackName.startsWith(`${boneName}.`));
-
-  return new AnimationClip("contact-wave", -1, [
-    ...standingClip.tracks.filter((track: KeyframeTrack) => !isRightArmTrack(track.name)),
-    ...waveClip.tracks.filter((track: KeyframeTrack) => isRightArmTrack(track.name)),
-  ]);
 };
 
 const setupActions = () => {
@@ -94,7 +74,7 @@ const setupActions = () => {
   actions.set("wake-up", wake);
 
   //contact-idle
-  const contactIdle = mixer.clipAction(getContactWaveClip());
+  const contactIdle = mixer.clipAction(getActionFromMesh("contact-idle"));
   contactIdle.loop = LoopPingPong;
   contactIdle.weight = 0;
   contactIdle.play();
