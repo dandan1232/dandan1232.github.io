@@ -110,9 +110,6 @@ const setupMesh = () => {
 
   mesh.traverse((child) => {
     if (child instanceof Mesh) {
-      if (child.name === "black") {
-        child.visible = false;
-      }
       const mat = getMaterial(child.name);
       if (!mat) return;
       child.material = mat;
