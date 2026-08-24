@@ -24,6 +24,7 @@ const init = (_canvas: HTMLCanvasElement | null) => {
     antialias: true,
     alpha: false,
   });
+  instance.localClippingEnabled = true;
 
   gsap.ticker.add(tick);
   threeSizes.on("resize", resize);

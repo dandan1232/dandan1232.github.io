@@ -7,13 +7,16 @@ import {
   Group,
   LoopOnce,
   LoopPingPong,
+  MathUtils,
   Matrix4,
   Mesh,
   Object3D,
+  Plane,
   Quaternion,
   SkinnedMesh,
   Vector3,
 } from "three";
+import type { Material } from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { retargetClip } from "three/examples/jsm/utils/SkeletonUtils.js";
 import gsap from "gsap";
@@ -23,6 +26,12 @@ import { getMaterial as getHologramMaterial, uniforms as hologramUniforms } from
 
 const SCALE = 2.3;
 const HIP_SCALE = 1 / SCALE;
+const SEATED_YAW_CORRECTION = -Math.PI / 2;
+const MODEL_PROGRESS_MIN_Y = 0.4;
+const MODEL_PROGRESS_MAX_Y = 3;
+const MODEL_PROGRESS_START = 0.47;
+const MODEL_PROGRESS_END = 0.995;
+const solidClipPlane = new Plane(new Vector3(0, 1, 0), -MODEL_PROGRESS_MIN_Y);
 
 const CLIP_NAMES = [
   "idle",
@@ -72,6 +81,15 @@ let hologramMixer: AnimationMixer | null = null;
 const actions = new Map<string, AnimationAction>();
 const hologramActions = new Map<string, AnimationAction>();
 const clips = new Map<ClipName, AnimationClip>();
+const solidMaterialStates = new Map<
+  Material,
+  {
+    opacity: number;
+    transparent: boolean;
+    depthWrite: boolean;
+    clippingPlanes: Plane[] | null;
+  }
+>();
 
 let faceMesh: SkinnedMesh | null = null;
 const morphIndexes = { blink: -1, joy: -1, surprised: -1, fun: -1, angry: -1, sorrow: -1 };
@@ -145,6 +163,7 @@ const retargetClips = (targetRoot: Object3D, targetMesh: SkinnedMesh, sourceMesh
   const options = {
     hip: "hipsBone",
     scale: HIP_SCALE,
+    hipInfluence: new Vector3(0, 1, 0),
     getBoneName: (bone: Object3D) => bone.name,
     localOffsets,
   };
@@ -163,11 +182,68 @@ const applySolidMaterials = (root: Object3D) => {
   root.traverse((child) => {
     if (!(child instanceof Mesh)) return;
     child.frustumCulled = false;
-    const material = child.material as { name?: string; color?: Color };
-    if (material?.name?.includes("_HAIR") && material.color) {
-      material.color.copy(HAIR_TINT);
+    child.renderOrder = 24;
+
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      if (!solidMaterialStates.has(material)) {
+        solidMaterialStates.set(material, {
+          opacity: material.opacity,
+          transparent: material.transparent,
+          depthWrite: material.depthWrite,
+          clippingPlanes: material.clippingPlanes ? [...material.clippingPlanes] : null,
+        });
+      }
+
+      const colorMaterial = material as Material & { color?: Color };
+      if (material.name.includes("_HAIR") && colorMaterial.color) {
+        colorMaterial.color.copy(HAIR_TINT);
+      }
     }
   });
+};
+
+const setSolidOpacity = (opacity: number, overlay = false) => {
+  const clampedOpacity = MathUtils.clamp(opacity, 0, 1);
+
+  for (const [material, state] of solidMaterialStates) {
+    const transparent = overlay || state.transparent || clampedOpacity < 0.999;
+    const depthWrite = state.depthWrite && clampedOpacity >= 0.999;
+
+    material.opacity = state.opacity * clampedOpacity;
+    if (material.transparent !== transparent || material.depthWrite !== depthWrite) {
+      material.transparent = transparent;
+      material.depthWrite = depthWrite;
+      material.needsUpdate = true;
+    }
+  }
+};
+
+const setSolidClipping = (enabled: boolean, progress = 0) => {
+  if (enabled) {
+    const shaderProgress = progress * 1.1 - 0.1;
+    const normalizedHeight = MathUtils.clamp((shaderProgress - MODEL_PROGRESS_START) / (MODEL_PROGRESS_END - MODEL_PROGRESS_START), 0, 1);
+    const cutY = MathUtils.lerp(MODEL_PROGRESS_MIN_Y, MODEL_PROGRESS_MAX_Y, normalizedHeight);
+    solidClipPlane.constant = -cutY;
+  }
+
+  for (const [material, state] of solidMaterialStates) {
+    const clippingPlanes = enabled ? [solidClipPlane] : state.clippingPlanes;
+    const clippingChanged = material.clippingPlanes?.[0] !== clippingPlanes?.[0];
+    material.clippingPlanes = clippingPlanes;
+    if (clippingChanged) material.needsUpdate = true;
+  }
+};
+
+const restoreSolidMaterials = () => {
+  for (const [material, state] of solidMaterialStates) {
+    material.opacity = state.opacity;
+    material.transparent = state.transparent;
+    material.depthWrite = state.depthWrite;
+    material.clippingPlanes = state.clippingPlanes;
+    material.needsUpdate = true;
+  }
+  solidMaterialStates.clear();
 };
 
 const applyHologramMaterials = (root: Object3D) => {
@@ -223,8 +299,7 @@ const setupAction = (
   targetActions.set(name, action);
 };
 
-const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, AnimationAction>, standing = false) => {
-  const seatedClipName = standing ? "t-idle" : "idle";
+const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, AnimationAction>) => {
   setupAction(
     targetActions,
     actionMixer,
@@ -233,7 +308,7 @@ const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, An
       action.loop = LoopPingPong;
       action.weight = 1;
     },
-    seatedClipName,
+    "idle",
   );
 
   setupAction(targetActions, actionMixer, "t-idle", (action) => {
@@ -251,7 +326,7 @@ const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, An
       action.clampWhenFinished = true;
       action.weight = 0;
     },
-    standing ? "t-idle" : "left-desktop",
+    "left-desktop",
   );
 
   setupAction(targetActions, actionMixer, "sleeping", (action) => {
@@ -275,6 +350,19 @@ const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, An
     action.clampWhenFinished = true;
     action.loop = LoopOnce;
   });
+};
+
+const setupHologramActions = (actionMixer: AnimationMixer) => {
+  const clip = clips.get("contact-idle");
+  if (!clip) throw new Error('[Girl] Retargeted clip "contact-idle" missing');
+
+  const standingAction = actionMixer.clipAction(clip);
+  standingAction.loop = LoopPingPong;
+  standingAction.setEffectiveWeight(1);
+  standingAction.play();
+
+  hologramActions.set("desktop-idle", standingAction);
+  for (const name of CLIP_NAMES) hologramActions.set(name, standingAction);
 };
 
 const init = (parent: Object3D) => {
@@ -310,12 +398,13 @@ const init = (parent: Object3D) => {
   mixer = new AnimationMixer(solidRoot);
   hologramMixer = new AnimationMixer(hologramRoot);
   setupActions(mixer, actions);
-  setupActions(hologramMixer, hologramActions, true);
+  setupHologramActions(hologramMixer);
 
   hologramRoot.visible = false;
 
   parent.add(solidRoot);
   parent.add(hologramRoot);
+  setStandingProgress(0);
 
   if (import.meta.env.DEV) {
     setTimeout(() => {
@@ -410,9 +499,12 @@ const play = (name: string, transition = 0.5) => {
   activeAction = name;
 };
 
-const setWeight = (name: string, weight: number) => {
+const setSolidWeight = (name: string, weight: number) => {
   const action = actions.get(name);
   if (action) action.setEffectiveWeight(weight);
+};
+
+const setHologramWeight = (name: string, weight: number) => {
   const hologramAction = hologramActions.get(name);
   if (hologramAction) hologramAction.setEffectiveWeight(weight);
 };
@@ -427,9 +519,35 @@ const updateHologramUniforms = () => {
   hologramUniforms.uProgress.value = aboutProgress.value * 1.1 - 0.1;
 };
 
-const setMode = (mode: "solid" | "hologram" | "transition") => {
-  if (solidRoot) solidRoot.visible = mode !== "hologram";
-  if (hologramRoot) hologramRoot.visible = mode !== "solid";
+const setMode = (mode: "solid" | "hologram" | "transition", progress = 0) => {
+  if (mode === "solid") {
+    setSolidClipping(false);
+    setSolidOpacity(1);
+    if (solidRoot) solidRoot.visible = true;
+    if (hologramRoot) hologramRoot.visible = false;
+    return;
+  }
+
+  if (mode === "hologram") {
+    setSolidClipping(false);
+    setSolidOpacity(0);
+    if (solidRoot) solidRoot.visible = false;
+    if (hologramRoot) hologramRoot.visible = true;
+    return;
+  }
+
+  setSolidOpacity(1, true);
+  setSolidClipping(true, progress);
+  if (solidRoot) solidRoot.visible = progress < 0.995;
+  if (hologramRoot) hologramRoot.visible = true;
+};
+
+const setStandingProgress = (progress: number, isContact = false) => {
+  const standingProgress = MathUtils.clamp(progress, 0, 1);
+  if (solidRoot) {
+    solidRoot.rotation.y = isContact ? SEATED_YAW_CORRECTION : MathUtils.lerp(SEATED_YAW_CORRECTION, 0, standingProgress);
+  }
+  if (hologramRoot) hologramRoot.rotation.y = SEATED_YAW_CORRECTION;
 };
 
 const setFaceWeights = (weights: Record<string, number>) => {
@@ -453,6 +571,7 @@ const destroy = () => {
   actions.clear();
   hologramActions.clear();
   clips.clear();
+  restoreSolidMaterials();
   solidRoot?.removeFromParent();
   hologramRoot?.removeFromParent();
   solidRoot = null;
@@ -463,10 +582,12 @@ const destroy = () => {
 export const girl = {
   init,
   play,
-  setWeight,
+  setSolidWeight,
+  setHologramWeight,
   update,
   updateHologramUniforms,
   setMode,
+  setStandingProgress,
   setFaceWeights,
   getRightHandPropBone,
   actions,

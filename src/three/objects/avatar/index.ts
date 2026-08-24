@@ -30,9 +30,10 @@ const tick = () => {
   animations.update();
 
   const isContact = sceneWeights.contact > 0.001;
-  girl.setMode(
-    !isContact && sceneWeights.about > 0.001 && aboutProgress.value > 0.9 ? "hologram" : "solid",
-  );
+  girl.setStandingProgress(isContact ? 1 : tIdleIntensity.value, isContact);
+  const isAbout = !isContact && sceneWeights.about > 0.001;
+  const mode = isContact ? "solid" : isAbout ? (aboutProgress.value >= 0.995 ? "hologram" : "transition") : "solid";
+  girl.setMode(mode, aboutProgress.value);
   girl.updateHologramUniforms();
 
   if (isContact) {

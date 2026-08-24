@@ -21,7 +21,11 @@ const play = (name: string, transition: number = 0.5) => {
 };
 
 const setWeight = (key: string, weight: number) => {
-  girl.setWeight(key, weight);
+  girl.setSolidWeight(key, weight);
+};
+
+const updateHologram = () => {
+  girl.setHologramWeight("desktop-idle", 1);
 };
 
 const updateIntro = () => {
@@ -90,6 +94,7 @@ const update = () => {
   } else {
     updateIntro();
   }
+  updateHologram();
 
   const delta = gsap.ticker.deltaRatio(60);
   girl.update(delta / 60);
