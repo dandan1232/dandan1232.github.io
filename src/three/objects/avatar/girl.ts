@@ -23,15 +23,12 @@ import gsap from "gsap";
 import { resources } from "../../../utils/resources";
 import { aboutProgress } from "../../../animations/transitions/about";
 import { getMaterial as getHologramMaterial, uniforms as hologramUniforms } from "./hologram-material";
+import { getScanY, SCAN_MIN_Y } from "./scan-progress";
 
 const SCALE = 2.3;
 const HIP_SCALE = 1 / SCALE;
 const SEATED_YAW_CORRECTION = -Math.PI / 2;
-const MODEL_PROGRESS_MIN_Y = 0.4;
-const MODEL_PROGRESS_MAX_Y = 3;
-const MODEL_PROGRESS_START = 0.47;
-const MODEL_PROGRESS_END = 0.995;
-const solidClipPlane = new Plane(new Vector3(0, 1, 0), -MODEL_PROGRESS_MIN_Y);
+const solidClipPlane = new Plane(new Vector3(0, 1, 0), -SCAN_MIN_Y);
 
 const CLIP_NAMES = [
   "idle",
@@ -261,10 +258,7 @@ const setSolidOpacity = (opacity: number, overlay = false) => {
 
 const setSolidClipping = (enabled: boolean, progress = 0) => {
   if (enabled) {
-    const shaderProgress = progress * 1.1 - 0.1;
-    const normalizedHeight = MathUtils.clamp((shaderProgress - MODEL_PROGRESS_START) / (MODEL_PROGRESS_END - MODEL_PROGRESS_START), 0, 1);
-    const cutY = MathUtils.lerp(MODEL_PROGRESS_MIN_Y, MODEL_PROGRESS_MAX_Y, normalizedHeight);
-    solidClipPlane.constant = -cutY;
+    solidClipPlane.constant = -getScanY(progress);
   }
 
   for (const [material, state] of solidMaterialStates) {
@@ -562,7 +556,7 @@ const update = (delta: number) => {
 
 const updateHologramUniforms = () => {
   hologramUniforms.uTime.value = gsap.ticker.time;
-  hologramUniforms.uProgress.value = aboutProgress.value * 1.1 - 0.1;
+  hologramUniforms.uProgress.value = aboutProgress.value;
 };
 
 const setMode = (mode: "solid" | "hologram" | "transition", progress = 0) => {
@@ -584,7 +578,7 @@ const setMode = (mode: "solid" | "hologram" | "transition", progress = 0) => {
 
   setSolidOpacity(1, true);
   setSolidClipping(true, progress);
-  if (solidRoot) solidRoot.visible = progress < 0.995;
+  if (solidRoot) solidRoot.visible = progress < 1;
   if (hologramRoot) hologramRoot.visible = true;
 };
 

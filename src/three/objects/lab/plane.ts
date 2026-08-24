@@ -1,16 +1,15 @@
 import { Mesh, PlaneGeometry, MeshBasicMaterial, LinearSRGBColorSpace } from "three";
 import gsap from "gsap";
-import { uniforms as hologramUniforms } from "../avatar/hologram-material";
 import { resources } from "../../../utils/resources";
+import { aboutProgress } from "../../../animations/transitions/about";
+import { getScanY } from "../avatar/scan-progress";
 
 let plane: Mesh | null = null;
 
-const START_Y = -0.2;
-const END_Y = 4.5;
-const FADE_IN_START = 0.2;
-const FADE_IN_END = 0.3;
-const FADE_OUT_START = 0.7;
-const FADE_OUT_END = 0.9;
+const FADE_IN_START = 0;
+const FADE_IN_END = 0.05;
+const FADE_OUT_START = 0.95;
+const FADE_OUT_END = 1;
 
 const init = () => {
   if (plane) return;
@@ -40,9 +39,8 @@ const init = () => {
 const tick = () => {
   if (!plane) return;
 
-  const progress = hologramUniforms.uProgress.value;
-  const yPosition = START_Y + progress * (END_Y - START_Y);
-  plane.position.y = yPosition + 0.01;
+  const progress = aboutProgress.value;
+  plane.position.y = getScanY(progress) + 0.01;
 
   // Calculate opacity based on progress - fade in and out
   let opacity = 0;

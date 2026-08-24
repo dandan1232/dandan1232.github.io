@@ -2,6 +2,7 @@ import { Color, ShaderMaterial, DoubleSide, AdditiveBlending } from "three";
 import vertexShader from "../../shaders/hologram/vertex.glsl";
 import accessoryVertexShader from "../../shaders/hologram/accessory-vertex.glsl";
 import fragmentShader from "../../shaders/hologram/fragment.glsl";
+import { SCAN_MAX_Y, SCAN_MIN_Y } from "./scan-progress";
 
 let material: ShaderMaterial;
 let accessoryMaterial: ShaderMaterial;
@@ -10,6 +11,8 @@ const uniforms = {
   uTime: { value: 0 },
   uColor: { value: new Color("rgb(0, 234, 255)") },
   uProgress: { value: 0 },
+  uScanMinY: { value: SCAN_MIN_Y },
+  uScanMaxY: { value: SCAN_MAX_Y },
 };
 
 const getMaterial = () => {

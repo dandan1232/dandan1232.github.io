@@ -32,7 +32,7 @@ const tick = () => {
   const isContact = sceneWeights.contact > 0.001;
   girl.setStandingProgress(isContact ? 1 : tIdleIntensity.value, isContact);
   const isAbout = !isContact && sceneWeights.about > 0.001;
-  const mode = isContact ? "solid" : isAbout ? (aboutProgress.value >= 0.995 ? "hologram" : "transition") : "solid";
+  const mode = isContact ? "solid" : isAbout ? (aboutProgress.value >= 1 ? "hologram" : "transition") : "solid";
   girl.setMode(mode, aboutProgress.value);
   girl.updateHologramUniforms();
 
@@ -47,7 +47,7 @@ const tick = () => {
   transform.position.copy(waypointsPosition);
   transform.rotation.copy(waypointsRotation);
 
-  uniforms.uProgress.value = aboutProgress.value * 1.1 - 0.1;
+  uniforms.uProgress.value = aboutProgress.value;
   uniforms.uAmbientStrength.value = sceneWeightsInOut.about.in;
 };
 
