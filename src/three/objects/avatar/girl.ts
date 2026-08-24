@@ -43,6 +43,25 @@ const CLIP_NAMES = [
   "wave",
 ] as const;
 
+const UPRIGHT_IDLE_CLIP_NAME = "upright-idle";
+// The source standing clip stores its front-facing quarter turn and forward
+// lean in the hips. Preserve only the yaw component for a vertical VRM pose.
+const UPRIGHT_HIPS_YAW_COMPONENT = Math.SQRT1_2;
+const UPRIGHT_RESET_BONES = new Set([
+  "spineBone",
+  "spine1Bone",
+  "spine2Bone",
+  "headBone",
+  "leftUpLegBone",
+  "leftLegBone",
+  "leftFootBone",
+  "leftToeBaseBone",
+  "rightUpLegBone",
+  "rightLegBone",
+  "rightFootBone",
+  "rightToeBaseBone",
+]);
+
 type ClipName = (typeof CLIP_NAMES)[number];
 
 const BONE_MAP: Record<string, string> = {
@@ -80,7 +99,7 @@ let mixer: AnimationMixer | null = null;
 let hologramMixer: AnimationMixer | null = null;
 const actions = new Map<string, AnimationAction>();
 const hologramActions = new Map<string, AnimationAction>();
-const clips = new Map<ClipName, AnimationClip>();
+const clips = new Map<string, AnimationClip>();
 const solidMaterialStates = new Map<
   Material,
   {
@@ -174,6 +193,27 @@ const retargetClips = (targetRoot: Object3D, targetMesh: SkinnedMesh, sourceMesh
     converted.duration = sourceClip.duration;
     clips.set(name, converted);
   }
+
+  const contactIdle = clips.get("contact-idle");
+  if (!contactIdle) throw new Error('[Girl] Retargeted clip "contact-idle" missing');
+
+  const uprightTracks = contactIdle.tracks.flatMap((track) => {
+    if (track.name.includes("[hipsBone].quaternion")) {
+      const uprightHipsTrack = track.clone();
+      for (let index = 0; index < uprightHipsTrack.values.length; index += 4) {
+        uprightHipsTrack.values[index] = 0;
+        uprightHipsTrack.values[index + 1] = UPRIGHT_HIPS_YAW_COMPONENT;
+        uprightHipsTrack.values[index + 2] = 0;
+        uprightHipsTrack.values[index + 3] = UPRIGHT_HIPS_YAW_COMPONENT;
+      }
+      return [uprightHipsTrack];
+    }
+
+    if (!track.name.endsWith(".quaternion")) return [track];
+    const boneName = track.name.match(/\[([^\]]+)\]/)?.[1];
+    return boneName && UPRIGHT_RESET_BONES.has(boneName) ? [] : [track];
+  });
+  clips.set(UPRIGHT_IDLE_CLIP_NAME, new AnimationClip(UPRIGHT_IDLE_CLIP_NAME, contactIdle.duration, uprightTracks));
 
   targetMesh.skeleton.pose();
 };
@@ -340,11 +380,17 @@ const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, An
     action.clampWhenFinished = true;
   });
 
-  setupAction(targetActions, actionMixer, "contact-idle", (action) => {
-    action.loop = LoopPingPong;
-    action.weight = 0;
-    action.play();
-  });
+  setupAction(
+    targetActions,
+    actionMixer,
+    "contact-idle",
+    (action) => {
+      action.loop = LoopPingPong;
+      action.weight = 0;
+      action.play();
+    },
+    UPRIGHT_IDLE_CLIP_NAME,
+  );
 
   setupAction(targetActions, actionMixer, "wave", (action) => {
     action.clampWhenFinished = true;
@@ -353,8 +399,8 @@ const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, An
 };
 
 const setupHologramActions = (actionMixer: AnimationMixer) => {
-  const clip = clips.get("contact-idle");
-  if (!clip) throw new Error('[Girl] Retargeted clip "contact-idle" missing');
+  const clip = clips.get(UPRIGHT_IDLE_CLIP_NAME);
+  if (!clip) throw new Error(`[Girl] Retargeted clip "${UPRIGHT_IDLE_CLIP_NAME}" missing`);
 
   const standingAction = actionMixer.clipAction(clip);
   standingAction.loop = LoopPingPong;
