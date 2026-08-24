@@ -1,4 +1,5 @@
 import avatarModel from "./assets/models/avatar.glb";
+import girlModel from "./assets/models/girl.vrm";
 import labModel from "./assets/models/lab.glb";
 import roomModel from "./assets/models/room.glb";
 import contactModel from "./assets/models/contact.glb";
@@ -28,6 +29,7 @@ type Source = {
 export const sources = [
   //models
   { name: "avatar-model", type: "gltfModel", path: avatarModel },
+  { name: "girl-model", type: "gltfModel", path: girlModel },
   { name: "lab-model", type: "gltfModel", path: labModel },
   { name: "room-model", type: "gltfModel", path: roomModel },
   { name: "contact-model", type: "gltfModel", path: contactModel },

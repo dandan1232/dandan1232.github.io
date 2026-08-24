@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>从“金额看不懂”到可核对：视频模型积分与异步计费链路治理 | Echo Notes</title>
+  <meta name="description" content="跨 new-api、llm-router、amax-router 治理视频模型参数、分辨率定价、级联网关状态与预扣退款日志。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+      <p class="meta">2026-08-24 · AI Infra / 异步计费</p>
+      <h1 id="视频异步计费治理">从“金额看不懂”到可核对：视频模型积分与异步计费链路治理</h1>
+      <blockquote><p>围绕视频生成的参数、分辨率定价、嵌套网关状态和异步退款日志，对 <code>new-api</code>、<code>llm-router</code>、<code>amax-router</code> 三个项目进行端到端修复，让请求能够正确校验、正确计价、正确轮询，并让用户看懂预扣费、最终计费 Token 与退款流水。</p></blockquote>
+
+      <h2 id="目录">目录</h2>
+      <ol>
+        <li><a href="#异步链路">为什么问题不只是一个金额</a></li>
+        <li><a href="#参数与定价">统一视频能力、参数与价格</a></li>
+        <li><a href="#状态误判">修复嵌套网关状态误判</a></li>
+        <li><a href="#日志闭环">打通预扣、退款与统计展示</a></li>
+        <li><a href="#取舍与验证">技术取舍、验证与复盘</a></li>
+        <li><a href="#简历表述">简历可用表述</a></li>
+      </ol>
+
+      <h2 id="异步链路">一、问题不是一个页面上的金额，而是一条异步链路</h2>
+      <p>视频生成与普通文本请求最大的区别是：提交成功时任务通常尚未完成，平台只能按预计规格预扣额度，随后通过轮询获得最终状态和实际计费量，再进行补扣或退款。</p>
+      <figure class="sequence-diagram" data-sequence-diagram>
+        <figcaption class="sequence-diagram-header">
+          <span><strong class="sequence-diagram-title">视频生成异步计费链路</strong><span class="sequence-diagram-route">amax-router → llm-router → new-api → 上游模型</span></span>
+          <span class="sequence-diagram-controls" role="group" aria-label="架构图缩放控制">
+            <button type="button" data-diagram-zoom-out title="缩小架构图" aria-label="缩小架构图">−</button>
+            <output data-diagram-zoom-output aria-live="polite">100%</output>
+            <button type="button" data-diagram-zoom-in title="放大架构图" aria-label="放大架构图">+</button>
+            <button class="sequence-diagram-reset" type="button" data-diagram-reset title="恢复为 100%" aria-label="重置架构图缩放">重置</button>
+          </span>
+        </figcaption>
+        <div class="sequence-diagram-viewport" tabindex="0" aria-label="视频模型异步计费时序图；放大后可拖动查看">
+          <div class="sequence-diagram-stage">
+            <pre class="mermaid">sequenceDiagram
+    participant U as 用户 / amax-router
+    participant L as llm-router
+    participant N as new-api
+    participant P as 上游视频模型
+    U-&gt;&gt;L: 提交视频生成请求
+    L-&gt;&gt;N: 转发标准化请求
+    N-&gt;&gt;N: 校验能力并预扣费
+    N-&gt;&gt;P: 创建异步任务
+    loop 轮询
+        N-&gt;&gt;P: 查询任务状态
+        P--&gt;&gt;N: queued / processing / completed
+    end
+    N-&gt;&gt;N: 按实际 Token 结算差额
+    N--&gt;&gt;L: 预扣与退款日志
+    L--&gt;&gt;U: 正负流水、标签、实际 Token</pre>
+          </div>
+        </div>
+        <p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看</p>
+      </figure>
+      <p>原问题横跨多个位置：渠道使用 <code>duration/seconds</code>、<code>resolution/size</code> 等不同字段；分辨率和参考视频会改变价格；new-api 嵌套调用时的 <code>not_start/unknown</code> 会被错误当成失败；用户前台只能看到预扣金额，日报还可能把预扣重复当成最终消费。</p>
+
+      <h2 id="参数与定价">二、统一视频能力、参数与价格口径</h2>
+      <h3 id="模型能力">1. 模型显式声明视频能力</h3>
+      <p>模型元数据增加支持的视频分辨率和时长配置，并通过接口同步到 <code>amax-router</code>。创作页不再为所有视频模型展示一套写死规格，而是根据当前模型动态给出选项。</p>
+      <p>请求进入网关后会校验模型是否配置视频能力，未配置、缺少参数或使用不支持规格时直接返回明确错误，不再把无效请求继续发往上游。</p>
+
+      <h3 id="参数归一化">2. 参数归一化</h3>
+      <ul>
+        <li><code>duration</code> 与 <code>seconds</code> 统一为标准秒数，并检测两者冲突。</li>
+        <li><code>resolution</code> 与 <code>size</code> 统一为 <code>480P/720P/1080P/4K</code>。</li>
+        <li>兼容 <code>1920x1080</code>、竖屏尺寸、<code>2160P</code>、<code>UHD</code> 等写法。</li>
+        <li>兼容 <code>video</code>、<code>video_url</code>、<code>videos</code> 三种参考视频输入。</li>
+        <li>remix/续作请求可从原任务计费快照继承时长和分辨率。</li>
+      </ul>
+      <p>统一之后，渠道适配器、能力校验和计费模块都读取同一份规范化参数，减少“上游能生成但平台算错钱”的分支差异。</p>
+
+      <h3 id="分辨率定价">3. 分辨率与参考视频定价</h3>
+      <p>视频价格拆分为“指定分辨率、无参考视频”和“指定分辨率、有参考视频”两个独立维度。专属价格未配置时回退到通用视频输入价格；一旦配置分辨率最终价格，就不再叠乘通用参考视频倍率，避免重复放大。</p>
+      <p>对于按 Token 计费的视频模型，定价接口同步补齐参考视频价格数据，使前端展示、预扣和最终结算使用一致的价格来源。旧系统只有“分辨率倍率 × 通用视频倍率”时继续按原规则回退，避免升级后价格突变。</p>
+
+      <h2 id="状态误判">三、修复嵌套网关的状态误判</h2>
+      <p>级联网关场景中，上游 new-api 可能在任务尚未正式开始时返回 <code>not_start</code>，对外转换后又表现为 <code>unknown</code>。旧逻辑把无法识别的空状态当成终态失败，导致任务被提前退款或报错。</p>
+      <ul>
+        <li><code>not_start</code> 与 <code>queued/submitted</code> 一样映射为排队中。</li>
+        <li>Sora/OpenAI 视频适配器收到级联上游 <code>unknown</code> 时先按处理中保留，等待下一轮轮询。</li>
+        <li>真正无法解析的响应仍然失败，但错误信息会带上实际状态值并限制长度。</li>
+      </ul>
+      <p>关键不是简单忽略 <code>unknown</code>，而是区分<strong>异步任务的暂态未知</strong>与<strong>响应结构确实异常</strong>，既避免误杀任务，也不掩盖真实故障。</p>
+
+      <h2 id="日志闭环">四、打通预扣、退款与统计展示</h2>
+      <p>修复前，客户端把视频请求的预扣金额直接展示为普通消费，用户会误以为这就是最终费用。</p>
+      <figure class="article-media"><a href="./images/video-model-async-billing-fixes/before-precharge.png" target="_blank" rel="noopener"><img src="./images/video-model-async-billing-fixes/before-precharge.png" alt="修复前视频预扣费被展示为普通消费" loading="lazy"></a><figcaption>图 1：修复前只有预扣金额，缺少流水语义。</figcaption></figure>
+      <p>实际上，new-api 在任务完成后已经生成对应退款记录，但它没有普通请求的 <code>request_id</code>，因而被 <code>llm-router</code> 原有查询条件过滤。</p>
+      <figure class="article-media"><a href="./images/video-model-async-billing-fixes/new-api-ledger.png" target="_blank" rel="noopener"><img src="./images/video-model-async-billing-fixes/new-api-ledger.png" alt="new-api 中的视频预扣费与异步退款记录" loading="lazy"></a><figcaption>图 2：new-api 事实日志中已经存在预扣与异步退款两条流水。</figcaption></figure>
+      <p><code>llm-router</code> 的日志口径随后完成针对性调整：</p>
+      <ul>
+        <li>普通退款继续隐藏，仅额外放行 <code>type=6</code> 且内容以 <code>token重算：</code> 开头的视频异步退款。</li>
+        <li>视频提交消费标记为 <code>video_precharge</code>，完成后的退款标记为 <code>async_refund</code>。</li>
+        <li>从重算流水提取最终 <code>tokens</code>，作为视频实际计费 Token。</li>
+        <li>统计时消费额度按正数、退款按负数汇总；Token 重算无论补扣或退款只正向计入一次。</li>
+        <li>退款按实际发生日归集，避免跨天任务污染提交日统计。</li>
+      </ul>
+      <p><code>amax-router</code> 消费这些结构化字段：预扣费显示为负向金额和黄色标签，异步退款显示为正向金额和绿色标签，并单独展示最终计费 Token。实付、官方价与节省汇总同步使用正确方向。</p>
+      <figure class="article-media"><a href="./images/video-model-async-billing-fixes/after-ledger.png" target="_blank" rel="noopener"><img src="./images/video-model-async-billing-fixes/after-ledger.png" alt="修复后视频预扣费、异步退款和计费 Token 展示" loading="lazy"></a><figcaption>图 3：用户可以核对预扣、退款与实际计费 Token。</figcaption></figure>
+
+      <h2 id="取舍与验证">五、技术取舍、验证与复盘</h2>
+      <h3 id="技术取舍">1. 技术取舍</h3>
+      <ul>
+        <li><strong>不暴露所有退款：</strong>查询层只放行有明确视频重算语义的退款，维持原日志可见边界。</li>
+        <li><strong>结构化计费语义：</strong><code>llm-router</code> 识别 <code>billing_type</code> 和 <code>billed_tokens</code>，前端不依赖中文日志内容猜测类型。</li>
+        <li><strong>兼容旧定价：</strong>新旧分辨率与参考视频配置并存，避免配置升级导致价格突变。</li>
+      </ul>
+      <h3 id="验证结果">2. 验证结果</h3>
+      <p>实现补充了视频状态映射、未知状态处理、轮询失败原因、模型能力和日志查询等回归测试，并对预扣、异步退款、最终 Token、今日消费与跨天统计进行了页面核对。</p>
+      <p>最终形成三个闭环：请求规格在进入渠道前正确校验；分辨率、参考视频、预扣和实际结算口径一致；用户能够看到预扣、退款、实际 Token 和正确消费汇总。</p>
+      <p>这次问题最初看起来只是“前端少了一个退款标签”，根因却分散在参数协议、计费配置、异步状态机、日志筛选和汇总口径中。真正有效的修复必须沿调用链逐层核对事实来源，而不是在页面上硬编码一个正负号。</p>
+
+      <h2 id="简历表述">六、简历可用表述</h2>
+      <blockquote><p>主导视频模型异步计费链路治理，联动 new-api、llm-router、amax-router 修复参数规格、分辨率/参考视频定价、级联网关状态误判及预扣退款展示问题，实现“预扣—轮询—实际 Token 结算—退款—用户对账”闭环。</p></blockquote>
+      <p><strong>技术关键词：</strong>异步任务状态机、预扣与结算、级联网关、协议归一化、价格回退、日志事实表、跨天统计、端到端排障。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+  <script type="module" src="./diagrams.js"></script>
+</body>
+</html>

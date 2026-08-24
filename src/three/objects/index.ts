@@ -1,5 +1,4 @@
 import { avatar } from "./avatar";
-import { avatarHologram } from "./avatar/hologram";
 import { contact } from "./contact";
 import { darkPlane } from "./dark-plane";
 import { gridFloor } from "./grid-floor";
@@ -9,20 +8,28 @@ import { sleepingSprite } from "./contact/sleeping-sprite";
 import { renderer } from "../core/renderer";
 
 const init = () => {
-  avatarHologram.init();
-  avatar.init();
-  contact.init();
-  darkPlane.init();
-  gridFloor.init();
-  lab.init();
-  room.init();
-  sleepingSprite.init();
+  const modules = [
+    ["avatar", avatar],
+    ["contact", contact],
+    ["darkPlane", darkPlane],
+    ["gridFloor", gridFloor],
+    ["lab", lab],
+    ["room", room],
+    ["sleepingSprite", sleepingSprite],
+  ] as const;
+
+  for (const [name, module] of modules) {
+    try {
+      module.init();
+    } catch (error) {
+      console.error(`[Objects] Failed to initialize "${name}":`, error);
+    }
+  }
 
   renderer.compile();
 };
 
 const destroy = () => {
-  avatarHologram.destroy();
   avatar.destroy();
   contact.destroy();
   darkPlane.destroy();

@@ -26,3 +26,8 @@ dist-ssr
 # Local planning and agent design context
 .impeccable.md
 docs/plans/
+
+
+# 莫名的配置
+.obsidian/workspace.json
+.obsidian/plugins/*/data.json

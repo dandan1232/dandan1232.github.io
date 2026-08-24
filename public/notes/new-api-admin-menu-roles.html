@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>在不破坏原有权限模型的前提下，为 new-api 增加管理员菜单子角色 | Echo Notes</title>
+  <meta name="description" content="复盘 new-api 管理员菜单子角色的渐进式设计：Root 管理、三层菜单求交、存量兼容、安全回退与多语言管理界面。" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+      <p class="meta">2026-08-24 · AI Infra / 权限管理</p>
+      <h1 id="管理员菜单子角色">在不破坏原有权限模型的前提下，为 new-api 增加管理员菜单子角色</h1>
+      <blockquote><p>在 new-api 原有 Root、管理员、普通用户三级身份之上，增加一层由 Root 维护的“管理员菜单子角色”，让不同岗位的管理员只看到职责范围内的后台菜单，同时保持存量管理员默认拥有全部菜单。</p></blockquote>
+
+      <h2 id="目录">目录</h2>
+      <ol>
+        <li><a href="#为什么要做">为什么要做这项功能</a></li>
+        <li><a href="#方案概览">方案概览</a></li>
+        <li><a href="#核心实现">数据、接口与管理界面</a></li>
+        <li><a href="#三层求交">三层菜单配置求交</a></li>
+        <li><a href="#边界处理">边界、验证与复盘</a></li>
+        <li><a href="#简历表述">简历可用表述</a></li>
+      </ol>
+
+      <h2 id="为什么要做">一、为什么要做这项功能</h2>
+      <p>随着运营、市场、财务等岗位共同使用管理后台，原有“管理员可以看到全部后台菜单”的方式逐渐暴露出两个问题：</p>
+      <ul>
+        <li>岗位无关菜单过多，后台信息密度高，新管理员的学习成本较大。</li>
+        <li>财务报表、渠道、用户、活动等模块全部暴露给所有管理员，不符合最小可见范围原则。</li>
+      </ul>
+      <p>这次改造没有直接引入一套庞大的通用 RBAC，而是围绕当前最明确的诉求，增加“角色—菜单—管理员”三者之间的关系。它解决的是<strong>后台菜单可见范围与岗位分工</strong>，并不把菜单隐藏冒充资源级或操作级授权。</p>
+
+      <h2 id="方案概览">二、方案概览</h2>
+      <figure class="sequence-diagram" data-sequence-diagram>
+        <figcaption class="sequence-diagram-header">
+          <span><strong class="sequence-diagram-title">菜单子角色数据流</strong><span class="sequence-diagram-route">Root 配置 → 登录态下发 → 侧边栏求交</span></span>
+          <span class="sequence-diagram-controls" role="group" aria-label="架构图缩放控制">
+            <button type="button" data-diagram-zoom-out title="缩小架构图" aria-label="缩小架构图">−</button>
+            <output data-diagram-zoom-output aria-live="polite">100%</output>
+            <button type="button" data-diagram-zoom-in title="放大架构图" aria-label="放大架构图">+</button>
+            <button class="sequence-diagram-reset" type="button" data-diagram-reset title="恢复为 100%" aria-label="重置架构图缩放">重置</button>
+          </span>
+        </figcaption>
+        <div class="sequence-diagram-viewport" tabindex="0" aria-label="管理员菜单子角色数据流架构图；放大后可拖动查看">
+          <div class="sequence-diagram-stage">
+            <pre class="mermaid">flowchart LR
+    A[Root 创建菜单子角色] --&gt; B[admin_menu_roles]
+    B --&gt; C[为管理员绑定角色]
+    C --&gt; D[users.admin_menu_role_id]
+    D --&gt; E[登录接口下发 admin_menu_keys]
+    E --&gt; F[全局开关 ∩ 子角色 ∩ 个人配置]
+    F --&gt; G[最终侧边栏]</pre>
+          </div>
+        </div>
+        <p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看</p>
+      </figure>
+      <p>方案坚持三条原则：未绑定子角色的管理员继续看到全部菜单；角色和绑定接口全部经过 Root 鉴权；子角色只能在全局已开启的菜单中继续收窄，不能重新打开被系统关闭的模块。</p>
+
+      <h2 id="核心实现">三、数据、接口与管理界面</h2>
+      <h3 id="数据模型">1. 数据模型与兼容策略</h3>
+      <p>新增 <code>admin_menu_roles</code> 表保存角色名称、备注和菜单键集合，并在 <code>users</code> 表增加可空的 <code>admin_menu_role_id</code> 索引字段。迁移继续使用 GORM <code>AutoMigrate</code> 和通用字段类型，保持 SQLite、MySQL、PostgreSQL 兼容。</p>
+      <p>后台维护一份稳定的菜单白名单，目前覆盖渠道、模型、用户、团队、兑换码、订阅、用户资产、财务报表、行为监控、奖励和活动等 16 个管理模块。保存角色时会校验名称和备注长度、拒绝非法菜单键、去重并按固定顺序存储；历史记录中已经下线的未知键会被忽略。</p>
+      <p>角色列表同时返回菜单数量和绑定用户数量。删除前检查是否仍有管理员引用，避免悬空配置。</p>
+
+      <h3 id="root-接口">2. Root 管理接口与审计</h3>
+      <p>新增 <code>/api/admin/menu-roles</code> 管理接口，支持角色查询、新增、编辑、删除，以及为指定管理员绑定或清空子角色。接口不仅校验角色是否存在，还校验目标用户必须是管理员；用户被降级时同步清理子角色关系。</p>
+      <p>角色创建、菜单调整、用户绑定和删除均写入管理日志，方便追踪“谁在什么时候修改了哪一组后台菜单”。</p>
+
+      <h3 id="管理界面">3. 角色管理与用户绑定</h3>
+      <p>系统设置中增加 Root 专属角色管理页，提供搜索、创建、编辑、删除、菜单数量和绑定人数展示。</p>
+      <figure class="article-media"><a href="./images/new-api-admin-menu-roles/roles-list.png" target="_blank" rel="noopener"><img src="./images/new-api-admin-menu-roles/roles-list.png" alt="管理员菜单子角色列表" loading="lazy"></a><figcaption>图 1：角色列表展示菜单数量、绑定人数和维护入口。</figcaption></figure>
+      <p>角色编辑抽屉直接呈现可配置菜单；被系统全局关闭的模块不可选，避免产生永远不会生效的角色配置。</p>
+      <figure class="article-media"><a href="./images/new-api-admin-menu-roles/role-editor.png" target="_blank" rel="noopener"><img src="./images/new-api-admin-menu-roles/role-editor.png" alt="管理员菜单子角色编辑器" loading="lazy"></a><figcaption>图 2：以岗位为单位勾选可见后台菜单。</figcaption></figure>
+      <p>管理员既可以在新建用户时选择子角色，也可以在用户列表中单独修改或恢复为“默认全部菜单”。相关文案同步补齐中文、英文、法文、日文、俄文和越南文。</p>
+      <figure class="article-media"><a href="./images/new-api-admin-menu-roles/user-role-assignment.png" target="_blank" rel="noopener"><img src="./images/new-api-admin-menu-roles/user-role-assignment.png" alt="新建管理员时配置菜单子角色" loading="lazy"></a><figcaption>图 3：新建管理员时可以同步绑定菜单子角色。</figcaption></figure>
+
+      <h2 id="三层求交">四、三层菜单配置求交</h2>
+      <table>
+        <thead><tr><th>配置层</th><th>作用</th><th>默认行为</th></tr></thead>
+        <tbody>
+          <tr><td>系统全局配置</td><td>决定平台允许展示哪些模块</td><td>全局关闭后任何角色都不能打开</td></tr>
+          <tr><td>管理员子角色</td><td>按岗位进一步限制管理菜单</td><td>未绑定时不收窄</td></tr>
+          <tr><td>用户个人配置</td><td>隐藏本人不常用的入口</td><td>空配置或旧数据不收窄</td></tr>
+        </tbody>
+      </table>
+      <p>后端在登录响应和当前用户接口中下发解析后的 <code>admin_menu_keys</code>；前端认证状态保存该字段，再由统一的侧边栏 Hook 完成三层 AND 过滤，避免每个页面维护一套判断。</p>
+
+      <h2 id="边界处理">五、边界、验证与复盘</h2>
+      <ul>
+        <li><strong>存量兼容：</strong>未绑定角色仍是全部菜单，而不是空菜单。</li>
+        <li><strong>安全回退：</strong>角色数据解析失败时不授予额外菜单，未知历史键不进入结果。</li>
+        <li><strong>引用保护：</strong>仍被用户绑定的角色禁止删除，并返回明确绑定人数。</li>
+        <li><strong>身份联动：</strong>只有管理员能绑定子角色，用户升降级时清理失效关系。</li>
+        <li><strong>职责边界：</strong>当前版本控制菜单展示；资源级、接口级权限仍由既有 Root/Admin 鉴权负责。</li>
+      </ul>
+      <p>实现补充了数据模型 CRUD、菜单白名单与规范化、引用保护、接口行为和 Root 路由鉴权测试，最终形成“Root 定义岗位角色 → 绑定管理员 → 登录态下发范围 → 前端统一过滤 → 管理操作留痕”的闭环。</p>
+      <p>难点不在“隐藏几个菜单”，而在于不破坏已经运行的权限与个性化配置。可空关联、三层求交、安全回退和引用保护，让这次高风险改造能够平滑上线。下一步可以把菜单键抽象为统一权限能力，并在服务端扩展查看、编辑、导出等操作级权限。</p>
+
+      <h2 id="简历表述">六、简历可用表述</h2>
+      <blockquote><p>设计并落地 new-api 管理员菜单子角色功能，新增 Root 专属角色管理与用户绑定流程，通过“全局配置 × 子角色 × 个人配置”三层求交实现 16 个后台模块的岗位化展示，并以可空关联和安全回退保证存量管理员无感升级。</p></blockquote>
+      <p><strong>技术关键词：</strong>渐进式权限改造、向后兼容、最小权限原则、Root 鉴权、配置求交、安全回退、跨数据库迁移、i18n。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+  <script type="module" src="./diagrams.js"></script>
+</body>
+</html>

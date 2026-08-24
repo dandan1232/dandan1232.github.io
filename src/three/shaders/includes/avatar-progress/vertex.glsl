@@ -1,7 +1,7 @@
 varying float vModelProgress;
 
-#define MODEL_PROGRESS_MIN_Y 2.0
-#define MODEL_PROGRESS_MAX_Y 6.45
+#define MODEL_PROGRESS_MIN_Y 0.4
+#define MODEL_PROGRESS_MAX_Y 3.0
 #define MODEL_PROGRESS_START 0.47
 #define MODEL_PROGRESS_END 0.995
 

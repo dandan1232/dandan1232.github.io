@@ -23,6 +23,16 @@ const NOTES_GROUPS = [
     ]
   },
   {
+    id: "ai-infra",
+    label: "AI 基础设施",
+    items: [
+      { title: "new-api 管理员菜单子角色", href: "./new-api-admin-menu-roles.html" },
+      { title: "视频模型异步计费链路治理", href: "./video-model-async-billing-fixes.html" },
+      { title: "new-api 峰谷定价", href: "./new-api-peak-offpeak-pricing.html" },
+      { title: "三服务对象存储架构实践", href: "./object-storage-digital-asset-governance.html" }
+    ]
+  },
+  {
     id: "rec",
     label: "推荐系统",
     items: [

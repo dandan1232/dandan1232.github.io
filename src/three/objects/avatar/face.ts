@@ -1,38 +1,22 @@
-import { LinearSRGBColorSpace, ShaderMaterial } from "three";
-import { resources } from "../../../utils/resources";
-import fragmentShader from "../../shaders/avatar-face/fragment.glsl";
-import vertexShader from "../../shaders/avatar-face/vertex.glsl";
-import { avatar } from "./index";
 import gsap from "gsap";
-
-import type { Material } from "three";
+import { girl } from "./girl";
 import { sceneWeights } from "../../../animations/scenes";
 
-let material: Material | null = null;
+type PresetName = "neutral" | "joy" | "surprised" | "sleep";
 
-const FRAME_INDEXES = {
-  "default-0": 0,
-  "default-1": 1,
-  "default-2": 2,
-  "default-3": 3,
-  sleeping: 4,
-  "proud-0": 12,
-  "proud-1": 13,
-  "proud-2": 14,
-  "proud-3": 15,
-  "contact-transition-0": 8,
-  "contact-transition-1": 9,
-  "contact-transition-2": 10,
-} as const satisfies Record<string, number>;
-
-const blinkFrame = { value: 0 };
-
-const uniforms = { uFrame: { value: 0 } };
-
-const sceneFrames: Record<"intro" | "contact", keyof typeof FRAME_INDEXES> = {
-  intro: "default-0",
-  contact: "sleeping",
+const PRESETS: Record<PresetName, Record<string, number>> = {
+  neutral: {},
+  joy: { joy: 1 },
+  surprised: { surprised: 1 },
+  sleep: { blink: 1, fun: 0.55 },
 };
+
+const CONTROLLED_MORPHS = ["blink", "joy", "surprised", "fun", "angry", "sorrow"] as const;
+
+const blinkWeight = { value: 0 };
+
+const introFace: { value: PresetName } = { value: "neutral" };
+const contactFace: { value: PresetName } = { value: "sleep" };
 
 const init = () => {
   gsap.ticker.add(tick);
@@ -49,77 +33,53 @@ const scheduleBlinkInterval = () => {
 const blink = () => {
   if (!canBlink()) return;
   const tl = gsap.timeline();
-  tl.to(blinkFrame, { value: 3, duration: 0.12, ease: "power2.out" });
-  tl.to(blinkFrame, { value: 0, duration: 0.2, ease: "power2.out" });
-};
-
-const getMaterial = (): Material | null => {
-  const texture = resources.items["face-texture"];
-  texture.colorSpace = LinearSRGBColorSpace;
-  texture.generateMipmaps = false;
-
-  material = new ShaderMaterial({
-    transparent: true,
-    depthTest: false,
-    depthWrite: false,
-    fragmentShader,
-    vertexShader,
-    uniforms: { uTexture: { value: texture }, ...uniforms, ...avatar.uniforms },
-  });
-
-  return material;
+  tl.to(blinkWeight, { value: 1, duration: 0.12, ease: "power2.out" });
+  tl.to(blinkWeight, { value: 0, duration: 0.2, ease: "power2.out" });
 };
 
 const canBlink = (): boolean => {
   const isContact = sceneWeights.contact > 0.001;
   if (isContact) {
-    if (sceneFrames.contact.startsWith("proud")) {
-      return true;
-    }
-  } else {
-    if (sceneFrames.intro.startsWith("default")) {
-      return true;
-    }
+    return contactFace.value === "joy";
   }
-  return false;
+  return introFace.value === "neutral";
 };
 
 const wakeUp = () => {
-  sceneFrames.contact = "proud-0";
   const tl = gsap.timeline();
-  tl.set(sceneFrames, { contact: "contact-transition-0" }, 0);
-  tl.set(sceneFrames, { contact: "contact-transition-1" }, 0.4);
-  tl.set(sceneFrames, { contact: "contact-transition-2" }, 0.43);
-  tl.set(sceneFrames, { contact: "proud-0" }, 0.46);
+  tl.set(contactFace, { value: "surprised" }, 0);
+  tl.set(contactFace, { value: "joy" }, 0.46);
 };
 
 const wave = () => {
   const tl = gsap.timeline();
 
   const RESET_AFTER = 3;
-  tl.set(sceneFrames, { intro: "proud-0" }, 0);
-  tl.set(sceneFrames, { intro: "default-0" }, RESET_AFTER);
+  tl.set(introFace, { value: "joy" }, 0);
+  tl.set(introFace, { value: "neutral" }, RESET_AFTER);
 
   return tl;
+};
+
+const apply = (preset: PresetName) => {
+  const weights: Record<string, number> = {};
+  for (const key of CONTROLLED_MORPHS) weights[key] = 0;
+  Object.assign(weights, PRESETS[preset]);
+
+  if ((preset === "neutral" && introFace.value === "neutral") || (preset === "joy" && canBlink())) {
+    weights.blink = Math.max(weights.blink ?? 0, blinkWeight.value);
+  }
+
+  girl.setFaceWeights(weights);
 };
 
 const tick = () => {
   const isContact = sceneWeights.contact > 0.001;
   if (isContact) {
-    const name = sceneFrames.contact.startsWith("proud")
-      ? `proud-${Math.round(blinkFrame.value)}`
-      : sceneFrames.contact;
-    uniforms.uFrame.value = FRAME_INDEXES[name as keyof typeof FRAME_INDEXES];
+    apply(contactFace.value);
   } else {
     const isAbout = sceneWeights.about > 0.1;
-    if (isAbout) {
-      uniforms.uFrame.value = FRAME_INDEXES["default-0"];
-    } else {
-      const name = sceneFrames.intro.startsWith("default")
-        ? `default-${Math.round(blinkFrame.value)}`
-        : sceneFrames.intro;
-      uniforms.uFrame.value = FRAME_INDEXES[name as keyof typeof FRAME_INDEXES];
-    }
+    apply(isAbout ? "neutral" : introFace.value);
   }
 };
 
@@ -127,4 +87,4 @@ const destroy = () => {
   gsap.ticker.remove(tick);
 };
 
-export const face = { init, destroy, getMaterial, FRAME_INDEXES, wakeUp, wave };
+export const face = { init, destroy, wakeUp, wave };

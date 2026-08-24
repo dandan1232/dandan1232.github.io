@@ -19,7 +19,7 @@ export default defineConfig({
   resolve: {
     extensions: [".js", ".jsx", ".ts", ".tsx", ".json", ".ogg", ".wav", ".glsl", ".ktx2"],
   },
-  assetsInclude: ["**/*.svg", "**/*.gltf", "**/*.glb", "**/*.png", "**/*.jpg", "**/*.ktx2"],
+  assetsInclude: ["**/*.svg", "**/*.gltf", "**/*.glb", "**/*.vrm", "**/*.png", "**/*.jpg", "**/*.ktx2"],
   css: {
     preprocessorOptions: {
       scss: {
