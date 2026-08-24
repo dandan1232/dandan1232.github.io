@@ -542,11 +542,8 @@ const setMode = (mode: "solid" | "hologram" | "transition", progress = 0) => {
   if (hologramRoot) hologramRoot.visible = true;
 };
 
-const setStandingProgress = (progress: number, isContact = false) => {
-  const standingProgress = MathUtils.clamp(progress, 0, 1);
-  if (solidRoot) {
-    solidRoot.rotation.y = isContact ? SEATED_YAW_CORRECTION : MathUtils.lerp(SEATED_YAW_CORRECTION, 0, standingProgress);
-  }
+const setStandingProgress = (_progress: number, _isContact = false) => {
+  if (solidRoot) solidRoot.rotation.y = SEATED_YAW_CORRECTION;
   if (hologramRoot) hologramRoot.rotation.y = SEATED_YAW_CORRECTION;
 };
 

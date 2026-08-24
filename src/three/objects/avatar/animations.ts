@@ -31,9 +31,9 @@ const updateHologram = () => {
 const updateIntro = () => {
   setWeight("desktop-idle", (1 - avatar.tIdleIntensity.value) * (1 - wavingStrength.value));
   setWeight("left-desktop", (1 - avatar.tIdleIntensity.value) * (1 - wavingStrength.value));
-  setWeight("t-idle", avatar.tIdleIntensity.value);
+  setWeight("t-idle", 0);
   setWeight("sleeping", 0);
-  setWeight("contact-idle", 0);
+  setWeight("contact-idle", avatar.tIdleIntensity.value);
   setWeight("wake-up", 0);
   setWeight("wave", wavingStrength.value * (1 - avatar.tIdleIntensity.value));
 };
