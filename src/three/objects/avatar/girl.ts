@@ -13,6 +13,7 @@ import {
   Object3D,
   Plane,
   Quaternion,
+  QuaternionKeyframeTrack,
   SkinnedMesh,
   Vector3,
 } from "three";
@@ -60,6 +61,41 @@ const UPRIGHT_RESET_BONES = new Set([
 ]);
 
 type ClipName = (typeof CLIP_NAMES)[number];
+
+/** Bare (x, y, z, w) quaternion, the layout QuaternionKeyframeTrack expects. */
+type Quat = [number, number, number, number];
+
+/**
+ * Procedural greeting-wave: synthetic arm-only clip replacing the seated
+ * `wave` source whose lift was too small in the standing pose. Her LEFT arm
+ * lifts out to her own side, forearm vertical beside the skull, hand swinging
+ * left/right. Rest rotations on this rig are identity, so local deltas are the
+ * whole story — geometry pre-verified offline (scripts/verify-wave-pose.mjs).
+ *
+ * The clip is played as an OVERLAY on top of `contact-idle`; see the weight
+ * pre-compensation in animations.ts, without which the mixer only ever renders
+ * half of these angles.
+ */
+const WAVE_CLIP_NAME = "upright-wave"; // consumed by the existing contact-wave action
+const WAVE_DURATION_S = 2.4;
+// Base pose, as rotations about each bone's local Z away from the VRM rest
+// T-pose (negative lifts the left arm). Abduction + flexion deliberately sum to
+// 90° so the forearm ends up VERTICAL — the only orientation where elbow
+// flexion moves the hand horizontally. Lifting the upper arm past vertical (the
+// old 98°) tips the forearm toward horizontal, where the same flexion reads as
+// beckoning, and pushes the hand across the midline above her head.
+const WAVE_ABDUCT_DEG = 38; // upper arm: out to the side, well clear of the head
+const WAVE_BEND_BASE_DEG = 52; // 38 + 52 = 90 -> forearm vertical
+const WAVE_FOREARM_TWIST_DEG = 90; // pronation about the forearm axis so the palm faces front
+// Oscillation. The elbow carries the wave; the shoulder only leads it slightly
+// so the arm is not a rigid metronome, and the wrist trails further so the hand
+// whips instead of moving as one board with the forearm.
+const WAVE_SWING_FOLD_DEG = 16; // elbow — the actual left/right travel
+const WAVE_SWING_UPPER_DEG = 4; // shoulder lead
+const WAVE_SWING_HAND_DEG = 7; // wrist follow-through
+const WAVE_LAG_DEG = 30; // phase each joint trails its parent by
+const WAVE_FREQUENCY_HZ = 1.6;
+const WAVE_KEY_RATE_FPS = 30;
 
 const BONE_MAP: Record<string, string> = {
   hipsBone: "J_Bip_C_Hips",
@@ -194,25 +230,82 @@ const retargetClips = (targetRoot: Object3D, targetMesh: SkinnedMesh, sourceMesh
   const contactIdle = clips.get("contact-idle");
   if (!contactIdle) throw new Error('[Girl] Retargeted clip "contact-idle" missing');
 
-  const uprightTracks = contactIdle.tracks.flatMap((track) => {
-    if (track.name.includes("[hipsBone].quaternion")) {
-      const uprightHipsTrack = track.clone();
-      for (let index = 0; index < uprightHipsTrack.values.length; index += 4) {
-        uprightHipsTrack.values[index] = 0;
-        uprightHipsTrack.values[index + 1] = UPRIGHT_HIPS_YAW_COMPONENT;
-        uprightHipsTrack.values[index + 2] = 0;
-        uprightHipsTrack.values[index + 3] = UPRIGHT_HIPS_YAW_COMPONENT;
+  const makeUprightVariant = (baseClip: AnimationClip, name: string) => {
+    const tracks = baseClip.tracks.flatMap((track) => {
+      if (track.name.includes("[hipsBone].quaternion")) {
+        const uprightHipsTrack = track.clone();
+        for (let index = 0; index < uprightHipsTrack.values.length; index += 4) {
+          uprightHipsTrack.values[index] = 0;
+          uprightHipsTrack.values[index + 1] = UPRIGHT_HIPS_YAW_COMPONENT;
+          uprightHipsTrack.values[index + 2] = 0;
+          uprightHipsTrack.values[index + 3] = UPRIGHT_HIPS_YAW_COMPONENT;
+        }
+        return [uprightHipsTrack];
       }
-      return [uprightHipsTrack];
-    }
 
-    if (!track.name.endsWith(".quaternion")) return [track];
-    const boneName = track.name.match(/\[([^\]]+)\]/)?.[1];
-    return boneName && UPRIGHT_RESET_BONES.has(boneName) ? [] : [track];
-  });
-  clips.set(UPRIGHT_IDLE_CLIP_NAME, new AnimationClip(UPRIGHT_IDLE_CLIP_NAME, contactIdle.duration, uprightTracks));
+      if (!track.name.endsWith(".quaternion")) return [track];
+      const boneName = track.name.match(/\[([^\]]+)\]/)?.[1];
+      return boneName && UPRIGHT_RESET_BONES.has(boneName) ? [] : [track];
+    });
+    return new AnimationClip(name, baseClip.duration, tracks);
+  };
+
+  clips.set(UPRIGHT_IDLE_CLIP_NAME, makeUprightVariant(contactIdle, UPRIGHT_IDLE_CLIP_NAME));
+  clips.set(WAVE_CLIP_NAME, createWaveClip());
 
   targetMesh.skeleton.pose();
+};
+
+/** Bake the procedural greeting-wave described by the WAVE_* constants. */
+const createWaveClip = () => {
+  const DEG = Math.PI / 360; // degrees -> half-angle radians
+  // rotation about local Z; left arm lifts with negative degrees
+  const qZ = (degrees: number): Quat => [0, 0, Math.sin(degrees * DEG), Math.cos(degrees * DEG)];
+  // rotation about local X, i.e. a twist around the bone's own axis
+  const qX = (degrees: number): Quat => [Math.sin(degrees * DEG), 0, 0, Math.cos(degrees * DEG)];
+  const qMul = (a: Quat, b: Quat): Quat => [
+    a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+    a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+    a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+    a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+  ];
+
+  const frameCount = Math.ceil(WAVE_DURATION_S * WAVE_KEY_RATE_FPS);
+  const times = new Float32Array(frameCount);
+  const armValues = new Float32Array(frameCount * 4);
+  const foreArmValues = new Float32Array(frameCount * 4);
+  const handValues = new Float32Array(frameCount * 4);
+
+  const envelope = (t: number) =>
+    Math.min(t / 0.3, (WAVE_DURATION_S - t) / 0.45, 1); // let the mixer weight ramps own the fades
+  const lag = (WAVE_LAG_DEG * Math.PI) / 180;
+
+  for (let frame = 0; frame < frameCount; frame++) {
+    const time = frame / WAVE_KEY_RATE_FPS;
+    const phase = time * WAVE_FREQUENCY_HZ * Math.PI * 2;
+    const gate = envelope(time);
+
+    // All three swings push the hand the same way; the trailing phases turn a
+    // rigid sweep into an arm that whips from the shoulder down to the fingers.
+    const armAngle = -WAVE_ABDUCT_DEG + WAVE_SWING_UPPER_DEG * gate * Math.sin(phase);
+    const foldAngle = -WAVE_BEND_BASE_DEG + WAVE_SWING_FOLD_DEG * gate * Math.sin(phase - lag);
+    const handAngle = WAVE_SWING_HAND_DEG * gate * Math.sin(phase - 2 * lag);
+
+    times[frame] = time;
+    armValues.set(qZ(armAngle), frame * 4);
+    // twist below the elbow only: twisting the upper arm instead would rotate
+    // the elbow's hinge plane and turn the wave into a forward/back paddle.
+    foreArmValues.set(qMul(qZ(foldAngle), qX(WAVE_FOREARM_TWIST_DEG)), frame * 4);
+    handValues.set(qZ(handAngle), frame * 4);
+  }
+
+  return new AnimationClip(WAVE_CLIP_NAME, WAVE_DURATION_S, [
+    new QuaternionKeyframeTrack(".bones[leftArmBone].quaternion", Array.from(times), Array.from(armValues)),
+    new QuaternionKeyframeTrack(".bones[leftForeArmBone].quaternion", Array.from(times), Array.from(foreArmValues)),
+    // the idle clip leaves a bent wrist here; overriding it keeps the hand in
+    // line with the forearm instead of dangling through the wave.
+    new QuaternionKeyframeTrack(".bones[leftHandBone].quaternion", Array.from(times), Array.from(handValues)),
+  ]);
 };
 
 const applySolidMaterials = (root: Object3D) => {
@@ -390,6 +483,18 @@ const setupActions = (actionMixer: AnimationMixer, targetActions: Map<string, An
     action.clampWhenFinished = true;
     action.loop = LoopOnce;
   });
+
+  setupAction(
+    targetActions,
+    actionMixer,
+    "contact-wave",
+    (action) => {
+      action.clampWhenFinished = true;
+      action.loop = LoopOnce;
+      action.weight = 0;
+    },
+    "upright-wave",
+  );
 };
 
 const setupHologramActions = (actionMixer: AnimationMixer) => {

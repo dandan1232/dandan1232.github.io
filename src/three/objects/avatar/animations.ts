@@ -1,5 +1,6 @@
 import { avatar } from ".";
 import gsap from "gsap";
+import { MathUtils } from "three";
 import { sceneWeights } from "../../../animations/scenes";
 import { face } from "./face";
 import { sleepingSprite } from "../contact/sleeping-sprite";
@@ -10,6 +11,29 @@ import { girl } from "./girl";
 
 let isAwake = false;
 const wavingStrength = { value: isFeatureEnabled("introWave") ? 1 : 0 };
+
+/** Contact greeting: overlay weight for the upright arm-wave clip. */
+const contactWaveStrength = { value: 0 };
+
+/**
+ * `contact-wave` only animates the left arm chain and rides on top of
+ * `contact-idle`, which is pinned at weight 1 and animates those same bones.
+ * three.js normalises overlapping non-additive actions (PropertyMixer.accumulate
+ * blends by `weight / cumulativeWeight`), so an overlay at weight w lands at
+ * only w/(1+w) of its own pose — at "full strength" the arm was slerped exactly
+ * halfway back to the idle pose, i.e. stuck out sideways with half the swing.
+ * Pre-compensate so the requested strength is the mix the mixer actually
+ * produces: weight w' = s/(1-s) gives w'/(1+w') = s.
+ */
+const WAVE_MAX_MIX = 0.98; // s = 1 would need an infinite weight
+const overlayWeight = (strength: number) => {
+  const mix = MathUtils.clamp(strength, 0, WAVE_MAX_MIX);
+  return mix / (1 - mix);
+};
+let waveGateOpen = false;
+let wavePendingAfterWake = false;
+let lastContactWaveTime = -Infinity;
+let waveTl: gsap.core.Timeline | null = null;
 
 const init = () => {
   play("desktop-idle");
@@ -36,6 +60,8 @@ const updateIntro = () => {
   setWeight("contact-idle", avatar.tIdleIntensity.value);
   setWeight("wake-up", 0);
   setWeight("wave", wavingStrength.value * (1 - avatar.tIdleIntensity.value));
+  contactWaveStrength.value = 0;
+  setWeight("contact-wave", 0);
 };
 
 const wave = () => {
@@ -50,6 +76,35 @@ const wave = () => {
   tl.fromTo(wavingStrength, { value: 1 }, { value: 0 }, waveDuration - 0.2);
 
   return tl;
+};
+
+const playContactWave = () => {
+  const waveAction = girl.actions.get("contact-wave");
+  if (!waveAction) return;
+
+  const now = gsap.ticker.time;
+  const duration = waveAction.getClip().duration;
+  if (now - lastContactWaveTime < duration + 0.8) return;
+  lastContactWaveTime = now;
+
+  waveAction.reset().play();
+
+  waveTl?.kill();
+  waveTl = gsap.timeline();
+  waveTl.to(contactWaveStrength, { value: 1, duration: 0.35, ease: "power1.out" }, 0);
+  waveTl.to(contactWaveStrength, { value: 0, duration: 0.45, ease: "power1.in" }, Math.max(duration - 0.45, 0.4));
+
+  return waveTl;
+};
+
+/** Scroll reaches the bottom section: wave once (queued behind wake-up if
+ *  the greeting is still asleep). */
+const requestContactWave = () => {
+  if (!waveGateOpen) {
+    wavePendingAfterWake = true;
+    return;
+  }
+  playContactWave();
 };
 
 const wakeUp = () => {
@@ -71,6 +126,14 @@ const wakeUp = () => {
   setTimeout(() => {
     wakeUpAction.crossFadeTo(contactIdleAction, 0.5);
     contactIdleAction.play();
+
+    gsap.delayedCall(1, () => {
+      waveGateOpen = true;
+      if (wavePendingAfterWake) {
+        wavePendingAfterWake = false;
+        playContactWave();
+      }
+    });
   }, wakeUpDuration * 1000);
 
   face.wakeUp();
@@ -85,6 +148,7 @@ const updateContact = () => {
   setWeight("contact-idle", 1);
   setWeight("wake-up", 0);
   setWeight("wave", 0);
+  setWeight("contact-wave", overlayWeight(contactWaveStrength.value));
 };
 
 const update = () => {
@@ -100,4 +164,13 @@ const update = () => {
   girl.update(delta / 60);
 };
 
-export const animations = { init, play, actions: girl.actions, update, wakeUp, getIsAwake: () => isAwake, wave };
+export const animations = {
+  init,
+  play,
+  actions: girl.actions,
+  update,
+  wakeUp,
+  requestContactWave,
+  getIsAwake: () => isAwake,
+  wave,
+};

@@ -6,6 +6,7 @@ import { createMatchMedia } from "../utils/matchMedia";
 let inTl: gsap.core.Timeline | null = null;
 let outTl: gsap.core.Timeline | null = null;
 let wakeUpMm: gsap.MatchMedia | null = null;
+let waveMm: gsap.MatchMedia | null = null;
 
 const setup = (contact: HTMLElement) => {
   inTl = gsap.timeline({
@@ -47,6 +48,18 @@ const setup = (contact: HTMLElement) => {
     });
     tl.call(avatarAnimations.wakeUp, [0.25]);
   });
+
+  // A little deeper than the wake-up trigger so the greeting wave always
+  // lands after she is standing; fires again on every re-entry from above.
+  waveMm = createMatchMedia((_context, { isMobile }) => {
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: contact,
+        start: isMobile ? "top 3%" : "top 6%",
+      },
+    });
+    tl.call(() => avatarAnimations.requestContactWave());
+  });
 };
 
 const destroy = () => {
@@ -61,6 +74,10 @@ const destroy = () => {
   if (wakeUpMm) {
     wakeUpMm.kill();
     wakeUpMm = null;
+  }
+  if (waveMm) {
+    waveMm.kill();
+    waveMm = null;
   }
 };
 
