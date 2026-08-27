@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# 模型精简前的本地备份（scripts/slim-vrm.mjs），体积过大不入库
+*.vrm.bak
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
