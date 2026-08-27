@@ -38,6 +38,9 @@ let positions: { x: number; y: number; z: number }[] = [];
 let focuses: { x: number; y: number; z: number }[] = [];
 let weights: number[] = [];
 let resolvedPoints: typeof points.landscape | typeof points.portrait = points.landscape;
+const weightKeys = Object.keys(sceneWeights) as (keyof typeof sceneWeights)[];
+const weightSnapshot = new Float64Array(weightKeys.length).fill(-1);
+let lastIsLandscape: boolean | null = null;
 
 // called when viewport or scene set changes
 function updateReferences() {
@@ -55,7 +58,26 @@ function updateReferences() {
 }
 
 const tick = () => {
-  updateReferences();
+  // Rebuild the cached point lists only when an input actually changed.
+  const isLandscape = sizes.isLandscape;
+  let needsUpdate = isLandscape !== lastIsLandscape;
+
+  if (!needsUpdate) {
+    for (let index = 0; index < weightKeys.length; index++) {
+      if (sceneWeights[weightKeys[index]!] !== weightSnapshot[index]) {
+        needsUpdate = true;
+        break;
+      }
+    }
+  }
+
+  if (needsUpdate) {
+    for (let index = 0; index < weightKeys.length; index++) {
+      weightSnapshot[index] = sceneWeights[weightKeys[index]!];
+    }
+    lastIsLandscape = isLandscape;
+    updateReferences();
+  }
 
   const finalPos = weightedAverage(positions, weights);
   const finalFocus = weightedAverage(focuses, weights);
