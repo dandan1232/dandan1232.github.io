@@ -49,13 +49,14 @@ const setup = (contact: HTMLElement) => {
     tl.call(avatarAnimations.wakeUp, [0.25]);
   });
 
-  // A little deeper than the wake-up trigger so the greeting wave always
-  // lands after she is standing; fires again on every re-entry from above.
+  // Same depth as the wake-up cue: the wave is scheduled by wakeUp() itself, so
+  // this only matters for a scroll that lands here with her already awake.
+  // Deeper than this and a slow scroll would trigger a second, stray greeting.
   waveMm = createMatchMedia((_context, { isMobile }) => {
     const tl = gsap.timeline({
       scrollTrigger: {
         trigger: contact,
-        start: isMobile ? "top 3%" : "top 6%",
+        start: isMobile ? "top 10%" : "top 15%",
       },
     });
     tl.call(() => avatarAnimations.requestContactWave());

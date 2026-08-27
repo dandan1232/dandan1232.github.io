@@ -30,8 +30,14 @@ const overlayWeight = (strength: number) => {
   const mix = MathUtils.clamp(strength, 0, WAVE_MAX_MIX);
   return mix / (1 - mix);
 };
+
+/**
+ * Delay between the wake-up cue and the greeting wave. Matched to the zzz
+ * sprite, which lerps its opacity out over ~0.73s (sleeping-sprite.ts), so she
+ * starts waving just as the icon clears rather than after the wake-up clip.
+ */
+const WAKE_TO_WAVE_DELAY_S = 0.75;
 let waveGateOpen = false;
-let wavePendingAfterWake = false;
 let lastContactWaveTime = -Infinity;
 let waveTl: gsap.core.Timeline | null = null;
 
@@ -97,13 +103,10 @@ const playContactWave = () => {
   return waveTl;
 };
 
-/** Scroll reaches the bottom section: wave once (queued behind wake-up if
- *  the greeting is still asleep). */
+/** Greet now, if she is already awake. A request made while she is still
+ *  asleep is absorbed by the wave wakeUp() has already scheduled. */
 const requestContactWave = () => {
-  if (!waveGateOpen) {
-    wavePendingAfterWake = true;
-    return;
-  }
+  if (!waveGateOpen) return;
   playContactWave();
 };
 
@@ -126,15 +129,14 @@ const wakeUp = () => {
   setTimeout(() => {
     wakeUpAction.crossFadeTo(contactIdleAction, 0.5);
     contactIdleAction.play();
-
-    gsap.delayedCall(1, () => {
-      waveGateOpen = true;
-      if (wavePendingAfterWake) {
-        wavePendingAfterWake = false;
-        playContactWave();
-      }
-    });
   }, wakeUpDuration * 1000);
+
+  // Greet on the way out of the wake-up rather than waiting to be asked: the
+  // scroll trigger only re-arms the wave for a later re-entry.
+  gsap.delayedCall(WAKE_TO_WAVE_DELAY_S, () => {
+    waveGateOpen = true;
+    playContactWave();
+  });
 
   face.wakeUp();
   sleepingSprite.hide();
