@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>把异步计费变成可核对账单：预扣款与退款记录全链路改造 | Echo Notes</title>
+  <meta name="description" content="联动 new-api、llm-router 与 amax-router，打通视频异步任务的预扣、重算、补扣退款、日志查询和净额统计。" />
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/token-router-precharge-refund-ledger.html" />
+  <meta property="og:title" content="把异步计费变成可核对账单：预扣款与退款记录全链路改造 | Echo Notes" />
+  <meta property="og:description" content="联动 new-api、llm-router 与 amax-router，打通视频异步任务的预扣、重算、补扣退款、日志查询和净额统计。" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://dandan1232.github.io/notes/token-router-precharge-refund-ledger.html" />
+  <meta property="og:image" content="https://dandan1232.github.io/meta/og-image.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+      <p class="meta">2026-08-27 · AI Infra / 异步计费</p>
+      <h1 id="异步计费账单">把异步计费变成可核对账单：预扣款与退款记录全链路改造</h1>
+      <blockquote><p>不再只展示“任务提交时扣了多少”，而是把任务完成后的实际用量、差额退款和最终统计结果同时呈现给用户。</p></blockquote>
+
+      <h2 id="目录">目录</h2>
+      <ol>
+        <li><a href="#两笔流水">为什么异步视频计费需要两笔流水</a></li>
+        <li><a href="#职责边界">三个项目的职责边界</a></li>
+        <li><a href="#计费事实源">计费事实源：new-api</a></li>
+        <li><a href="#日志投影">日志投影与统计：llm-router</a></li>
+        <li><a href="#用户呈现">用户侧呈现：amax-router</a></li>
+        <li><a href="#边界处理">容易踩坑的边界处理</a></li>
+        <li><a href="#关键提交">关键提交</a></li>
+        <li><a href="#项目复盘">项目复盘</a></li>
+      </ol>
+
+      <h2 id="两笔流水">一、为什么异步视频计费需要两笔流水</h2>
+      <p>普通模型请求可以在响应结束时拿到实际 Token，再一次性完成计费。视频生成不同：提交任务时只能估算成本，真正的使用量要等供应商异步任务完成后才能确定。</p>
+      <p>因此计费天然分为两个阶段：</p>
+      <ol>
+        <li><strong>任务提交时预扣：</strong>先冻结或扣除估算额度，避免长任务执行期间余额不足。</li>
+        <li><strong>任务完成后重算：</strong>根据最终 Token 计算实际额度，并对差额执行补扣或退款。</li>
+      </ol>
+      <p>改造前，第二阶段虽然已经影响账户余额，却没有在用户日志中形成足够清晰的可见记录，容易产生三个问题：</p>
+      <ul>
+        <li>用户只看到预扣，无法解释余额为什么又发生变化；</li>
+        <li>退款混入普通日志后语义不清，金额正负号容易被误读；</li>
+        <li>汇总统计如果把退款继续当消费累加，会同时放大请求量和消费额。</li>
+      </ul>
+      <p>这里所说的“回退记录”指的是<strong>预扣多于实际消费后的差额退回</strong>，不是模型请求的 fallback 或渠道降级。</p>
+
+      <h2 id="职责边界">二、三个项目的职责边界</h2>
+      <table>
+        <thead><tr><th>项目</th><th>职责</th><th>本次改造重点</th></tr></thead>
+        <tbody>
+          <tr><td><code>new-api</code></td><td>计费事实源与资金流水</td><td>记录预扣、Token 重算、补扣和退款，保留可审计元数据</td></tr>
+          <tr><td><code>llm-router</code></td><td>日志投影、筛选与聚合</td><td>从计费流水中识别特殊异步事件，输出统一字段并修正统计口径</td></tr>
+          <tr><td><code>amax-router</code></td><td>用户侧日志与数据看板</td><td>展示预扣费、异步退款、实际 Token、金额方向和退款筛选</td></tr>
+        </tbody>
+      </table>
+      <p>最终链路如下：</p>
+      <figure class="sequence-diagram" data-sequence-diagram>
+        <figcaption class="sequence-diagram-header">
+          <span><strong class="sequence-diagram-title">异步视频计费账单链路</strong><span class="sequence-diagram-route">用户 → new-api → 视频供应商 → llm-router → amax-router</span></span>
+          <span class="sequence-diagram-controls" role="group" aria-label="架构图缩放控制">
+            <button type="button" data-diagram-zoom-out title="缩小架构图" aria-label="缩小架构图">−</button>
+            <output data-diagram-zoom-output aria-live="polite">100%</output>
+            <button type="button" data-diagram-zoom-in title="放大架构图" aria-label="放大架构图">+</button>
+            <button class="sequence-diagram-reset" type="button" data-diagram-reset title="恢复为 100%" aria-label="重置架构图缩放">重置</button>
+          </span>
+        </figcaption>
+        <div class="sequence-diagram-viewport" tabindex="0" aria-label="异步视频计费账单时序图；放大后可拖动查看">
+          <div class="sequence-diagram-stage">
+            <pre class="mermaid">sequenceDiagram
+    participant U as 用户
+    participant A as amax-router
+    participant N as new-api
+    participant P as 视频供应商
+    participant L as llm-router
+    U-&gt;&gt;N: 提交视频生成任务
+    N-&gt;&gt;N: 估算额度并预扣
+    N-&gt;&gt;N: 写入消费流水 type=2
+    N-&gt;&gt;P: 创建异步任务
+    P--&gt;&gt;N: 任务完成 + 实际 Token
+    N-&gt;&gt;N: 按实际 Token 重算额度
+    alt 实际额度高于预扣
+        N-&gt;&gt;N: 补扣差额并写 type=2
+    else 实际额度低于预扣
+        N-&gt;&gt;N: 退回差额并写 type=6
+    end
+    L-&gt;&gt;N: 查询 logs 计费流水
+    L-&gt;&gt;L: 识别预扣/退款并计算净额
+    A-&gt;&gt;L: 获取日志和统计数据
+    A--&gt;&gt;U: 展示完整账单语义</pre>
+          </div>
+        </div>
+        <p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看</p>
+      </figure>
+
+      <h2 id="计费事实源">三、计费事实源：<code>new-api</code></h2>
+      <h3 id="差额事件">1. 用差额事件保留完整账本</h3>
+      <p>任务完成后，<code>service/task_billing.go</code> 会读取任务提交时保存的预扣额度，并根据实际 Token 重算：</p>
+      <pre><code class="language-text">actualQuota = totalTokens
+            × modelRatio
+            × finalGroupRatio
+            × profitRatio
+            × otherMultiplier
+
+quotaDelta = actualQuota - preConsumedQuota</code></pre>
+      <table>
+        <thead><tr><th>条件</th><th>动作</th><th>日志类型</th></tr></thead>
+        <tbody>
+          <tr><td><code>quotaDelta &gt; 0</code></td><td>实际消费更高，补扣差额</td><td><code>LogTypeConsume = 2</code></td></tr>
+          <tr><td><code>quotaDelta &lt; 0</code></td><td>预扣过多，退回绝对值差额</td><td><code>LogTypeRefund = 6</code></td></tr>
+          <tr><td><code>quotaDelta = 0</code></td><td>无需新增资金事件</td><td>无差额流水</td></tr>
+        </tbody>
+      </table>
+      <p>退款采用“新增一笔反向流水”的方式，而不是回写或删除原预扣记录。这样可以同时保留任务提交时的决策和任务结束后的纠偏过程，余额变化也能逐笔审计。</p>
+
+      <h3 id="跨系统元数据">2. 为跨系统识别补足元数据</h3>
+      <p>视频任务的日志元数据中保留了：</p>
+      <ul>
+        <li><code>is_task</code>：标识异步任务计费；</li>
+        <li><code>request_path</code>：用于确认视频生成入口 <code>/v1/video/generations</code>；</li>
+        <li><code>task_id</code>：关联异步任务；</li>
+        <li><code>pre_consumed_quota</code>：原预扣额度；</li>
+        <li><code>actual_quota</code>：最终实际额度。</li>
+      </ul>
+      <p>Token 重算流水的 <code>content</code> 以 <code>token重算：</code> 开头，并包含 <code>tokens=...</code> 以及各项倍率。它既方便人工排查，也为日志服务提取“最终计费 Token”提供了稳定依据。</p>
+      <blockquote><p><code>new-api.logs</code> 是资金变化的事实账本。展示层只解释流水，不自行猜测或重算余额。</p></blockquote>
+
+      <h2 id="日志投影">四、日志投影与统计：<code>llm-router</code></h2>
+      <h3 id="退款放行">1. 只放行目标退款，不泄漏普通资金流水</h3>
+      <p>用户请求日志常规展示 <code>type IN (2, 5)</code>，分别覆盖消费和错误日志。异步 Token 退款是一个受控例外：</p>
+      <pre><code class="language-sql">type = 6 AND content LIKE 'token重算：%'</code></pre>
+      <p>这样既能展示视频任务的差额退款，又不会把充值撤销、管理员退款等其他资金流水混入请求日志。</p>
+      <p>异步轮询产生的退款记录通常没有原请求的 <code>request_id</code>，因此不能依赖普通请求日志的连接条件。实现中以 <code>logs</code> 表为主事实源，再用路由日志补充渠道与路由信息，让没有 <code>request_id</code> 的退款仍然能够被查询到。</p>
+
+      <h3 id="账单语义字段">2. 输出稳定的账单语义字段</h3>
+      <p>接口向前端补充两个字段：</p>
+      <pre><code class="language-ts">billing_type?: 'video_precharge' | 'async_refund' | null
+billed_tokens?: number | null</code></pre>
+      <p>识别规则为：</p>
+      <ul>
+        <li>消费日志、<code>is_task=true</code> 且请求路径为 <code>/v1/video/generations</code>：<code>video_precharge</code>；</li>
+        <li><code>type=6</code> 且内容属于 Token 重算：<code>async_refund</code>；</li>
+        <li>从重算内容的 <code>tokens=数字</code> 中提取最终计费 Token，写入 <code>billed_tokens</code>。</li>
+      </ul>
+      <p>同时，异步退款被映射为独立响应状态 <code>refund</code>，日志接口支持 <code>status=refund</code> 筛选。</p>
+
+      <h3 id="净额统计">3. 统计必须计算净额，而不是流水条数</h3>
+      <p>本次把统计口径统一为：</p>
+      <pre><code class="language-text">净消费额度 = Σ(type=2 的 quota) - Σ(type=6 的 quota)</code></pre>
+      <ul>
+        <li>消费流水按正向额度计入；</li>
+        <li>退款流水按负向额度冲减；</li>
+        <li>请求数只统计真实消费请求，退款不算一次新请求；</li>
+        <li>聚合只处理消费与退款类型，避免充值、管理员操作污染使用量；</li>
+        <li><code>token重算：</code> 流水中的实际 Token 只累计一次；</li>
+        <li>日维度使用 <code>Asia/Shanghai</code>；退款计入实际发生日，不回写原请求日期。</li>
+      </ul>
+      <p>这使得日志明细、日统计和总览金额共享同一套“资金方向”语义。</p>
+
+      <h2 id="用户呈现">五、用户侧呈现：<code>amax-router</code></h2>
+      <h3 id="视觉语言">1. 预扣和退款使用不同视觉语言</h3>
+      <table>
+        <thead><tr><th>类型</th><th>Token 展示</th><th>金额方向</th><th>标签</th></tr></thead>
+        <tbody>
+          <tr><td>视频预扣</td><td>不展示估算 Token</td><td>余额视角为负向</td><td>琥珀色“预扣费”</td></tr>
+          <tr><td>异步退款</td><td>展示最终 <code>billed_tokens</code></td><td>余额视角为正向</td><td>绿色“异步退款”</td></tr>
+        </tbody>
+      </table>
+      <p>退款不是新的模型调用，因此官方模型价格和节省金额显示为 <code>-</code>，避免给一笔资金冲正附加虚假的模型成本解释。</p>
+      <figure class="article-media"><a href="./images/token-router-precharge-refund-ledger/ledger-overview.png" target="_blank" rel="noopener"><img src="./images/token-router-precharge-refund-ledger/ledger-overview.png" alt="视频预扣费与异步退款的差异化日志展示" loading="lazy"></a><figcaption>图 1：预扣费与异步退款使用不同标签、金额方向和 Token 展示。</figcaption></figure>
+
+      <h3 id="退款筛选">2. 退款可以被单独筛选</h3>
+      <pre><code class="language-ts">type LogResponseStatus = 'success' | 'error' | 'timeout' | 'refund'</code></pre>
+      <p>用户可以从状态筛选器中直接选择“退款”，快速核对异步任务完成后的差额退回记录。</p>
+      <figure class="article-media"><a href="./images/token-router-precharge-refund-ledger/refund-filter.png" target="_blank" rel="noopener"><img src="./images/token-router-precharge-refund-ledger/refund-filter.png" alt="日志页退款状态筛选" loading="lazy"></a><figcaption>图 2：退款作为独立状态，可在日志页直接筛选。</figcaption></figure>
+
+      <h3 id="汇总方向">3. 汇总金额统一使用资金方向</h3>
+      <p><code>usage-cost.ts</code> 将异步退款的计费方向设为 <code>-1</code>。实际成本、官方成本与节省金额的聚合都经过同一方向因子处理，避免明细显示为退款、看板却继续增加消费的口径分裂。</p>
+
+      <h2 id="边界处理">六、容易踩坑的边界处理</h2>
+      <h3 id="无请求-id">1. 退款没有请求 ID</h3>
+      <p>异步任务结束时原 HTTP 请求早已完成，退款由后台轮询触发。若查询强制要求 <code>request_id</code>，退款会天然丢失，因此必须为目标退款保留独立查询分支。</p>
+      <h3 id="限制退款类型">2. 不能展示所有 <code>type=6</code></h3>
+      <p>同一个退款类型可能承载不同业务语义。只通过日志类型放行会把非模型请求流水暴露到使用日志中，所以还需要 <code>content</code> 前缀约束。</p>
+      <h3 id="请求数边界">3. 退款不能增加请求数</h3>
+      <p>退款是一笔资金事件，不是一次推理请求。如果直接按日志行计数，完成一个视频任务可能被统计成两次请求。</p>
+      <h3 id="正负号规则">4. 明细与总览必须共享正负号规则</h3>
+      <p>前端标签只能解决“看起来像退款”，真正的数据一致性来自查询层和成本聚合层同时采用净额口径。</p>
+
+      <h2 id="关键提交">七、关键提交</h2>
+      <table>
+        <thead><tr><th>项目</th><th>提交</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><code>new-api</code></td><td><code>8374a8308</code></td><td>建立适配器计费接口与异步任务结算框架</td></tr>
+          <tr><td><code>new-api</code></td><td><code>64d18a5fd</code></td><td>为异步任务增加退款日志，并同步自身日志页面语义</td></tr>
+          <tr><td><code>new-api</code></td><td><code>479816527</code></td><td>补齐任务计费日志原因，使 Token 重算记录可稳定识别</td></tr>
+          <tr><td><code>new-api</code></td><td><code>8fc0eb78e</code></td><td>完善视频输入识别与任务实际价格计算</td></tr>
+          <tr><td><code>new-api</code></td><td><code>38d1b06f3</code></td><td>修复级联视频任务实际用量传递，保证重算拥有完整 Token 数据</td></tr>
+          <tr><td><code>llm-router</code></td><td><code>aa3d5cd</code></td><td>展示视频异步退款流水，输出预扣/退款语义字段</td></tr>
+          <tr><td><code>llm-router</code></td><td><code>b53a28e</code></td><td>修正预扣退款的金额、Token 和请求数统计口径</td></tr>
+          <tr><td><code>llm-router</code></td><td><code>b2f7fd8</code></td><td>增加退款状态映射与筛选</td></tr>
+          <tr><td><code>amax-router</code></td><td><code>dd2cfeb</code></td><td>展示视频预扣费、异步退款及最终计费 Token</td></tr>
+          <tr><td><code>amax-router</code></td><td><code>be49d03</code></td><td>增加退款状态展示与筛选</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="项目复盘">八、项目复盘</h2>
+      <p>这次改造的核心并不是多加两个标签，而是把异步任务的计费过程建模为可追踪的账本事件：预扣负责准入，重算负责纠偏，补扣或退款负责让账户余额回到最终事实。</p>
+      <p>跨三个项目后形成了清晰分层：</p>
+      <ul>
+        <li><code>new-api</code> 对资金事实负责；</li>
+        <li><code>llm-router</code> 对查询语义与统计口径负责；</li>
+        <li><code>amax-router</code> 对用户理解和核对效率负责。</li>
+      </ul>
+      <p>最终用户看到的不再是一条难以解释的扣费记录，而是一组能够回答“何时预扣、为何重算、退了多少、最终用了多少”的完整流水。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+  <script type="module" src="./diagrams.js"></script>
+</body>
+</html>

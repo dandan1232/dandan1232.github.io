@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>从邀请链接到可分享海报：专属二维码海报的跨端设计与性能优化 | Echo Notes</title>
+  <meta name="description" content="复盘 new-api 与 amax-router 的邀请海报配置、安全底图读取、专属二维码合成、下载分享和两级缓存设计。" />
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/new-api-invite-qr-poster.html" />
+  <meta property="og:title" content="从邀请链接到可分享海报：专属二维码海报的跨端设计与性能优化 | Echo Notes" />
+  <meta property="og:description" content="复盘 new-api 与 amax-router 的邀请海报配置、安全底图读取、专属二维码合成、下载分享和两级缓存设计。" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://dandan1232.github.io/notes/new-api-invite-qr-poster.html" />
+  <meta property="og:image" content="https://dandan1232.github.io/meta/og-image.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+      <p class="meta">2026-08-27 · 全栈工程 / 邀请活动</p>
+      <h1 id="邀请二维码海报">从邀请链接到可分享海报：专属二维码海报的跨端设计与性能优化</h1>
+      <blockquote><p>后台只维护一张活动底图，前端按当前用户的邀请链接实时生成专属二维码并本地合成海报，既降低服务端生成压力，也避免为每个用户重复存图。</p></blockquote>
+      <p>需求来源：<a href="https://ocnxfsqqzgdp.feishu.cn/wiki/EaBXwoYRiifkotkxNARcgFq4ngl" target="_blank" rel="noopener">飞书需求文档</a></p>
+
+      <h2 id="目录">目录</h2>
+      <ol>
+        <li><a href="#需求背景">需求背景</a></li>
+        <li><a href="#方案选择">为什么选择浏览器合成</a></li>
+        <li><a href="#职责边界">三个项目的职责边界</a></li>
+        <li><a href="#后台配置">后台配置与图片规范</a></li>
+        <li><a href="#活动选择">如何选择当前最新海报</a></li>
+        <li><a href="#安全读取">安全读取海报底图</a></li>
+        <li><a href="#浏览器生成">浏览器端生成专属海报</a></li>
+        <li><a href="#性能优化">性能优化</a></li>
+        <li><a href="#关键提交">关键提交</a></li>
+        <li><a href="#项目复盘">项目复盘</a></li>
+      </ol>
+
+      <h2 id="需求背景">一、需求背景</h2>
+      <p>原有邀请方式以复制链接为主，适合即时通讯，却不适合朋友圈、社群海报等视觉传播场景。本次增加“邀请专属二维码海报”：</p>
+      <ul>
+        <li>管理员可以为邀请活动上传竖版海报底图；</li>
+        <li>用户从活动入口打开自己的专属海报；</li>
+        <li>系统将用户邀请链接编码为二维码并固定叠加到底图；</li>
+        <li>用户可以下载图片，支持时也可以调用系统分享面板；</li>
+        <li>PC 与移动端都能完成预览和操作。</li>
+      </ul>
+      <h3 id="需求原型">需求原型</h3>
+      <figure class="article-media"><a href="./images/new-api-invite-qr-poster/requirement-entry.png" target="_blank" rel="noopener"><img src="./images/new-api-invite-qr-poster/requirement-entry.png" alt="邀请专属二维码海报需求入口原型" loading="lazy"></a><figcaption>图 1：邀请海报入口需求原型。</figcaption></figure>
+      <figure class="article-media"><a href="./images/new-api-invite-qr-poster/requirement-poster.png" target="_blank" rel="noopener"><img src="./images/new-api-invite-qr-poster/requirement-poster.png" alt="邀请专属二维码海报需求效果原型" loading="lazy"></a><figcaption>图 2：专属二维码海报效果原型。</figcaption></figure>
+
+      <h2 id="方案选择">二、为什么选择“底图服务端管理，二维码浏览器合成”</h2>
+      <p>如果服务端为每位用户生成并保存一张完整海报，会产生大量重复图片、额外对象存储和生成接口排队。实际上，所有用户共享同一张底图，唯一变化的只有邀请链接和二维码。</p>
+      <p>因此最终方案将不变量与变量拆开：</p>
+      <figure class="sequence-diagram" data-sequence-diagram>
+        <figcaption class="sequence-diagram-header">
+          <span><strong class="sequence-diagram-title">邀请海报生成架构</strong><span class="sequence-diagram-route">后台底图 → 安全读取 → 浏览器二维码合成 → 下载分享</span></span>
+          <span class="sequence-diagram-controls" role="group" aria-label="架构图缩放控制">
+            <button type="button" data-diagram-zoom-out title="缩小架构图" aria-label="缩小架构图">−</button>
+            <output data-diagram-zoom-output aria-live="polite">100%</output>
+            <button type="button" data-diagram-zoom-in title="放大架构图" aria-label="放大架构图">+</button>
+            <button class="sequence-diagram-reset" type="button" data-diagram-reset title="恢复为 100%" aria-label="重置架构图缩放">重置</button>
+          </span>
+        </figcaption>
+        <div class="sequence-diagram-viewport" tabindex="0" aria-label="邀请海报生成架构图；放大后可拖动查看">
+          <div class="sequence-diagram-stage">
+            <pre class="mermaid">flowchart LR
+    Admin[管理员] --&gt;|上传 9:16 底图| API[new-api]
+    API --&gt;|保存对象| MinIO[(MinIO)]
+    API --&gt;|活动记录保存 URL| DB[(数据库)]
+    User[当前用户] --&gt; UI[amax-router]
+    UI --&gt;|查询当前活动| API
+    API --&gt;|鉴权后流式返回底图| UI
+    UI --&gt;|邀请链接生成二维码| QR[qrcode]
+    UI --&gt;|Canvas 合成| Poster[1080×1920 PNG]
+    Poster --&gt; Download[下载]
+    Poster --&gt; Share[系统分享]</pre>
+          </div>
+        </div>
+        <p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看</p>
+      </figure>
+      <p>该设计带来三个直接收益：</p>
+      <ol>
+        <li>服务端只存一份活动底图；</li>
+        <li>专属邀请链接不进入共享图片缓存；</li>
+        <li>合成过程不占用后端图片处理队列，用户重复打开还能直接复用本地结果。</li>
+      </ol>
+
+      <h2 id="职责边界">三、三个项目的职责边界</h2>
+      <table>
+        <thead><tr><th>项目</th><th>是否改动</th><th>职责</th></tr></thead>
+        <tbody>
+          <tr><td><code>new-api</code></td><td>是</td><td>活动海报字段、后台上传裁剪、活动选择、安全图片读取、MinIO 缓存</td></tr>
+          <tr><td><code>amax-router</code></td><td>是</td><td>入口接入、二维码生成、Canvas 合成、预览、下载分享、浏览器缓存</td></tr>
+          <tr><td><code>llm-router</code></td><td>否</td><td>该功能不涉及模型路由或日志聚合，不进入调用链</td></tr>
+        </tbody>
+      </table>
+      <p>明确让 <code>llm-router</code> 不参与，是这次设计中的主动取舍：邀请海报属于活动配置与前端媒体生成，不应该为了“统一入口”再增加一层无业务价值的转发。</p>
+
+      <h2 id="后台配置">四、后台配置与图片规范</h2>
+      <h3 id="海报字段">1. 活动模型增加邀请海报字段</h3>
+      <p><code>new-api</code> 的活动模型增加：</p>
+      <pre><code class="language-go">InvitePosterUrl string `json:"invite_poster_url"`</code></pre>
+      <p>创建活动和编辑活动都可以保存该字段。后台上传接口接受 PNG、JPEG、WebP，单文件最大 20 MB，对象使用 <code>activity-invite-poster</code> 前缀保存到 MinIO。</p>
+      <figure class="article-media"><a href="./images/new-api-invite-qr-poster/poster-upload.png" target="_blank" rel="noopener"><img src="./images/new-api-invite-qr-poster/poster-upload.png" alt="后台邀请海报上传配置" loading="lazy"></a><figcaption>图 3：活动后台新增邀请海报上传配置。</figcaption></figure>
+
+      <h3 id="统一裁剪">2. 上传时统一裁剪为 9:16</h3>
+      <p>海报画布固定为 <code>1080 × 1920</code>，因此后台在上传阶段提供裁剪界面。非 9:16 图片会先提示比例调整，低于目标分辨率时提醒可能损失清晰度，再由管理员确认裁剪区域。</p>
+      <figure class="article-media"><a href="./images/new-api-invite-qr-poster/crop-adjustment.png" target="_blank" rel="noopener"><img src="./images/new-api-invite-qr-poster/crop-adjustment.png" alt="邀请海报九比十六裁剪调整" loading="lazy"></a><figcaption>图 4：非 9:16 底图进入裁剪调整流程。</figcaption></figure>
+      <figure class="article-media"><a href="./images/new-api-invite-qr-poster/crop-preview.png" target="_blank" rel="noopener"><img src="./images/new-api-invite-qr-poster/crop-preview.png" alt="邀请海报裁剪预览" loading="lazy"></a><figcaption>图 5：管理员确认最终裁剪区域和输出效果。</figcaption></figure>
+      <p>把尺寸问题前置到配置阶段，可以让所有用户端生成过程使用同一套确定坐标，避免每次打开海报都重新计算版式。</p>
+
+      <h2 id="活动选择">五、如何选择“当前最新海报”</h2>
+      <p>用户进入海报入口时，<code>GET /api/user/activity/invite-poster</code> 会从服务端按当前登录用户所属 portal 选择活动，客户端不能自行传 portal 越权查询。</p>
+      <p>候选活动必须同时满足：</p>
+      <ul>
+        <li>活动已启用；</li>
+        <li>当前时间位于开始与结束时间之间；</li>
+        <li>活动属于当前用户 portal；</li>
+        <li>活动行为是邀请活动。</li>
+      </ul>
+      <p>在候选集合中按 <strong><code>CreatedAt</code> 倒序</strong>选择最新活动，时间相同时再按 ID 排序。这里判断的是创建时间，不是 <code>UpdatedAt</code>：更新旧活动的海报不会让它自动超过后来创建的活动。</p>
+      <p>还有一个刻意保留的边界：如果选中的最新邀请活动没有配置海报，接口返回“当前不可用”，不会静默回退到更旧活动的海报。这样可以避免活动规则与视觉物料错配。</p>
+      <p>活动详情接口同时输出：</p>
+      <pre><code class="language-text">invite_poster_available
+invite_poster_image_url</code></pre>
+      <p>因此列表入口可以查询当前活动，详情页入口则可以直接复用当前活动上下文。</p>
+
+      <h2 id="安全读取">六、安全读取海报底图</h2>
+      <h3 id="同源图片接口">1. 为什么不让 Canvas 直接加载对象存储公网地址</h3>
+      <p>浏览器 Canvas 读取跨域图片可能被污染，最终无法导出 PNG；直接把任意 URL 交给后端读取，还会引入服务端请求伪造和越权风险。</p>
+      <p><code>new-api</code> 因此提供同源、需登录的图片接口：</p>
+      <pre><code class="language-http">GET /api/user/activity/:id/invite-poster/image</code></pre>
+      <p>读取前会再次校验：</p>
+      <ul>
+        <li>当前用户 portal 与活动一致；</li>
+        <li>活动处于启用和有效期内；</li>
+        <li>活动类型确实是邀请活动；</li>
+        <li>已配置非空海报地址。</li>
+      </ul>
+      <p>前端也只接受符合 <code>/api/user/activity/数字/invite-poster/image</code> 形式的同源地址，并拒绝 query 与 hash，避免组件被复用时加载意外资源。</p>
+
+      <h3 id="对象定位">2. 公网 URL 只作为对象定位依据</h3>
+      <p>后端不会再绕公网 URL 下载自己 MinIO 中的文件，而是校验 URL 的协议、主机、基础路径与 bucket 后，解析出安全 object key，通过 MinIO 内部连接直接读取。</p>
+      <p>保护边界包括：</p>
+      <ul>
+        <li>拒绝跨主机、跨 bucket 和路径穿越；</li>
+        <li>拒绝带查询参数的对象地址；</li>
+        <li>仅允许 PNG、JPEG、WebP；</li>
+        <li>最大读取 20 MB；</li>
+        <li>单次读取超时 15 秒。</li>
+      </ul>
+      <p>最终图片以流式响应返回给浏览器，既解决 Canvas 跨域问题，也不开放通用代理能力。</p>
+
+      <h2 id="浏览器生成">七、浏览器端生成专属海报</h2>
+      <h3 id="二维码参数">1. 邀请链接与二维码</h3>
+      <p>当前用户的专属链接格式为：</p>
+      <pre><code class="language-text">${origin}/login?aff=${affCode}</code></pre>
+      <p>二维码采用高容错级别 <code>H</code>，黑白配色并保留 4 个模块的静区。固定画布与位置为：</p>
+      <pre><code class="language-ts">const poster = { width: 1080, height: 1920 }
+const qr = { x: 600, y: 1400, size: 400, quietZoneModules: 4 }</code></pre>
+      <p>生成前会校验底图的实际尺寸必须精确等于 <code>1080 × 1920</code>，防止后台旧数据或异常图片造成二维码偏移。</p>
+
+      <h3 id="canvas-流程">2. 原生 Canvas 合成流程</h3>
+      <p>最终实现移除了 Konva 依赖，直接使用浏览器原生 Canvas：</p>
+      <figure class="sequence-diagram" data-sequence-diagram>
+        <figcaption class="sequence-diagram-header">
+          <span><strong class="sequence-diagram-title">浏览器合成流程</strong><span class="sequence-diagram-route">affCode → 底图 → 二维码 → Canvas → PNG</span></span>
+          <span class="sequence-diagram-controls" role="group" aria-label="流程图缩放控制">
+            <button type="button" data-diagram-zoom-out title="缩小流程图" aria-label="缩小流程图">−</button>
+            <output data-diagram-zoom-output aria-live="polite">100%</output>
+            <button type="button" data-diagram-zoom-in title="放大流程图" aria-label="放大流程图">+</button>
+            <button class="sequence-diagram-reset" type="button" data-diagram-reset title="恢复为 100%" aria-label="重置流程图缩放">重置</button>
+          </span>
+        </figcaption>
+        <div class="sequence-diagram-viewport" tabindex="0" aria-label="浏览器端邀请海报合成流程图；放大后可拖动查看">
+          <div class="sequence-diagram-stage">
+            <pre class="mermaid">flowchart TD
+    A[读取登录用户 affCode] --&gt; B[请求同源海报底图]
+    B --&gt; C[校验底图 1080×1920]
+    C --&gt; D[生成高容错二维码]
+    D --&gt; E[绘制底图]
+    E --&gt; F[在固定坐标绘制二维码]
+    F --&gt; G[导出 PNG Blob]
+    G --&gt; H[预览 / 下载 / 分享]</pre>
+          </div>
+        </div>
+        <p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看</p>
+      </figure>
+      <p>原生 Canvas 足以完成两张位图的确定性叠加，减少了额外渲染抽象和包体依赖。导出完成后会主动释放 Canvas 像素内存，关闭弹窗或替换结果时也会回收 Object URL。</p>
+
+      <h3 id="多端适配">3. 交互与多端适配</h3>
+      <p>生成器覆盖了加载、成功、失败、重试和关闭中断等状态，并支持：</p>
+      <ul>
+        <li>Esc 关闭与焦点约束；</li>
+        <li>安全文件名下载；</li>
+        <li>浏览器支持 Web Share API 时调用系统分享；</li>
+        <li>不支持文件分享时回退为下载；</li>
+        <li>桌面端与移动端自适应布局。</li>
+      </ul>
+      <figure class="article-media"><a href="./images/new-api-invite-qr-poster/desktop-result.png" target="_blank" rel="noopener"><img src="./images/new-api-invite-qr-poster/desktop-result.png" alt="邀请专属二维码海报桌面端效果" loading="lazy"></a><figcaption>图 6：桌面端邀请海报生成效果。</figcaption></figure>
+      <figure class="article-media"><a href="./images/new-api-invite-qr-poster/mobile-result.png" target="_blank" rel="noopener"><img src="./images/new-api-invite-qr-poster/mobile-result.png" alt="邀请专属二维码海报移动端效果" loading="lazy"></a><figcaption>图 7：移动端邀请海报生成效果。</figcaption></figure>
+
+      <h2 id="性能优化">八、性能优化：解决生成慢与偶发超时</h2>
+      <p>性能问题并不只发生在二维码绘制阶段。原链路中，服务端可能通过公网地址回读 MinIO，浏览器首次打开还要等待底图、二维码模块和图片合成全部串行完成。</p>
+      <p>最终从服务端和浏览器两侧同时优化：</p>
+      <h3 id="服务端缓存">1. 服务端底图缓存</h3>
+      <ul>
+        <li><strong>MinIO 内部直读：</strong>去掉服务端到公网域名的网络绕行；</li>
+        <li><strong>10 分钟内存缓存：</strong>共享底图命中后无需重复读取对象存储；</li>
+        <li><strong>32 MB LRU 上限：</strong>按总字节数淘汰，限制常驻内存；</li>
+        <li><strong>singleflight 合并冷请求：</strong>同一底图首次并发读取时只访问一次 MinIO。</li>
+      </ul>
+      <p>底图对同一活动的所有用户完全相同，因此适合放在服务端共享缓存；用户专属二维码不进入这一层。</p>
+
+      <h3 id="浏览器缓存">2. 浏览器生成结果缓存</h3>
+      <ul>
+        <li>浏览器空闲时预加载二维码模块；</li>
+        <li>模块加载失败后允许下一次重试，不缓存永久失败状态；</li>
+        <li>以“底图地址 + 邀请链接”为键缓存最终海报；</li>
+        <li>生成结果使用 32 MB LRU 控制内存；</li>
+        <li>重复打开同一用户同一活动海报时直接复用结果。</li>
+      </ul>
+      <p>优化后的时序是：首次打开只承担一次底图冷读与本地合成；同活动其他用户通常命中服务端底图缓存；同一用户重复打开则可以直接命中浏览器生成结果缓存。</p>
+
+      <h2 id="关键提交">九、关键提交</h2>
+      <table>
+        <thead><tr><th>项目</th><th>提交</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><code>new-api</code></td><td><code>a871d57d4</code></td><td>增加邀请海报存储、安全读取接口与相关校验</td></tr>
+          <tr><td><code>new-api</code></td><td><code>53baac7e6</code></td><td>增加后台海报上传、裁剪和多语言配置</td></tr>
+          <tr><td><code>new-api</code></td><td><code>d5f77ce10</code></td><td>MinIO 内部直读、LRU 缓存与并发冷请求合并</td></tr>
+          <tr><td><code>router</code></td><td><code>f95a443</code></td><td>实现用户专属二维码海报生成器</td></tr>
+          <tr><td><code>router</code></td><td><code>d758cf4</code></td><td>接入仪表盘与活动详情等全部邀请海报入口</td></tr>
+          <tr><td><code>router</code></td><td><code>1c777ea</code></td><td>改用原生 Canvas，增加预加载、结果缓存与内存释放</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="项目复盘">十、项目复盘</h2>
+      <p>这项功能表面上是“把二维码贴到图片上”，实际涉及活动选择、租户隔离、对象存储、跨域安全、图片内存和移动端交互等多个边界。</p>
+      <p>最终方案最重要的设计点是把共享资源与用户变量分离：</p>
+      <ul>
+        <li><code>new-api</code> 管理可信、可缓存的活动底图；</li>
+        <li><code>router</code> 在用户浏览器内生成专属二维码与最终图片；</li>
+        <li><code>llm-router</code> 不承担与模型路由无关的职责。</li>
+      </ul>
+      <p>这让生成链路更短、服务端存储更少，同时具备明确的安全校验和两级缓存。对于类似证书、分享卡片、带用户码的营销物料，也可以复用同一套“模板资源 + 客户端个性化合成”的思路。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+  <script type="module" src="./diagrams.js"></script>
+</body>
+</html>
