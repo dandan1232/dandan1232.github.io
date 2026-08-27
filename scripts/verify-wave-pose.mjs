@@ -40,18 +40,6 @@ const qSlerp = (a, b, t) => {
   const s1 = Math.sin(th) / Math.sin(th0);
   return a.map((v, i) => v * s0 + e[i] * s1);
 };
-/** Shortest rotation taking `from` to `to` (both unit). */
-const qBetween = (from, to) => {
-  const c = [
-    from[1] * to[2] - from[2] * to[1],
-    from[2] * to[0] - from[0] * to[2],
-    from[0] * to[1] - from[1] * to[0],
-  ];
-  const w = 1 + from[0] * to[0] + from[1] * to[1] + from[2] * to[2];
-  const l = Math.hypot(c[0], c[1], c[2], w);
-  return [c[0] / l, c[1] / l, c[2] / l, w / l];
-};
-
 // --- rest offsets measured from girl.vrm (meters, model space; front = -Z) ---
 // Left arm extends along -X. Everything above UpperChest is identity-rest too.
 const UPPER_CHEST_Y = 0.777 + 0.0451 + 0.1042 + 0.1058; // ≈ 1.032
@@ -62,14 +50,20 @@ const L = {
   hand: [-0.1792, 0.0, -0.0148], // forearm length
 };
 const HEAD_TOP_Y = UPPER_CHEST_Y + 0.0977 + 0.0616 + 0.1; // skull top ≈ 1.29
-const REST_DIR = [-1, 0, 0];
 
-// --- what contact-idle actually does with the arm, measured from avatar.glb ---
-// (world-space bone directions at t=0; the source rig is what gets retargeted)
-const IDLE_UPPER_DIR = [-0.734, -0.666, 0.135]; // hangs down & out, -42° elevation
-const IDLE_FORE_DIR = [0.016, 0.193, -0.981]; // forearm points forward, elbow ~106° bent
-const IDLE_UPPER_Q = qBetween(REST_DIR, IDLE_UPPER_DIR);
-const IDLE_FORE_Q = qBetween(REST_DIR, IDLE_FORE_DIR);
+// --- relaxed standing pose: keep in sync with girl.ts RELAXED_* ---
+// This is what the wave now blends out of. Before it existed the arm sat where
+// the seated source clip left it — measured from avatar.glb at t=0, upper
+// [-0.734, -0.666, 0.135] (-42° elevation), forearm [0.016, 0.193, -0.981],
+// elbow 106° bent, i.e. the hand parked in front of the chest.
+const RELAXED = { abductDeg: 16, carryDeg: 12, forwardDeg: 9 };
+const qAxisY = (deg) => [0, Math.sin((deg * D) / 2), 0, Math.cos((deg * D) / 2)];
+// sign +1 = left arm (rests along -X), -1 = right. carryDeg is positive outward.
+const relaxedUpperQ = (sign) => qMul(qAxisZ(sign * (90 - RELAXED.abductDeg)), qAxisY(-sign * RELAXED.forwardDeg));
+const relaxedForeQ = (sign) => qMul(relaxedUpperQ(sign), qAxisZ(-sign * RELAXED.carryDeg));
+
+const IDLE_UPPER_Q = relaxedUpperQ(1);
+const IDLE_FORE_Q = relaxedForeQ(1);
 
 // --- pose constants: keep in sync with girl.ts WAVE_* ---
 const TUNE = {
@@ -129,6 +123,77 @@ const row = (label, mix) => {
       `${ownSide ? "own side ✓" : "own side ✗ (crosses midline)"}`,
   );
 };
+
+/**
+ * Silhouette of the one-piece dress, measured from girl.vrm's Onepice material
+ * (rest pose, model space, front = -Z). `a` is the lateral half-width, `b` the
+ * forward reach; both are running maxima from the waist down, so the check is a
+ * conservative envelope rather than the pleated surface itself. The dress flares
+ * hard: 0.09 at the waist, 0.19 at hand height, 0.27 near the hem — a straight
+ * hanging arm lands well inside it, which is why the hands went missing.
+ */
+const SKIRT = [
+  [1.0, 0.093, 0.11], [0.96, 0.093, 0.11], [0.92, 0.093, 0.11], [0.88, 0.104, 0.122],
+  [0.84, 0.131, 0.127], [0.8, 0.152, 0.14], [0.76, 0.173, 0.14], [0.72, 0.191, 0.145],
+  [0.68, 0.21, 0.155], [0.64, 0.225, 0.164], [0.6, 0.241, 0.173], [0.56, 0.269, 0.181],
+];
+const FINGER_REACH = 0.102; // wrist -> Middle3 in the rest pose
+
+/** Positive = the point sits outside the dress and stays visible from the front. */
+const skirtMargin = ([x, y, z]) => {
+  if (y > SKIRT[0][0] || y < SKIRT[SKIRT.length - 1][0]) return Infinity;
+  let i = 0;
+  while (i < SKIRT.length - 2 && SKIRT[i + 1][0] > y) i++;
+  const [y0, a0, b0] = SKIRT[i], [y1, a1, b1] = SKIRT[i + 1];
+  const t = (y0 - y) / (y0 - y1);
+  const a = a0 + (a1 - a0) * t, b = b0 + (b1 - b0) * t;
+  // elliptical cross-section: outside when the normalised radius exceeds 1
+  const r = Math.hypot(x / a, z / b);
+  return (r - 1) * a; // approximate clearance in metres
+};
+
+const relaxedArm = (sign) => {
+  const rest = [sign > 0 ? -1 : 1, 0, 0];
+  const upperQ = relaxedUpperQ(sign);
+  const foreQ = relaxedForeQ(sign);
+  const shoulder = [-sign * (0.019 + 0.0736), UPPER_CHEST_Y + 0.0744 - 0.0127, 0.0234 - 0.0046];
+  const uDir = qRot(upperQ, rest), fDir = qRot(foreQ, rest);
+  const elbow = addV(shoulder, uDir.map((v) => v * 0.1861));
+  const hand = addV(elbow, fDir.map((v) => v * 0.1792));
+  const dot = uDir[0] * fDir[0] + uDir[1] * fDir[1] + uDir[2] * fDir[2];
+  const tip = addV(hand, fDir.map((v) => v * FINGER_REACH));
+  // worst clearance anywhere from the elbow down through the fingertips
+  let worst = Infinity, worstAt = null;
+  for (let i = 0; i <= 24; i++) {
+    const t = i / 24;
+    const p = [0, 1, 2].map((k) => elbow[k] + (tip[k] - elbow[k]) * t);
+    const m = skirtMargin(p);
+    if (m < worst) { worst = m; worstAt = p; }
+  }
+  return { uDir, fDir, hand, tip, worst, worstAt, bend: Math.acos(Math.min(1, dot)) / D };
+};
+
+const report = (label, sign, opts = RELAXED) => {
+  const saved = { ...RELAXED };
+  Object.assign(RELAXED, opts);
+  const r = relaxedArm(sign);
+  Object.assign(RELAXED, saved);
+  console.log(
+    `${label.padEnd(22)} elbow bend=${r.bend.toFixed(1).padStart(4)}° | ` +
+      `wrist [${r.hand.map(f).join(", ")}] tip y=${f(r.tip[1])} | ` +
+      `skirt clearance ${(r.worst >= 0 ? "+" : "") + r.worst.toFixed(3)}m ` +
+      `${r.worst > 0.02 ? "visible ✓" : r.worst > 0 ? "grazing ~" : "SWALLOWED ✗"}`,
+  );
+  return r.worst;
+};
+
+console.log("=== relaxed arm vs. the dress ===");
+report("straight hang", -1, { abductDeg: 10, carryDeg: -8, forwardDeg: 9 }); // forearm tucked in
+report("shoulder only", -1, { ...RELAXED, abductDeg: 24, carryDeg: -8 }); // clears, but penguin
+console.log();
+console.log("=== chosen pose ===");
+for (const [label, sign] of [["right", -1], ["left", 1]]) report(label, sign);
+console.log();
 
 console.log(`=== left-arm wave, abduct ${TUNE.abductDeg}° bend ${TUNE.bendDeg}° ` +
   `(forearm ${90 - TUNE.abductDeg - TUNE.bendDeg === 0 ? "vertical" : "OFF vertical"}), ` +

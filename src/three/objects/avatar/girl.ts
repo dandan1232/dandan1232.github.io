@@ -65,6 +65,21 @@ type ClipName = (typeof CLIP_NAMES)[number];
 /** Bare (x, y, z, w) quaternion, the layout QuaternionKeyframeTrack expects. */
 type Quat = [number, number, number, number];
 
+const HALF_DEG = Math.PI / 360; // degrees -> half-angle radians
+/** Rotation about the bone's local Z: swings the arm within her frontal plane. */
+const qZ = (degrees: number): Quat => [0, 0, Math.sin(degrees * HALF_DEG), Math.cos(degrees * HALF_DEG)];
+/** Rotation about the bone's local Y: tilts the arm forward of / behind her. */
+const qY = (degrees: number): Quat => [0, Math.sin(degrees * HALF_DEG), 0, Math.cos(degrees * HALF_DEG)];
+/** Rotation about the bone's local X, i.e. a twist around the bone's own axis. */
+const qX = (degrees: number): Quat => [Math.sin(degrees * HALF_DEG), 0, 0, Math.cos(degrees * HALF_DEG)];
+/** `a * b` — b is applied first, in the frame a then rotates. */
+const qMul = (a: Quat, b: Quat): Quat => [
+  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+];
+
 /**
  * Procedural greeting-wave: synthetic arm-only clip replacing the seated
  * `wave` source whose lift was too small in the standing pose. Her LEFT arm
@@ -96,6 +111,57 @@ const WAVE_SWING_HAND_DEG = 7; // wrist follow-through
 const WAVE_LAG_DEG = 30; // phase each joint trails its parent by
 const WAVE_FREQUENCY_HZ = 1.6;
 const WAVE_KEY_RATE_FPS = 30;
+
+/**
+ * Relaxed hanging arm for the standing pose.
+ *
+ * The retargeted idle came from a seated desk shot: both upper arms sit ~45°
+ * below horizontal angled forward, elbows folded ~105°, so the hands end up in
+ * front of the chest. Read standing, that is a figure clutching something.
+ * Replacing the chain with constants drops both arms to her sides; the wave
+ * overlay lifts the left one back up when it fires. Nothing is lost by going
+ * constant — the arms travel all of 4.8° across the whole clip, and the upright
+ * variant already freezes the spine, head and legs at the VRM rest.
+ *
+ * Angles are about the bone's local Z away from the rest T-pose, so ±90° is
+ * straight down; `sign` carries the mirroring (right arm rests along +X, left
+ * along -X). The forward tilt is about local Y and mirrors the other way.
+ */
+const RELAXED_ARM_CHAINS = {
+  right: { shoulder: "rightShoulder", upper: "rightarmBone", fore: "rightForearmBone", hand: "rightHandBone", sign: -1 },
+  left: { shoulder: "leftShoulderBone", upper: "leftArmBone", fore: "leftForeArmBone", hand: "leftHandBone", sign: 1 },
+} as const;
+// Both arms hang; the wave overlay lifts the left one back up when it fires.
+const RELAXED_ARM_SIDES: (keyof typeof RELAXED_ARM_CHAINS)[] = ["right", "left"];
+// She wears a flared one-piece: measured off girl.vrm the dress reaches 0.09m at
+// the waist but 0.19m at hand height and 0.27m near the hem, so an arm hanging
+// straight puts the hand 0.074m INSIDE it and the hand disappears. The clearance
+// comes mostly from the elbow rather than the shoulder — abducting the shoulder
+// far enough on its own (24°) reads as a penguin stance, whereas a forearm that
+// deviates outward is just the elbow's natural carrying angle (5-15° in humans).
+const RELAXED_ABDUCT_DEG = 16; // upper arm, away from the torso
+const RELAXED_CARRY_DEG = 12; // forearm, further outward again — clears the dress by 0.05m
+const RELAXED_FORWARD_DEG = 9; // drifts ahead of the coronal plane so it reads 3D
+
+const Q_IDENTITY: Quat = [0, 0, 0, 1]; // rest rotations are identity on this rig
+
+/**
+ * bone -> constant local rotation for the standing pose. The whole chain is
+ * pinned, shoulder and hand included: the left hand is contested between this
+ * clip and the wave overlay, and leaving it undriven would make its resting
+ * value depend on whatever the mixer happened to capture as "original state".
+ */
+const RELAXED_ARM_POSE = new Map<string, Quat>(
+  RELAXED_ARM_SIDES.flatMap((side) => {
+    const { shoulder, upper, fore, hand, sign } = RELAXED_ARM_CHAINS[side];
+    return [
+      [shoulder, Q_IDENTITY],
+      [hand, Q_IDENTITY],
+      [upper, qMul(qZ(sign * (90 - RELAXED_ABDUCT_DEG)), qY(-sign * RELAXED_FORWARD_DEG))],
+      [fore, qZ(-sign * RELAXED_CARRY_DEG)],
+    ] as [string, Quat][];
+  }),
+);
 
 const BONE_MAP: Record<string, string> = {
   hipsBone: "J_Bip_C_Hips",
@@ -245,8 +311,19 @@ const retargetClips = (targetRoot: Object3D, targetMesh: SkinnedMesh, sourceMesh
 
       if (!track.name.endsWith(".quaternion")) return [track];
       const boneName = track.name.match(/\[([^\]]+)\]/)?.[1];
-      return boneName && UPRIGHT_RESET_BONES.has(boneName) ? [] : [track];
+      if (!boneName) return [track];
+      // dropped -> the bone holds its VRM rest rotation; relaxed arm bones are
+      // re-added below as constants (dropped here even if absent from the clip).
+      if (UPRIGHT_RESET_BONES.has(boneName) || RELAXED_ARM_POSE.has(boneName)) return [];
+      return [track];
     });
+
+    for (const [boneName, quat] of RELAXED_ARM_POSE) {
+      tracks.push(
+        new QuaternionKeyframeTrack(`.bones[${boneName}].quaternion`, [0, baseClip.duration], [...quat, ...quat]),
+      );
+    }
+
     return new AnimationClip(name, baseClip.duration, tracks);
   };
 
@@ -258,18 +335,6 @@ const retargetClips = (targetRoot: Object3D, targetMesh: SkinnedMesh, sourceMesh
 
 /** Bake the procedural greeting-wave described by the WAVE_* constants. */
 const createWaveClip = () => {
-  const DEG = Math.PI / 360; // degrees -> half-angle radians
-  // rotation about local Z; left arm lifts with negative degrees
-  const qZ = (degrees: number): Quat => [0, 0, Math.sin(degrees * DEG), Math.cos(degrees * DEG)];
-  // rotation about local X, i.e. a twist around the bone's own axis
-  const qX = (degrees: number): Quat => [Math.sin(degrees * DEG), 0, 0, Math.cos(degrees * DEG)];
-  const qMul = (a: Quat, b: Quat): Quat => [
-    a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
-    a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
-    a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
-    a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
-  ];
-
   const frameCount = Math.ceil(WAVE_DURATION_S * WAVE_KEY_RATE_FPS);
   const times = new Float32Array(frameCount);
   const armValues = new Float32Array(frameCount * 4);
