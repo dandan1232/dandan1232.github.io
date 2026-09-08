@@ -4,6 +4,7 @@
 varying vec3 vNormal;
 varying vec3 vWorldPos;
 varying vec3 vPosition;
+varying vec2 vUv;
 
 uniform float uTime;
 uniform float uProgress;
@@ -31,6 +32,7 @@ void main() {
 
     vWorldPos = worldPosition.xyz;
     vPosition = transformed;
+    vUv = uv;
 
     vModelProgress = getModelProgress(transformed);
 }

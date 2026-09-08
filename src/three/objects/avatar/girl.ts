@@ -23,12 +23,19 @@ import { retargetClip } from "three/examples/jsm/utils/SkeletonUtils.js";
 import gsap from "gsap";
 import { resources } from "../../../utils/resources";
 import { aboutProgress } from "../../../animations/transitions/about";
-import { getMaterial as getHologramMaterial, uniforms as hologramUniforms } from "./hologram-material";
+import {
+  getMaterial as getHologramMaterial,
+  getDepthMaterial as getHologramDepthMaterial,
+  dispose as disposeHologramMaterials,
+  uniforms as hologramUniforms,
+} from "./hologram-material";
 import { getScanY, SCAN_MIN_Y } from "./scan-progress";
 
 const SCALE = 2.3;
 const HIP_SCALE = 1 / SCALE;
 const SEATED_YAW_CORRECTION = -Math.PI / 2;
+// In the avatar parent's frame, +Z moves back from the desk toward the seat.
+const SEATED_OFFSET = new Vector3(0, -0.25, 0.27);
 const solidClipPlane = new Plane(new Vector3(0, 1, 0), -SCAN_MIN_Y);
 
 const CLIP_NAMES = [
@@ -79,6 +86,23 @@ const qMul = (a: Quat, b: Quat): Quat => [
   a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
   a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
 ];
+
+// Local joint corrections measured against the room: keyboard top y=1.554,
+// mouse top y=1.544. Wrists sit slightly above them, with fingers over the keys.
+// Apply deltas to the original tracks so typing and desk turns keep their motion.
+const SEATED_POSE_CORRECTIONS = new Map<string, Quat>([
+  ["leftArmBone", [-0.003425, 0.036787, 0.213161, 0.976155]],
+  ["leftForeArmBone", [0.001803, 0.198602, -0.027091, 0.979705]],
+  ["leftHandBone", [-0.015009, -0.220595, -0.159607, 0.962106]],
+  ["rightarmBone", [-0.000500, 0.011757, -0.137382, 0.990443]],
+  ["rightForearmBone", [-0.006930, -0.050851, -0.082446, 0.995272]],
+  ["rightHandBone", [-0.011410, 0.036052, 0.219891, 0.974790]],
+  // Level the thighs on the seat while preserving the lower legs' direction.
+  ["leftUpLegBone", qX(20)],
+  ["rightUpLegBone", qX(20)],
+  ["leftLegBone", qX(-20)],
+  ["rightLegBone", qX(-20)],
+]);
 
 /**
  * Procedural greeting-wave: synthetic arm-only clip replacing the seated
@@ -290,6 +314,22 @@ const retargetClips = (targetRoot: Object3D, targetMesh: SkinnedMesh, sourceMesh
     const sourceClip = getSourceClip(name);
     const converted = retargetClip(targetMesh, sourceMesh, sourceClip, options);
     converted.duration = sourceClip.duration;
+    if (name === "idle" || name === "left-desktop" || name === "wave") {
+      const rotation = new Quaternion();
+      for (const track of converted.tracks) {
+        if (!track.name.endsWith(".quaternion")) continue;
+        const boneName = track.name.match(/\[([^\]]+)\]/)?.[1];
+        if (!boneName) continue;
+        // The greeting turns away from the desk; retain both expressive arms.
+        if (name === "wave" && /arm|hand/i.test(boneName)) continue;
+        const correction = SEATED_POSE_CORRECTIONS.get(boneName);
+        if (!correction) continue;
+        const delta = new Quaternion(...correction).normalize();
+        for (let index = 0; index < track.values.length; index += 4) {
+          rotation.fromArray(track.values, index).multiply(delta).normalize().toArray(track.values, index);
+        }
+      }
+    }
     clips.set(name, converted);
   }
 
@@ -439,13 +479,26 @@ const restoreSolidMaterials = () => {
 };
 
 const applyHologramMaterials = (root: Object3D) => {
-  const material = getHologramMaterial();
+  const occluders: { parent: Object3D; mesh: Mesh }[] = [];
   root.traverse((child) => {
     if (!(child instanceof Mesh)) return;
-    child.material = material;
+    const sources = Array.isArray(child.material) ? child.material : [child.material];
+    if (sources.every((source) => source.name.includes("_CLOTH"))) {
+      // Share geometry and the animated skeleton; no second animation mixer.
+      const occluder = child.clone(false);
+      occluder.name = `${child.name}-hologram-depth`;
+      const depthMaterials = sources.map(getHologramDepthMaterial);
+      occluder.material = Array.isArray(child.material) ? depthMaterials : depthMaterials[0]!;
+      occluder.renderOrder = 22;
+      occluder.frustumCulled = false;
+      occluders.push({ parent: child.parent!, mesh: occluder });
+    }
+    const materials = sources.map(getHologramMaterial);
+    child.material = Array.isArray(child.material) ? materials : materials[0]!;
     child.frustumCulled = false;
     child.renderOrder = 23;
   });
+  for (const { parent, mesh } of occluders) parent.add(mesh);
 };
 
 const resolveFaceMorphs = (root: Object3D) => {
@@ -752,8 +805,12 @@ const setMode = (mode: "solid" | "hologram" | "transition", progress = 0) => {
   if (hologramRoot) hologramRoot.visible = true;
 };
 
-const setStandingProgress = (_progress: number, _isContact = false) => {
-  if (solidRoot) solidRoot.rotation.y = SEATED_YAW_CORRECTION;
+const setStandingProgress = (progress: number, isContact = false) => {
+  if (solidRoot) {
+    solidRoot.rotation.y = SEATED_YAW_CORRECTION;
+    const seatedWeight = isContact ? 0 : 1 - MathUtils.smoothstep(progress, 0, 1);
+    solidRoot.position.copy(SEATED_OFFSET).multiplyScalar(seatedWeight);
+  }
   if (hologramRoot) hologramRoot.rotation.y = SEATED_YAW_CORRECTION;
 };
 
@@ -779,6 +836,7 @@ const destroy = () => {
   hologramActions.clear();
   clips.clear();
   restoreSolidMaterials();
+  disposeHologramMaterials();
   solidRoot?.removeFromParent();
   hologramRoot?.removeFromParent();
   solidRoot = null;
