@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>在 ARM64 + NVIDIA GB10 服务器上部署 Step1X-3D | Echo Notes</title>
+  <meta name="description" content="在 ARM64 与 NVIDIA GB10 服务器上用 Docker 部署 Step1X-3D：环境准备、CUDA 扩展编译、本地模型加载、Gradio 启动、SSH 隧道与端到端验证。" />
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/step1x-3d-arm64-deployment.html" />
+  <meta property="og:title" content="在 ARM64 + NVIDIA GB10 服务器上部署 Step1X-3D | Echo Notes" />
+  <meta property="og:description" content="在 ARM64 与 NVIDIA GB10 服务器上用 Docker 部署 Step1X-3D：环境准备、CUDA 扩展编译、本地模型加载、Gradio 启动、SSH 隧道与端到端验证。" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://dandan1232.github.io/notes/step1x-3d-arm64-deployment.html" />
+  <meta property="og:image" content="https://dandan1232.github.io/meta/og-image.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+
+    <article class="article">
+      <h1>在 ARM64 + NVIDIA GB10 服务器上部署 Step1X-3D</h1>
+      <p class="meta">发布于 2026-09-23 · AI Infra / 3D 生成</p>
+<blockquote>
+<p>这份笔记记录一次已经完成的部署：在 NVIDIA GB10、ARM64 远程服务器上运行 StepFun 官方 Step1X-3D，并通过浏览器把输入图片生成几何模型和带纹理模型。</p>
+<p>公开版说明：文中的 <code>203.0.113.10</code>、<code>10.0.0.41</code>、<code>deploy</code>、<code>gpu-node</code>、SSH 密钥名、端口和本机目录均为示例，不对应真实服务器。执行前请替换为自己的配置；不要把私钥、Token、密码或真实公网入口写入仓库。</p>
+<p>记录时间：2026-09-23。最终验证：服务首页返回 HTTP 200，端到端生成几何 GLB 和纹理 GLB；公开部署优先推荐 SSH 隧道，若必须开放公网访问，应额外配置身份认证、HTTPS、反向代理和防火墙。</p>
+</blockquote>
+<h2>1. 最终架构</h2>
+<p>这次没有把所有软件都装到服务器宿主机，而是分成三层：</p>
+<ol>
+<li>Windows 本机负责 SSH、上传源码、建立端口隧道、开浏览器。</li>
+<li>远程服务器宿主机保存模型、运行 Docker、提供 GPU。</li>
+<li>NVIDIA PyTorch 容器运行 Python/CUDA 扩展和 Gradio 服务。</li>
+</ol>
+<pre><code class="language-text">Windows 本机
+  | SSH 22：登录、上传、端口转发
+  v
+203.0.113.10 / gpu-node
+  | Docker host network + --gpus all
+  v
+step1x3d-dev 容器
+  | /workspace -&gt; /home/deploy/step1x3d
+  v
+Step1X-3D Gradio 服务：0.0.0.0:7000
+</code></pre>
+<p>下面用 <code>10.0.0.41:7000 -&gt; 203.0.113.10:7001</code> 表示一种示例端口映射；如需公网访问，请按云平台或机房规则配置，并先补齐认证、HTTPS 和防火墙。另一种更安全的访问链路是：<code>Windows 127.0.0.1:7861 -&gt; SSH 隧道 -&gt; 服务器 127.0.0.1:7000</code>。</p>
+<h2>2. 最终环境和目录</h2>
+<h3>2.1 服务器与容器</h3>
+<pre><code class="language-text">服务器：gpu-node
+用户：deploy
+架构：aarch64（ARM64）
+内核：6.17.0-1014-nvidia
+GPU：NVIDIA GB10，驱动 580.142
+SSH：203.0.113.10:22
+
+容器：step1x3d-dev
+镜像：nvcr.nju.edu.cn/nvidia/pytorch:25.11-py3
+网络：host
+GPU 参数：--gpus all
+工作目录：/workspace/src/Step1X-3D
+宿主机映射：/home/deploy/step1x3d -&gt; /workspace
+服务端口：7000（公网转发到 7001）
+重启策略：no（主机重启后不会自动启动容器）
+</code></pre>
+<h3>2.2 实测版本</h3>
+<pre><code class="language-text">PyTorch：2.10.0a0+b558c986e8.nv25.11
+CUDA：13.0
+NumPy：1.26.4
+CuPy：13.6.0
+Gradio：5.5.0
+Pydantic：2.10.6
+Diffusers：0.32.2
+Transformers：4.48.0
+Trimesh：4.3.2
+ONNX Runtime：1.21.0
+xatlas：0.0.10
+CuPy runtime：13000
+</code></pre>
+<h3>2.3 服务器目录</h3>
+<pre><code class="language-text">/home/deploy/step1x3d/
+├── src/
+│   ├── Step1X-3D/                         运行源码
+│   ├── model-repo/                        Step1X 主模型，约 37 GB
+│   ├── clip-vit-large-patch14/            CLIP，约 13 GB
+│   ├── dinov2-with-registers-large/       DINOv2，约 2.3 GB
+│   ├── stable-diffusion-xl-base-1.0/      SDXL，约 52 GB
+│   ├── sdxl-vae-fp16-fix/                 VAE，约 2.2 GB
+│   └── BiRefNet-hf/                       背景分割模型，约 425 MB
+├── cache/                                  生成的 GLB
+├── u2net.onnx                             rembg 模型文件的宿主机副本
+├── run_step1x3d.sh                        启动脚本
+└── step1x3d.log                            服务日志
+</code></pre>
+<p>容器中的 rembg 文件最终放在 <code>/root/.u2net/u2net.onnx</code>，约 176 MB。</p>
+<h2>3. 本机前置条件和 SSH 登录</h2>
+<p>需要 Windows PowerShell、OpenSSH、Git、scp、服务器账号和私钥。示例私钥位置是：</p>
+<pre><code class="language-text">C:\Users\your-name\.ssh\id_ed25519_step1x3d
+</code></pre>
+<p>不要把私钥内容写进笔记、启动脚本或 Git 仓库，也不要上传到服务器。可先检查本机是否有文件：</p>
+<pre><code class="language-powershell">Test-Path &quot;$env:USERPROFILE\.ssh\id_ed25519_step1x3d&quot;
+ssh -V
+</code></pre>
+<p>SSH 登录命令：</p>
+<pre><code class="language-powershell">ssh -i &quot;$env:USERPROFILE\.ssh\id_ed25519_step1x3d&quot; `
+  -p 22 `
+  deploy@203.0.113.10
+</code></pre>
+<p>第一次连接会询问主机指纹；确认是自己的服务器后输入 <code>yes</code>。登录后确认身份和 CPU 架构：</p>
+<pre><code class="language-bash">whoami
+hostname
+uname -m
+uname -r
+id
+</code></pre>
+<p>预期包含 <code>deploy</code>、<code>gpu-node</code>、<code>aarch64</code>。ARM64 很重要：一些 x86_64 的 CUDA/Python 预编译包不能直接用，后面需要从源码编译扩展。</p>
+<p>如果看到 <code>Permission denied (publickey)</code>，通常是用了 SSH 默认密钥。如果默认密钥不匹配，应显式指定 <code>id_ed25519_step1x3d</code>，不能只写 <code>ssh -p 22 ...</code>。</p>
+<h2>4. 源码和模型为什么分开获取</h2>
+<p>本次部署有两个不同来源：</p>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>用途</th>
+<th>地址</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ModelScope</td>
+<td>模型权重和配置</td>
+<td><code>https://www.modelscope.cn/models/stepfun-ai/Step1X-3D.git</code></td>
+</tr>
+<tr>
+<td>StepFun GitHub</td>
+<td>可运行源码，如 <code>app.py</code> 和推理模块</td>
+<td><code>https://github.com/stepfun-ai/Step1X-3D.git</code></td>
+</tr>
+</tbody></table>
+<p>实际检查发现 ModelScope 仓库不是完整运行应用，没有 <code>app.py</code> 等完整推理入口；所以单独下载它不能启动服务。反过来，GitHub 源码也不包含全部模型权重。把源码和权重分开取得，才有完整的运行材料。</p>
+<p>第一次克隆模型后，某些 <code>.safetensors</code> 文件只有一百多字节，文件头是：</p>
+<pre><code class="language-text">version https://git-lfs.github.com/spec/v1
+</code></pre>
+<p>这是 Git LFS 指针，不是真正权重。要先安装 Git LFS，再执行 <code>git lfs pull</code>。</p>
+<h2>5. 获取、打包并上传源码</h2>
+<p>完整仓库带较多示例资源。本次在 Windows 使用 sparse checkout，只取运行必需的源码和 examples：</p>
+<pre><code class="language-powershell">Set-Location D:\workspace
+
+git clone --depth 1 --filter=blob:none --no-checkout `
+  --branch main `
+  https://github.com/stepfun-ai/Step1X-3D.git `
+  Step1X-3D-transfer
+
+Set-Location D:\workspace\Step1X-3D-transfer
+git sparse-checkout init --no-cone
+git sparse-checkout set `
+  app.py `
+  inference.py `
+  requirements.txt `
+  step1x3d_geometry `
+  step1x3d_texture `
+  examples
+git checkout main
+</code></pre>
+<p>如果提示 <code>.git/index.lock</code> 存在，先确认没有另一个 Git 进程工作，再只处理这个明确的锁文件：</p>
+<pre><code class="language-powershell">Remove-Item -Force -LiteralPath `
+  D:\workspace\Step1X-3D-transfer\.git\index.lock
+git checkout main
+</code></pre>
+<p>不要因此删除整个 <code>.git</code> 目录。打包时排除 Git 元数据：</p>
+<pre><code class="language-powershell">Set-Location D:\workspace
+tar -czf Step1X-3D-source.tar.gz `
+  --exclude=.git `
+  Step1X-3D-transfer
+Get-Item .\Step1X-3D-source.tar.gz | Select-Object Name,Length
+</code></pre>
+<p>本次压缩包约 105 MB。上传到服务器：</p>
+<pre><code class="language-powershell">scp -i &quot;$env:USERPROFILE\.ssh\id_ed25519_step1x3d&quot; `
+  -P 22 `
+  .\Step1X-3D-source.tar.gz `
+  deploy@203.0.113.10:/home/deploy/step1x3d/src/
+</code></pre>
+<p>登录服务器后解压。下面假定目标目录尚不存在，若已存在先检查再处理，避免覆盖用户数据：</p>
+<pre><code class="language-bash">cd /home/deploy/step1x3d/src
+tar -xzf Step1X-3D-source.tar.gz
+mv Step1X-3D-transfer Step1X-3D
+</code></pre>
+<h2>6. 创建 NVIDIA PyTorch 容器</h2>
+<p>使用 <code>nvcr.nju.edu.cn/nvidia/pytorch:25.11-py3</code>。保留镜像自带的 PyTorch 2.10 + CUDA 13，不为照抄旧 requirements 而降级；这对 GB10 兼容性更合适。</p>
+<pre><code class="language-bash">docker pull nvcr.nju.edu.cn/nvidia/pytorch:25.11-py3
+docker run -d \
+  --name step1x3d-dev \
+  --gpus all \
+  --network host \
+  -v /home/deploy/step1x3d:/workspace \
+  -w /workspace/src/Step1X-3D \
+  nvcr.nju.edu.cn/nvidia/pytorch:25.11-py3 \
+  sleep infinity
+</code></pre>
+<p><code>--gpus all</code> 把 GPU 交给容器；<code>--network host</code> 让宿主可访问容器 7000；<code>-v</code> 将模型和代码保存在宿主机；<code>sleep infinity</code> 让容器保持运行。</p>
+<pre><code class="language-bash">docker ps --filter name=step1x3d-dev
+docker exec step1x3d-dev python -c \
+  &quot;import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.get_device_name(0))&quot;
+</code></pre>
+<p>预期：PyTorch <code>2.10.0a0+b558c986e8.nv25.11</code>、CUDA <code>13.0</code>、GPU <code>NVIDIA GB10</code>。</p>
+<h2>7. 系统库和 Python 依赖</h2>
+<pre><code class="language-bash">docker exec -it step1x3d-dev bash
+apt-get update
+apt-get install -y --no-install-recommends \
+  libgl1 libegl1 libglib2.0-0 libopengl0 git-lfs
+git lfs install --local
+</code></pre>
+<p><code>libopengl0</code> 解决 PyMeshLab 的 <code>libOpenGL.so.0</code> 缺失。无界面网格处理仍会用到图形库。</p>
+<p>先确认 torch，再安装依赖。不要执行会覆盖 torch/torchvision/torchaudio 的安装命令：</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.__version__, torch.version.cuda)&quot;
+cd /workspace/src/Step1X-3D
+grep -vE &#39;^(cupy-cuda12x|git\+https://github.com/NVlabs/nvdiffrast|git\+https://github.com/facebookresearch/pytorch3d|deepspeed|sageattention|open3d|prodigyopt|spaces|tensorboardX)&#39; \
+  requirements.txt &gt; /tmp/step1x3d-runtime.txt
+python -m pip install --no-cache-dir -r /tmp/step1x3d-runtime.txt
+</code></pre>
+<p>官方 requirements 混有训练、实验和特定平台依赖，所以筛选后再安装。固定遇到兼容问题的版本：</p>
+<pre><code class="language-bash">python -m pip install --no-cache-dir \
+  &quot;wandb==0.18.6&quot; &quot;onnxruntime==1.21.0&quot; &quot;xatlas==0.0.10&quot; \
+  &quot;numpy==1.26.4&quot; &quot;tifffile==2024.5.22&quot; \
+  &quot;pydantic==2.10.6&quot; &quot;pydantic-core==2.27.2&quot;
+</code></pre>
+<p>NumPy 2.x 与 Trimesh 4.3.2 有兼容问题，因此用 1.26.4。Gradio 5.5.0 配 Pydantic 2.12 曾导致首页 500，固定 2.10.6 后恢复。</p>
+<p>官方写 <code>cupy-cuda12x==13.4.1</code>，但容器是 CUDA 13；CUDA 12 版会找不到 <code>libnvrtc.so.12</code>。改装 CUDA 13 版：</p>
+<pre><code class="language-bash">python -m pip install --no-cache-dir cupy-cuda13x==13.6.0
+python -c &quot;import cupy as cp; print(cp.cuda.runtime.runtimeGetVersion())&quot;
+python -m pip install --no-cache-dir iopath==0.1.10 portalocker==3.2.0
+</code></pre>
+<p>CuPy runtime 预期 <code>13000</code>。iopath 和 portalocker 是 PyTorch3D 的辅助依赖。</p>
+<h2>8. 编译 ARM64/CUDA 扩展</h2>
+<p>ARM64 上有些组件没有适用的预编译包。本次编译 <code>nvdiffrast</code>、<code>pytorch3d</code>、Step1X 的 <code>custom_rasterizer</code> 和 <code>mesh_processor</code>。<code>MAX_JOBS=2</code> 限制并行，减少内存压力。</p>
+<pre><code class="language-bash">cd /workspace/src
+git clone --depth 1 https://github.com/NVlabs/nvdiffrast.git
+cd /workspace/src/nvdiffrast
+MAX_JOBS=2 python -m pip install --no-cache-dir --no-build-isolation .
+
+cd /workspace/src
+git clone --depth 1 --branch stable https://github.com/facebookresearch/pytorch3d.git
+cd /workspace/src/pytorch3d
+MAX_JOBS=2 python -m pip install --no-cache-dir --no-build-isolation .
+</code></pre>
+<p>再编译项目自带模块：</p>
+<pre><code class="language-bash">cd /workspace/src/Step1X-3D/step1x3d_texture/custom_rasterizer
+MAX_JOBS=2 python -m pip install --no-cache-dir --no-build-isolation .
+cd /workspace/src/Step1X-3D/step1x3d_texture/differentiable_renderer
+MAX_JOBS=2 python -m pip install --no-cache-dir --no-build-isolation .
+</code></pre>
+<p>验证：</p>
+<pre><code class="language-bash">python -c &quot;import custom_rasterizer_kernel, mesh_processor, nvdiffrast, pytorch3d; print(&#39;compiled_extensions=ok&#39;)&quot;
+</code></pre>
+<p>失败时先核对 torch/CUDA、<code>nvcc --version</code>、<code>gcc --version</code>、<code>iopath</code> 和 <code>portalocker</code>，不要先替换 torch。</p>
+<h2>9. 下载模型和隐式依赖</h2>
+<h3>9.1 Step1X 主模型与 Git LFS</h3>
+<pre><code class="language-bash">cd /workspace/src
+git clone https://www.modelscope.cn/models/stepfun-ai/Step1X-3D.git model-repo
+git config --global --add safe.directory /workspace/src/model-repo
+git -C /workspace/src/model-repo lfs pull
+</code></pre>
+<p>若已 clone 就不要重复 clone，只执行后两条。检查权重：</p>
+<pre><code class="language-bash">head -5 /workspace/src/model-repo/Step1X-3D-Geometry-Label-1300m/transformer/diffusion_pytorch_model.safetensors
+wc -c /workspace/src/model-repo/Step1X-3D-Geometry-Label-1300m/transformer/diffusion_pytorch_model.safetensors
+</code></pre>
+<p>文件头若仍是 <code>version https://git-lfs.github.com/spec/v1</code>，说明只有指针，需要 <code>git lfs pull</code>。主模型最终约 37 GB。</p>
+<h3>9.2 CLIP、DINOv2、SDXL、VAE</h3>
+<pre><code class="language-bash">cd /workspace/src
+git clone https://www.modelscope.cn/models/openai-mirror/clip-vit-large-patch14.git clip-vit-large-patch14
+git clone https://www.modelscope.cn/models/facebook/dinov2-with-registers-large.git dinov2-with-registers-large
+git clone https://www.modelscope.cn/models/AI-ModelScope/stable-diffusion-xl-base-1.0.git stable-diffusion-xl-base-1.0
+git clone https://www.modelscope.cn/models/AI-ModelScope/sdxl-vae-fp16-fix.git sdxl-vae-fp16-fix
+</code></pre>
+<p>拉取 LFS 大文件：</p>
+<pre><code class="language-bash">for d in clip-vit-large-patch14 dinov2-with-registers-large stable-diffusion-xl-base-1.0 sdxl-vae-fp16-fix; do
+  git -C &quot;/workspace/src/$d&quot; lfs pull
+done
+</code></pre>
+<p>大小约为 CLIP 13 GB、DINOv2 2.3 GB、SDXL 52 GB、VAE 2.2 GB，下载前确认磁盘空间。</p>
+<h3>9.3 BiRefNet</h3>
+<p>纹理流程调用 Transformers 的 <code>AutoModelForImageSegmentation.from_pretrained()</code>。ModelScope 的 <code>AI-ModelScope/BiRefNet</code> 是训练项目格式，不适合这个加载器；本次用 Hugging Face 发布格式 <code>ZhengPeng7/BiRefNet</code>，放在 <code>/workspace/src/BiRefNet-hf</code>，约 425 MB：</p>
+<pre><code class="language-bash">python -m pip install -U &quot;huggingface_hub[cli]&quot;
+hf download ZhengPeng7/BiRefNet \
+  --local-dir /workspace/src/BiRefNet-hf \
+  --local-dir-use-symlinks False
+</code></pre>
+<h3>9.4 rembg 的 U2Net</h3>
+<p>首次背景移除需要容器内的 <code>/root/.u2net/u2net.onnx</code>：</p>
+<pre><code class="language-bash">mkdir -p /root/.u2net
+curl -L https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx \
+  -o /root/.u2net/u2net.onnx
+ls -lh /root/.u2net/u2net.onnx
+</code></pre>
+<p>文件约 176 MB。若报找不到，先检查容器内部路径，不要重下所有模型。</p>
+<h2>10. 源码本地路径适配</h2>
+<p>官方代码默认会按在线模型 ID 加载部分模型。国内节点为了减少运行时联网依赖，对本地源码做了小幅补丁。这些改动位于本地工作副本 <code>D:\workspace\Step1X-3D-transfer</code>，之后随源码包上传到了服务器。</p>
+<h3>10.1 app.py：本地 Step1X 主模型和 Gradio 文件白名单</h3>
+<p>在 <code>app.py</code> 里使用环境变量 <code>STEP1X3D_MODEL_PATH</code>，替代固定的 <code>stepfun-ai/Step1X-3D</code>；几何和纹理两个 pipeline 都使用这个路径。</p>
+<p>另外 <code>demo.launch()</code> 增加：</p>
+<pre><code class="language-python">allowed_paths=[os.path.abspath(args.cache_dir)]
+</code></pre>
+<p>否则模型即使已经把 GLB 写入 <code>/workspace/cache</code>，Gradio 也可能因安全路径限制拒绝把文件返回给页面，并报 <code>InvalidPathError</code>。</p>
+<h3>10.2 CLIP 和 DINOv2 本地路径</h3>
+<p>修改文件：</p>
+<pre><code class="language-text">step1x3d_geometry/models/conditional_encoders/dinov2_clip_encoder.py
+step1x3d_geometry/models/conditional_encoders/dinov2_encoder.py
+</code></pre>
+<p>增加环境变量 <code>STEP1X3D_CLIP_MODEL</code>、<code>STEP1X3D_DINO_MODEL</code>，让 Transformers 从磁盘目录加载 CLIP/DINO，而不是访问在线模型 ID。</p>
+<h3>10.3 SDXL、VAE 和 BiRefNet 本地路径</h3>
+<p>修改文件：</p>
+<pre><code class="language-text">step1x3d_texture/pipelines/step1x_3d_texture_synthesis_pipeline.py
+</code></pre>
+<p>增加 <code>STEP1X3D_SDXL_MODEL</code>、<code>STEP1X3D_VAE_MODEL</code>、<code>STEP1X3D_BIREFNET_MODEL</code>，分别指向本地目录。</p>
+<h2>11. 启动脚本和服务</h2>
+<p>服务器脚本在 <code>/home/deploy/step1x3d/run_step1x3d.sh</code>：</p>
+<pre><code class="language-bash">#!/usr/bin/env bash
+set -euo pipefail
+
+export STEP1X3D_MODEL_PATH=/workspace/src/model-repo
+export STEP1X3D_CLIP_MODEL=/workspace/src/clip-vit-large-patch14
+export STEP1X3D_DINO_MODEL=/workspace/src/dinov2-with-registers-large
+export STEP1X3D_SDXL_MODEL=/workspace/src/stable-diffusion-xl-base-1.0
+export STEP1X3D_VAE_MODEL=/workspace/src/sdxl-vae-fp16-fix
+export STEP1X3D_BIREFNET_MODEL=/workspace/src/BiRefNet-hf
+
+cd /workspace/src/Step1X-3D
+exec python app.py --host 0.0.0.0 --port 7000 --cache_dir /workspace/cache
+</code></pre>
+<p>检查脚本和权限：</p>
+<pre><code class="language-bash">chmod +x /home/deploy/step1x3d/run_step1x3d.sh
+</code></pre>
+<p>启动服务：</p>
+<pre><code class="language-bash">docker exec -d step1x3d-dev \
+  bash -c &#39;/workspace/run_step1x3d.sh &gt; /workspace/step1x3d.log 2&gt;&amp;1&#39;
+</code></pre>
+<p>查看加载日志：</p>
+<pre><code class="language-bash">tail -f /home/deploy/step1x3d/step1x3d.log
+</code></pre>
+<p>若启动失败，看最后 100 行和进程：</p>
+<pre><code class="language-bash">tail -n 100 /home/deploy/step1x3d/step1x3d.log
+docker exec step1x3d-dev ps -ef | grep &#39;[p]ython app.py&#39;
+</code></pre>
+<h2>12. 服务器内部验证</h2>
+<pre><code class="language-bash">curl -sS -o /dev/null -w &#39;%{http_code}\n&#39; http://127.0.0.1:7000/
+ss -lntp | grep 7000
+</code></pre>
+<p>首页预期 HTTP <code>200</code>。检查缓存目录：</p>
+<pre><code class="language-bash">find /home/deploy/step1x3d/cache -maxdepth 1 \
+  -type f -name &#39;*.glb&#39; -printf &#39;%f %s bytes\n&#39;
+</code></pre>
+<p>本次端到端生成的两个结果：</p>
+<pre><code class="language-text">example.glb
+example-textured.glb
+
+几何 GLB：425052 bytes（约 416 KB）
+纹理 GLB：4976776 bytes（约 4.8 MB）
+</code></pre>
+<p>还验证了 Gradio API 可枚举，两个生成文件均可通过 Gradio 文件接口以 HTTP 200 返回。</p>
+<h2>13. 公网访问与可选 SSH 隧道</h2>
+<p>下面用一组示例端口转发说明访问链路：</p>
+<pre><code class="language-text">10.0.0.41:7000 -&gt; 203.0.113.10:7001
+</code></pre>
+<p>若已按前述要求安全配置公网入口，可用下面的示例命令验证；<code>203.0.113.10</code> 是文档保留地址，必须替换：</p>
+<pre><code class="language-powershell">curl.exe --noproxy &quot;*&quot; http://203.0.113.10:7001/
+curl.exe --noproxy &quot;*&quot; http://203.0.113.10:7001/config
+</code></pre>
+<p>如果不希望直接使用公网转发，也可以建立 SSH 隧道。</p>
+<p>在 Windows PowerShell 执行：</p>
+<pre><code class="language-powershell">ssh -f -N `
+  -o BatchMode=yes `
+  -o ExitOnForwardFailure=yes `
+  -o ServerAliveInterval=30 `
+  -i &quot;$env:USERPROFILE\.ssh\id_ed25519_step1x3d&quot; `
+  -p 22 `
+  -L 7861:127.0.0.1:7000 `
+  deploy@203.0.113.10
+</code></pre>
+<p>参数含义：</p>
+<ul>
+<li><code>-f</code>：认证成功后转入后台。</li>
+<li><code>-N</code>：只做端口转发，不启动远程 shell。</li>
+<li><code>-L 7861:127.0.0.1:7000</code>：将本机 7861 转到服务器 7000。</li>
+<li><code>ServerAliveInterval=30</code>：定期发送保活包。</li>
+<li><code>ExitOnForwardFailure=yes</code>：端口转发失败时直接报错。</li>
+</ul>
+<p>检查本机端口：</p>
+<pre><code class="language-powershell">Get-NetTCPConnection -LocalPort 7861 -ErrorAction SilentlyContinue
+</code></pre>
+<p>现在浏览器打开 <code>http://127.0.0.1:7861</code>。如果 Windows/浏览器设置了 HTTP 代理，代理可能错误地拦截 localhost 并返回 502。绕过代理测试：</p>
+<pre><code class="language-powershell">curl.exe --noproxy &quot;*&quot; http://127.0.0.1:7861/
+</code></pre>
+<p>若命令行 HTTP 200、浏览器却 502，服务和 SSH 隧道通常是通的；把 <code>localhost</code>、<code>127.0.0.1</code> 加入代理绕过名单，或临时关闭浏览器代理。</p>
+<h2>14. 故障排查记录</h2>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Permission denied (publickey)</code></td>
+<td>SSH 自动用了默认密钥</td>
+<td>明确指定 <code>id_ed25519_step1x3d</code>，检查用户名和端口</td>
+</tr>
+<tr>
+<td>safetensors 只有约 130 字节</td>
+<td>文件是 Git LFS 指针</td>
+<td>安装 git-lfs 并执行 <code>git lfs pull</code></td>
+</tr>
+<tr>
+<td><code>libOpenGL.so.0</code> 找不到</td>
+<td>容器缺 OpenGL 系统库</td>
+<td><code>apt-get install libopengl0</code></td>
+</tr>
+<tr>
+<td>缺 wandb、onnxruntime、xatlas</td>
+<td>运行依赖不全</td>
+<td>按上面固定版本补装</td>
+</tr>
+<tr>
+<td>ARM64 找不到 CUDA wheel</td>
+<td>没有适用的预编译包</td>
+<td>在当前容器里从源码编译，<code>MAX_JOBS=2</code></td>
+</tr>
+<tr>
+<td><code>libnvrtc.so.12</code> 找不到</td>
+<td>装了 CUDA 12 CuPy，容器是 CUDA 13</td>
+<td>换 <code>cupy-cuda13x==13.6.0</code></td>
+</tr>
+<tr>
+<td>Gradio 首页 500</td>
+<td>Pydantic 版本组合不兼容</td>
+<td>固定 <code>pydantic==2.10.6</code> 和 <code>pydantic-core==2.27.2</code></td>
+</tr>
+<tr>
+<td>Trimesh/数组报错</td>
+<td>NumPy 2.x 与旧 Trimesh 不兼容</td>
+<td>固定 <code>numpy==1.26.4</code></td>
+</tr>
+<tr>
+<td>BiRefNet 配置/模型类错误</td>
+<td>拿到训练项目格式，不是 Transformers 发布格式</td>
+<td>用 <code>ZhengPeng7/BiRefNet</code> 发布版</td>
+</tr>
+<tr>
+<td>找不到 <code>u2net.onnx</code></td>
+<td>rembg 文件不在容器默认目录</td>
+<td>放入 <code>/root/.u2net/u2net.onnx</code></td>
+</tr>
+<tr>
+<td>生成了 GLB 但页面 InvalidPathError</td>
+<td>Gradio 不允许返回 cache 路径</td>
+<td><code>demo.launch()</code> 加 <code>allowed_paths</code></td>
+</tr>
+<tr>
+<td>公网 IP:7861 返回 502</td>
+<td>7861 没有平台端口映射</td>
+<td>使用 <code>203.0.113.10:7001</code>，它会转发到服务器 7000</td>
+</tr>
+<tr>
+<td>服务器 curl 200、本机浏览器 502</td>
+<td>本机代理拦截 localhost</td>
+<td>curl 使用 <code>--noproxy &quot;*&quot;</code>，配置代理绕过</td>
+</tr>
+</tbody></table>
+<p><code>pip check</code> 当前仍可能报告 NVIDIA 基础镜像里若干预装训练包之间的版本冲突（如 protobuf、datasets、typeguard）。Step1X 实际导入、启动和生成均已通过；不要为了清零这些旁支警告而大范围升级基础环境。</p>
+<h2>15. 常用运维与重启恢复</h2>
+<p>查看状态：</p>
+<pre><code class="language-bash">docker ps --filter name=step1x3d-dev
+docker exec step1x3d-dev ps -ef | grep &#39;[p]ython app.py&#39;
+curl -sS -o /dev/null -w &#39;%{http_code}\n&#39; http://127.0.0.1:7000
+docker exec step1x3d-dev nvidia-smi
+</code></pre>
+<p>查看日志：</p>
+<pre><code class="language-bash">tail -f /home/deploy/step1x3d/step1x3d.log
+tail -n 200 /home/deploy/step1x3d/step1x3d.log
+</code></pre>
+<p>停止和重启 Python 服务：</p>
+<pre><code class="language-bash">docker exec step1x3d-dev pkill -f &#39;python app.py&#39;
+docker exec -d step1x3d-dev \
+  bash -c &#39;/workspace/run_step1x3d.sh &gt; /workspace/step1x3d.log 2&gt;&amp;1&#39;
+</code></pre>
+<p>容器的重启策略当前是 <code>no</code>。即使 <code>docker restart step1x3d-dev</code>，容器也只会再次运行 <code>sleep infinity</code>，不会自动启动 Gradio。因此容器重启后还要执行上面的 <code>docker exec -d ...run_step1x3d.sh</code>。</p>
+<p>服务器重启后的恢复顺序：</p>
+<pre><code class="language-bash">docker start step1x3d-dev
+docker exec -d step1x3d-dev \
+  bash -c &#39;/workspace/run_step1x3d.sh &gt; /workspace/step1x3d.log 2&gt;&amp;1&#39;
+curl -sS -o /dev/null -w &#39;%{http_code}\n&#39; http://127.0.0.1:7000
+</code></pre>
+<p>然后按实际情况恢复反向代理或在 Windows 重新建立 SSH 隧道。</p>
+<h2>16. 磁盘、显存和安全</h2>
+<p>模型占用超过 100 GB，主要包括 SDXL 52 GB、Step1X 主模型 37 GB、CLIP 13 GB，另有其他模型和编译数据。清理前先检查目标；不要随便执行 <code>rm -rf /workspace/src</code>、<code>rm -rf /home/deploy/step1x3d/src</code> 或 <code>docker system prune -a</code>。</p>
+<p>清理旧结果时先只列出候选文件：</p>
+<pre><code class="language-bash">find /home/deploy/step1x3d/cache -maxdepth 1 \
+  -type f -name &#39;*.glb&#39; -mtime +7 -print
+</code></pre>
+<p>本次服务常驻显存约 17.7 GB，完整推理峰值曾约 54.6 GB，实际会随其他任务波动。私钥和 Hugging Face token 不写脚本；本地 SSH 隧道比直接开放 Gradio 公网端口更安全。若确实要公网服务，应另加认证、反向代理和防火墙策略。</p>
+<h2>17. 最短复现检查清单</h2>
+<p>Windows 登录：</p>
+<pre><code class="language-powershell">ssh -i &quot;$env:USERPROFILE\.ssh\id_ed25519_step1x3d&quot; -p 22 deploy@203.0.113.10
+</code></pre>
+<p>服务器/容器检查：</p>
+<pre><code class="language-bash">docker ps --filter name=step1x3d-dev
+docker exec step1x3d-dev nvidia-smi
+docker exec step1x3d-dev python -c &quot;import torch; print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0))&quot;
+docker exec step1x3d-dev python -c &quot;import custom_rasterizer_kernel, mesh_processor, nvdiffrast, pytorch3d; print(&#39;extensions ok&#39;)&quot;
+docker exec step1x3d-dev ls -lh /root/.u2net/u2net.onnx
+curl -sS -o /dev/null -w &#39;%{http_code}\n&#39; http://127.0.0.1:7000
+</code></pre>
+<p>Windows 建隧道并验证：</p>
+<pre><code class="language-powershell">ssh -f -N -o BatchMode=yes -o ExitOnForwardFailure=yes `
+  -o ServerAliveInterval=30 `
+  -i &quot;$env:USERPROFILE\.ssh\id_ed25519_step1x3d&quot; `
+  -p 22 -L 7861:127.0.0.1:7000 `
+  deploy@203.0.113.10
+curl.exe --noproxy &quot;*&quot; http://127.0.0.1:7861/
+</code></pre>
+<p>浏览器打开 <code>http://127.0.0.1:7861</code>。</p>
+<p>如需直接公网访问，请先配置身份认证、HTTPS、反向代理和最小化防火墙放行；不要裸露 Gradio 服务。</p>
+<h2>18. 页面生成参数说明</h2>
+<p>第一次使用时，推荐先保持官方页面默认值：</p>
+<pre><code class="language-text">Guidance Scale：7.5
+Inference Steps：50
+Max Face Num：400000
+Symmetry Type：根据物体选择
+Edge Type：根据物体选择
+</code></pre>
+<p>这些参数主要控制几何模型的生成，不直接决定贴图分辨率。</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>作用</th>
+<th>调高或改变后的影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Guidance Scale</td>
+<td>模型有多严格地参考输入图片</td>
+<td>越高越贴近图片，但过高可能产生畸形或僵硬细节</td>
+</tr>
+<tr>
+<td>Inference Steps</td>
+<td>扩散模型进行去噪生成的步骤数</td>
+<td>越高通常越细致、越慢，超过一定数量后提升变小</td>
+</tr>
+<tr>
+<td>Max Face Num</td>
+<td>最终网格允许保留的最大三角面数</td>
+<td>越高模型越重，文件越大，纹理和预览越慢</td>
+</tr>
+<tr>
+<td>Symmetry Type</td>
+<td>是否倾向生成左右对称的结构</td>
+<td><code>x</code> 为 X 方向对称，<code>asymmetry</code> 不强求对称</td>
+</tr>
+<tr>
+<td>Edge Type</td>
+<td>控制生成几何的边缘风格</td>
+<td><code>sharp</code> 硬朗，<code>normal</code> 折中，<code>smooth</code> 圆润</td>
+</tr>
+</tbody></table>
+<h3>18.1 Guidance Scale</h3>
+<p>可以理解为“图片引导强度”。它决定模型生成 3D 形状时，多大程度遵从输入图片。</p>
+<ul>
+<li>数值较低：模型发挥空间较大，但生成结果可能不像原图。</li>
+<li>数值较高：模型会更努力贴近原图的轮廓和结构。</li>
+<li>数值过高：不一定更好，可能放大错误轮廓，产生奇怪凸起或僵硬结构。</li>
+</ul>
+<p>推荐范围：</p>
+<pre><code class="language-text">普通情况：7.5
+结果不太像原图：8～9
+出现畸形或奇怪细节：降到 5～7
+</code></pre>
+<p>官方示例和当前页面默认都是 <code>7.5</code>。源码中大于 1 时会启用 Classifier-Free Guidance，也就是把“没有图片条件”和“有图片条件”的预测进行组合，从而增强输入图片对结果的影响。</p>
+<h3>18.2 Inference Steps</h3>
+<p>页面当前写成了 <code>Inferece Steps</code>，这是拼写错误，正确名称是 <code>Inference Steps</code>，中文可以理解为“推理步数”或“去噪步数”。</p>
+<ul>
+<li>步数少：生成更快，但几何可能粗糙或不稳定。</li>
+<li>步数多：通常结构更完整，但耗时更长。</li>
+<li>步数翻倍不代表质量翻倍，后期提升会逐渐变小。</li>
+</ul>
+<p>页面允许 <code>1～100</code>，默认 <code>50</code>。建议：</p>
+<pre><code class="language-text">快速测试：20～30
+正式生成：50
+复杂物体：60～75
+一般不必长期使用：80～100
+</code></pre>
+<p>实用做法是先用 25～30 步判断主体形状，方向正确后再用 50 步正式生成。</p>
+<h3>18.3 Max Face Num</h3>
+<p>表示最终网格允许保留的最大三角面数量。3D 模型的表面由大量三角形组成，例如 <code>400000</code> 表示最多保留约 40 万个三角面。</p>
+<p>面数越高：</p>
+<ul>
+<li>可以保留更多几何细节。</li>
+<li>GLB 文件会更大。</li>
+<li>浏览器预览更吃性能。</li>
+<li>后续纹理生成和网格处理更慢。</li>
+<li>内存和显存占用可能增加。</li>
+</ul>
+<p>它只是减面时的上限，不是细节生成开关。原始生成分辨率有限，因此把数字无限调高不会凭空增加真实细节。</p>
+<p>推荐：</p>
+<pre><code class="language-text">快速测试、简单物体：100000～200000
+普通模型：200000～400000
+复杂雕塑或高细节物体：400000
+</code></pre>
+<p>如果最终模型要用于网页、游戏或移动设备，通常还需要在生成后继续减面和优化纹理。</p>
+<h3>18.4 Symmetry Type</h3>
+<p>这是 Label 版几何模型的条件参数，用来提示模型是否生成对称结构。它是生成引导，不是建模软件中的严格镜像修改器，不能保证每个顶点完全对称。</p>
+<h4>x</h4>
+<p>倾向按 X 方向左右对称，可以理解为关于模型中间的 <code>X=0</code> 平面对称。</p>
+<p>适合：</p>
+<ul>
+<li>人脸、正面站立的人物</li>
+<li>汽车、飞机、机器人</li>
+<li>椅子、瓶子</li>
+<li>大多数正面拍摄、左右结构一致的产品或动物</li>
+</ul>
+<h4>asymmetry</h4>
+<p>表示不强求左右对称。</p>
+<p>适合：</p>
+<ul>
+<li>人物摆出不对称动作</li>
+<li>单肩包、茶壶把手等单侧结构</li>
+<li>一边有特殊装饰的物体</li>
+<li>不规则石头、植物</li>
+<li>输入图片本身明显左右不同</li>
+</ul>
+<p>如果原物体明显不对称却选择 <code>x</code>，模型可能把单侧结构复制到另一侧，或者忽略不对称特征。</p>
+<h3>18.5 Edge Type</h3>
+<p>这是 Label 版几何模型的另一个条件参数，用来提示模型采用哪种边缘风格。</p>
+<h4>sharp</h4>
+<p>强调硬边、折角和平面结构。适合机械零件、家具、汽车、电子产品、建筑、箱子和卡通硬表面道具。当前页面默认值是 <code>sharp</code>。</p>
+<h4>normal</h4>
+<p>普通、折中的边缘风格，不特别强调硬边或圆润。适合同时包含硬边和圆角的日常用品、鞋子和玩具。不确定如何选择时，可以先用 <code>normal</code>。</p>
+<h4>smooth</h4>
+<p>倾向生成圆润、连续的曲面。适合人物、动物、毛绒玩具、食物、石头、有机体和雕塑。</p>
+<p>机械物体选择 <code>smooth</code> 可能使边角变钝；人物或动物选择 <code>sharp</code>，表面可能出现不自然的折面。</p>
+<h3>18.6 推荐参数组合</h3>
+<p>普通产品或不确定如何选择：</p>
+<pre><code class="language-text">Guidance Scale：7.5
+Inference Steps：50
+Max Face Num：400000
+Symmetry：根据图片决定
+Edge Type：normal
+</code></pre>
+<p>汽车、机器人、家具等硬表面物体：</p>
+<pre><code class="language-text">Guidance Scale：7.5
+Inference Steps：50
+Max Face Num：400000
+Symmetry：x
+Edge Type：sharp
+</code></pre>
+<p>人物、动物、毛绒玩具：</p>
+<pre><code class="language-text">Guidance Scale：7～7.5
+Inference Steps：50
+Max Face Num：300000～400000
+Symmetry：正面且左右一致选 x，动作不对称选 asymmetry
+Edge Type：smooth
+</code></pre>
+<p>快速试生成：</p>
+<pre><code class="language-text">Guidance Scale：7.5
+Inference Steps：25～30
+Max Face Num：150000～200000
+Symmetry：根据物体决定
+Edge Type：根据物体决定
+</code></pre>
+<p>最重要的是根据输入物体选择 <code>Symmetry Type</code> 和 <code>Edge Type</code>。其余参数先保持默认，看到具体问题后再调整，通常比一次把数值全部调高更稳定。</p>
+<h2>19. 最终结果</h2>
+<p>已实际验证：服务器识别 ARM64 和 GB10；PyTorch 2.10/CUDA 13 可用；LFS 权重已拉成真实文件；本地 CLIP、DINOv2、SDXL、VAE、BiRefNet 和 U2Net 已就位；四个编译扩展可导入；服务器 7000 和公网转发 7001 均返回 HTTP 200；从输入图片完成几何和纹理生成；两个 GLB 能通过 Gradio 文件接口返回。</p>
+<p>核心经验：先确认硬件、架构和容器 CUDA/PyTorch 基线；再分别确认运行源码、模型权重和隐式依赖；最后用本地路径、SSH 隧道和端到端生成验证整套服务。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+</body>
+</html>
