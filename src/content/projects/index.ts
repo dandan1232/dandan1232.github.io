@@ -4,7 +4,7 @@ export const projectIds = [
   "fastgpt-workflow",
   "enterprise-knowledge-base",
   "wechat-media-ai",
-  "ppt-audit-tool",
+  "step1x-3d-deployment",
   "workflow-assistant",
   "software-copyrights",
 ];

@@ -1,6 +1,5 @@
 import thumbnailCubeWar from "../../../assets/thumbnails/cubewar.webp";
 import thumbnailPokedex from "../../../assets/thumbnails/pokedex.webp";
-import thumbnailQuibbo from "../../../assets/thumbnails/quibbo.webp";
 import thumbnailSharkie from "../../../assets/thumbnails/sharkie.webp";
 import thumbnailStreakon from "../../../assets/thumbnails/streakon.webp";
 import thumbnailFastGPT from "../../../assets/thumbnails/fastgpt-workflow.png";
@@ -27,10 +26,10 @@ export default [
     description: "AI message pipeline for WeChat and company knowledge",
   },
   {
-    title: "PPT Cleanup & Review Tool",
-    slug: "ppt-audit-tool",
-    thumbnail: thumbnailQuibbo,
-    description: "Automation tooling for presentation asset governance",
+    title: "Step1X-3D · ARM64 Server Deployment",
+    slug: "step1x-3d-deployment",
+    thumbnail: "/notes/images/step1x-3d-arm64-deployment/generation-result.webp",
+    description: "End-to-end deployment from one image to textured and geometry models",
   },
   {
     title: "Internal AI Assistant · Workflow Design",

@@ -1,6 +1,5 @@
 import thumbnailCubeWar from "../../../assets/thumbnails/cubewar.webp";
 import thumbnailPokedex from "../../../assets/thumbnails/pokedex.webp";
-import thumbnailQuibbo from "../../../assets/thumbnails/quibbo.webp";
 import thumbnailSharkie from "../../../assets/thumbnails/sharkie.webp";
 import thumbnailStreakon from "../../../assets/thumbnails/streakon.webp";
 import thumbnailFastGPT from "../../../assets/thumbnails/fastgpt-workflow.png";
@@ -27,10 +26,10 @@ export default [
     description: "公众号与企业知识的 AI 消息链路",
   },
   {
-    title: "PPT 自动清洗 & 审核工具",
-    slug: "ppt-audit-tool",
-    thumbnail: thumbnailQuibbo,
-    description: "面向素材治理的自动化工具链",
+    title: "Step1X-3D · ARM64 服务器部署",
+    slug: "step1x-3d-deployment",
+    thumbnail: "/notes/images/step1x-3d-arm64-deployment/generation-result.webp",
+    description: "从单张图片到纹理与几何模型的端到端部署",
   },
   {
     title: "内部 AI 助手 · Workflow 设计",

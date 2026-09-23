@@ -680,6 +680,8 @@ Edge Type：根据物体决定
 <p>最重要的是根据输入物体选择 <code>Symmetry Type</code> 和 <code>Edge Type</code>。其余参数先保持默认，看到具体问题后再调整，通常比一次把数值全部调高更稳定。</p>
 <h2>19. 最终结果</h2>
 <p>已实际验证：服务器识别 ARM64 和 GB10；PyTorch 2.10/CUDA 13 可用；LFS 权重已拉成真实文件；本地 CLIP、DINOv2、SDXL、VAE、BiRefNet 和 U2Net 已就位；四个编译扩展可导入；服务器 7000 和公网转发 7001 均返回 HTTP 200；从输入图片完成几何和纹理生成；两个 GLB 能通过 Gradio 文件接口返回。</p>
+<figure class="article-media"><a href="./images/step1x-3d-arm64-deployment/generation-result.webp" target="_blank" rel="noopener"><img src="./images/step1x-3d-arm64-deployment/generation-result.webp" alt="Step1X-3D 根据输入图片生成纹理模型和几何模型" loading="lazy"></a><figcaption>图 1：输入单张图片后，页面同时返回带纹理模型与几何模型；截图中的公网地址已做模糊处理。</figcaption></figure>
+<figure class="article-media"><a href="./images/step1x-3d-arm64-deployment/gradio-api.webp" target="_blank" rel="noopener"><img src="./images/step1x-3d-arm64-deployment/gradio-api.webp" alt="Step1X-3D Gradio API 调用文档" loading="lazy"></a><figcaption>图 2：Gradio 自动生成的 API 文档，可通过 Python 客户端调用同一条生成链路；截图中的地址与示例链接已做模糊处理。</figcaption></figure>
 <p>核心经验：先确认硬件、架构和容器 CUDA/PyTorch 基线；再分别确认运行源码、模型权重和隐式依赖；最后用本地路径、SSH 隧道和端到端生成验证整套服务。</p>
     </article>
   </main>
