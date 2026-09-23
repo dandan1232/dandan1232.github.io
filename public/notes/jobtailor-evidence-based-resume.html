@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JobTailor：基于证据的 AI 简历诊断与岗位定制 | Echo Notes</title>
+  <meta name="description" content="JobTailor 项目复盘：从简历与 JD 诊断、证据约束、建议审阅和确定性写回，到流式 AI、DOCX/PDF 导出、Docker 部署与生产事故排查。" />
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/jobtailor-evidence-based-resume.html" />
+  <meta property="og:title" content="JobTailor：基于证据的 AI 简历诊断与岗位定制 | Echo Notes" />
+  <meta property="og:description" content="JobTailor 项目复盘：从简历与 JD 诊断、证据约束、建议审阅和确定性写回，到流式 AI、DOCX/PDF 导出、Docker 部署与生产事故排查。" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://dandan1232.github.io/notes/jobtailor-evidence-based-resume.html" />
+  <meta property="og:image" content="https://dandan1232.github.io/notes/images/jobtailor/workspace-empty.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" title="切换主题">🎨</button>
+      </div>
+    </div>
+
+    <article class="article">
+      <h1>JobTailor：基于证据的 AI 简历诊断与岗位定制</h1>
+      <p class="meta">发布于 2026-09-23 · AI 应用 / 求职工具</p>
+<blockquote>
+<p>JobTailor 是一个面向具体岗位的简历诊断与优化工作台。它不追求堆关键词或一次性重写全文，而是先拆解岗位要求，再用原简历中的真实证据生成可核对的建议。</p>
+<p>核心原则：<strong>AI 负责提出有依据的候选修改，人负责决定，程序负责确定性执行。所有修改都必须以原简历中的真实事实为依据。</strong></p>
+<p>公开版说明：已移除本机项目路径和未公开的市场分析材料；配图只保留演示界面，排除了会暴露姓名、联系方式、真实简历文件名和公司经历的截图。环境变量只展示名称，不包含任何密钥值。</p>
+</blockquote>
+<ul>
+<li>状态：MVP 已上线</li>
+<li>技术形态：Next.js 全栈单体应用，使用 Docker Compose 部署</li>
+<li>源码仓库：<a href="https://github.com/dandan1232/JobTailor">dandan1232/JobTailor</a></li>
+<li>创建/整理时间：2026-09-23</li>
+</ul>
+<h2>一、为什么做这个项目</h2>
+<p>一份通用简历很难同时适配不同岗位。传统工具通常只做关键词命中或直接重写全文，存在几个明显问题：</p>
+<ul>
+<li>用户不知道 JD 中哪些要求最重要，也不知道自己的简历有没有证据支撑。</li>
+<li>直接全文改写会掩盖修改过程，容易偷偷新增并不存在的技能、项目、数字或成果。</li>
+<li>修改建议、用户确认、最终生成和文件导出往往彼此割裂。</li>
+<li>用户拿到结果后很难继续编辑，也无法控制哪些建议真正写入简历。</li>
+</ul>
+<p>JobTailor 的产品思路不是“替用户凭空写一份简历”，而是把流程拆成：</p>
+<ol>
+<li>读取真实简历；</li>
+<li>拆解目标岗位要求；</li>
+<li>对照证据并指出缺口；</li>
+<li>逐条展示可核对的修改建议；</li>
+<li>由用户决定采纳或跳过；</li>
+<li>只把已采纳内容写回；</li>
+<li>允许继续编辑、AI 微调和导出。</li>
+</ol>
+<h2>二、产品需求整理</h2>
+<h3>2.1 目标用户</h3>
+<p>核心用户是已有基础简历和明确目标 JD、拥有约 1～5 年工作经验的软件工程师。他们希望提升岗位相关性，但不希望 AI 虚构经历，并且需要理解每项修改的依据。</p>
+<h3>2.2 产品目标</h3>
+<ul>
+<li>识别简历与 JD 的匹配项、缺口和证据强弱。</li>
+<li>用总体分数、四项维度和原文证据解释结论。</li>
+<li>为每条建议展示“原文—建议文本—修改原因”。</li>
+<li>把最终决定权交给用户，未经采纳的建议不得写入正文。</li>
+<li>生成可继续编辑、继续调整并导出的优化版简历。</li>
+<li>全流程禁止编造项目、公司、职责、技能、数字和结果。</li>
+</ul>
+<h3>2.3 当前版本范围</h3>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>当前能力</th>
+<th>核心规则</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>简历上传</td>
+<td>PDF/DOCX 点击或拖放上传、文本提取、预览</td>
+<td>最大 5MB；有效文本 40～30,000 字符</td>
+</tr>
+<tr>
+<td>JD 输入</td>
+<td>粘贴岗位描述、实时字符计数</td>
+<td>30～20,000 字符；修改后旧结果失效</td>
+</tr>
+<tr>
+<td>匹配诊断</td>
+<td>总分、结论、四维评分、要求覆盖、证据和缺口</td>
+<td>AI 可用时流式分析，否则使用本地规则预览</td>
+</tr>
+<tr>
+<td>建议审阅</td>
+<td>高/中/低优先级、原因、原文和建议文本</td>
+<td>每条建议可独立采纳或跳过</td>
+</tr>
+<tr>
+<td>生成简历</td>
+<td>只应用已采纳建议</td>
+<td>原文必须唯一可定位，多条修改不能重叠</td>
+</tr>
+<tr>
+<td>继续编辑</td>
+<td>手工编辑、AI 按要求微调、撤销上一步</td>
+<td>AI 不得新增事实；失败时保留现有内容</td>
+</tr>
+<tr>
+<td>文件导出</td>
+<td>DOCX、PDF</td>
+<td>以当前编辑区内容为准，文件名带“优化版”</td>
+</tr>
+<tr>
+<td>响应式界面</td>
+<td>桌面端并排工作区、移动端完整流程</td>
+<td>状态不能只依赖颜色表达</td>
+</tr>
+</tbody></table>
+<h3>2.4 明确不做</h3>
+<p>当前 MVP 不包含：</p>
+<ul>
+<li>注册登录、多人协作和权限系统；</li>
+<li>在线职位搜索、岗位推荐和自动投递；</li>
+<li>云端简历库、跨设备同步和长期版本管理；</li>
+<li>复杂模板市场和所见即所得排版器；</li>
+<li>OCR、面试模拟、求职进度管理和招聘方功能。</li>
+</ul>
+<h3>2.5 核心业务规则</h3>
+<ol>
+<li><strong>事实优先</strong>：所有可采纳内容必须能在原简历中找到事实依据。</li>
+<li><strong>证据可见</strong>：匹配结论要展示对应原文；没有证据时明确标成缺口。</li>
+<li><strong>用户决策</strong>：AI 只提出建议，用户采纳后才能写入正文。</li>
+<li><strong>确定性写回</strong>：最终生成不再让模型进行第二次全文重写，避免推翻用户已经确认的内容。</li>
+<li><strong>失败可恢复</strong>：生成、微调或导出失败时，不清空编辑区中的已有版本。</li>
+<li><strong>隐私最小化</strong>：上传文件只在内存中解析，不长期保存；只有发起 AI 分析或修改时才向模型服务发送文字。</li>
+</ol>
+<h3>2.6 完整用户流程</h3>
+<pre><code class="language-text">flowchart LR
+    A[上传 PDF / DOCX] --&gt; B[提取并预览文本]
+    B --&gt; C[粘贴目标 JD]
+    C --&gt; D[匹配分析]
+    D --&gt; E[查看评分、证据和缺口]
+    E --&gt; F[逐条采纳或跳过建议]
+    F --&gt; G[确定性生成优化版]
+    G --&gt; H[手工编辑或 AI 微调]
+    H --&gt; I[导出 DOCX / PDF]
+</code></pre>
+<figure class="article-media"><a href="./images/jobtailor/workspace-empty.webp" target="_blank" rel="noopener"><img src="./images/jobtailor/workspace-empty.webp" alt="JobTailor 空白工作台，包含简历上传、岗位描述和分析结果区域" loading="lazy"></a><figcaption>图 1：JobTailor 初始工作台。上传简历、输入岗位描述和查看诊断被组织在同一条流程中。</figcaption></figure>
+<figure class="article-media"><a href="./images/jobtailor/input-workspace.webp" target="_blank" rel="noopener"><img src="./images/jobtailor/input-workspace.webp" alt="JobTailor 已加载简历与目标岗位描述的分析工作区" loading="lazy"></a><figcaption>图 2：简历解析完成并填入目标 JD 后即可开始匹配分析；截图中的简历文件名已做模糊处理。</figcaption></figure>
+<h2>三、技术架构</h2>
+<h3>3.1 技术栈</h3>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>技术</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Web 框架</td>
+<td>Next.js 16 App Router</td>
+<td>页面、Route Handler、生产构建</td>
+</tr>
+<tr>
+<td>前端</td>
+<td>React 19 + TypeScript</td>
+<td>工作台交互和状态管理</td>
+</tr>
+<tr>
+<td>样式与图标</td>
+<td>原生 CSS + Lucide React</td>
+<td>响应式界面、状态图标</td>
+</tr>
+<tr>
+<td>PDF 解析</td>
+<td><code>pdf-parse</code> / PDF.js</td>
+<td>从带文本层的 PDF 提取文字</td>
+</tr>
+<tr>
+<td>DOCX 解析</td>
+<td><code>mammoth</code></td>
+<td>从 DOCX 提取纯文本</td>
+</tr>
+<tr>
+<td>DOCX 导出</td>
+<td><code>docx</code></td>
+<td>生成可下载的 Word 文档</td>
+</tr>
+<tr>
+<td>PDF 导出</td>
+<td><code>pdfkit</code> + Noto Sans SC</td>
+<td>生成 A4 中文 PDF</td>
+</tr>
+<tr>
+<td>AI 接入</td>
+<td>Chat Completions 兼容接口</td>
+<td>流式诊断和按要求修改</td>
+</tr>
+<tr>
+<td>测试</td>
+<td>Node Test + Playwright</td>
+<td>算法回归、流式协议和端到端交互</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>Docker 多阶段构建 + Compose</td>
+<td>standalone 生产部署和健康检查</td>
+</tr>
+</tbody></table>
+<h3>3.2 总体结构</h3>
+<pre><code class="language-text">flowchart TB
+    Browser[浏览器 / JobWorkspace]
+
+    subgraph Next[Next.js 全栈应用]
+        UI[React 工作台]
+        Extract[/api/resume/extract]
+        Analyze[/api/analyze]
+        Generate[/api/resume/generate]
+        Refine[/api/resume/refine]
+        Export[/api/resume/export]
+        Health[/api/health]
+
+        Local[本地规则分析器]
+        Stream[流式协议解码器]
+        Editor[确定性修改引擎]
+    end
+
+    AI[Chat Completions 兼容模型服务]
+
+    Browser --&gt; UI
+    UI --&gt; Extract
+    UI --&gt; Analyze
+    UI --&gt; Generate
+    UI --&gt; Refine
+    UI --&gt; Export
+    Analyze --&gt; Local
+    Analyze --&gt; AI
+    AI --&gt; Stream
+    Generate --&gt; Editor
+    Refine --&gt; AI
+</code></pre>
+<h3>3.3 代码模块</h3>
+<pre><code class="language-text">app/
+  api/analyze/route.ts           # 简历与 JD 的流式分析入口
+  api/health/route.ts            # 容器健康检查与分析模式
+  api/resume/extract/route.ts    # PDF/DOCX 文本提取
+  api/resume/generate/route.ts   # 应用已采纳建议
+  api/resume/refine/route.ts     # AI 继续修改
+  api/resume/export/route.ts     # DOCX/PDF 导出
+  globals.css                    # 全局设计与响应式样式
+  page.tsx                       # 页面入口
+components/
+  job-workspace.tsx              # 主工作台、前端状态和请求流程
+lib/
+  analysis.ts                    # 数据结构、本地分析和 AI 请求
+  analysis-stream.ts             # SSE/NDJSON 增量解码
+  resume-editor.ts               # 确定性替换和 AI 微调流
+tests/
+  analysis-stream.test.mjs       # 流式边界测试
+  resume-editor.test.mjs         # 文本替换安全性测试
+  workspace.spec.ts              # 核心流程和移动端 E2E
+scripts/
+  deploy.sh                      # 拉取、构建、重启、健康检查
+  install-post-merge-hook.sh     # 安装自动部署钩子
+</code></pre>
+<h3>3.4 API 清单</h3>
+<table>
+<thead>
+<tr>
+<th>方法与路径</th>
+<th>输入</th>
+<th>输出</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>POST /api/resume/extract</code></td>
+<td><code>multipart/form-data</code> 中的 <code>file</code></td>
+<td><code>{ filename, characters, text }</code></td>
+<td>PDF/DOCX 内存解析</td>
+</tr>
+<tr>
+<td><code>POST /api/analyze</code></td>
+<td><code>resume_text</code>、<code>job_description</code></td>
+<td>NDJSON 数据流</td>
+<td>先 summary，再逐条 revision</td>
+</tr>
+<tr>
+<td><code>POST /api/resume/generate</code></td>
+<td>原文和已采纳 revisions</td>
+<td><code>text/plain</code></td>
+<td>确定性应用建议，不二次改写</td>
+</tr>
+<tr>
+<td><code>POST /api/resume/refine</code></td>
+<td>当前正文、修改要求</td>
+<td>文本流</td>
+<td>调用模型按指令继续修改</td>
+</tr>
+<tr>
+<td><code>POST /api/resume/export</code></td>
+<td>正文、格式、原文件名</td>
+<td>DOCX/PDF 二进制</td>
+<td>下载优化版文件</td>
+</tr>
+<tr>
+<td><code>GET /api/health</code></td>
+<td>无</td>
+<td><code>{ status, analysis_mode }</code></td>
+<td>健康检查，显示 <code>ai</code> 或 <code>local</code></td>
+</tr>
+</tbody></table>
+<h2>四、关键实现笔记</h2>
+<h3>4.1 简历上传与解析</h3>
+<p>服务端通过 <code>request.formData()</code> 获取文件，全程在内存中处理：</p>
+<ul>
+<li>PDF：使用 <code>PDFParse</code> 提取文本，并在 <code>finally</code> 中销毁解析器。</li>
+<li>DOCX：使用 <code>mammoth.extractRawText()</code> 提取纯文本。</li>
+<li>文本归一：连续三个以上换行压缩为两个，去除首尾空白，最多保留 30,000 字符。</li>
+<li>扫描件、加密 PDF、损坏文件和非法 DOCX 都映射成面向用户的中文提示。</li>
+</ul>
+<p>前端不能直接无条件执行 <code>response.json()</code>。反向代理、容器异常或网关限制可能返回空响应、HTML 或纯文本。当前实现先读取 <code>response.text()</code>，再安全解析 JSON，并分别处理：</p>
+<ul>
+<li>空响应；</li>
+<li>非 JSON 响应；</li>
+<li><code>413</code> 文件过大；</li>
+<li>非成功状态码；</li>
+<li>成功但字段不完整。</li>
+</ul>
+<p>这样不会再把 <code>Unexpected end of JSON input</code> 这类底层异常直接展示给用户。</p>
+<h3>4.2 双模式分析</h3>
+<p>是否启用 AI 由三个环境变量共同决定：</p>
+<pre><code class="language-text">AI_BASE_URL
+AI_API_KEY
+AI_MODEL
+</code></pre>
+<ul>
+<li>三项齐全：调用 Chat Completions 兼容服务，使用流式 AI 分析。</li>
+<li>任意一项为空：切换到本地规则预览，保证无模型配置时仍可完成产品演示。</li>
+</ul>
+<p>本地分析目前识别预设的常见技术关键词，并综合计算四项分数：</p>
+<ul>
+<li>关键词覆盖：35%；</li>
+<li>经历证据：30%；</li>
+<li>岗位相关性：20%；</li>
+<li>表达清晰度：15%。</li>
+</ul>
+<p>它适合兜底和演示，不等同于通用语义理解，对非技术岗位的效果有限。</p>
+<h3>4.3 流式协议转换</h3>
+<p>模型上游使用 SSE，但浏览器侧消费的是更简单的 NDJSON：</p>
+<pre><code class="language-text">sequenceDiagram
+    participant UI as 浏览器
+    participant API as /api/analyze
+    participant Model as 模型服务
+
+    UI-&gt;&gt;API: 简历文本 + JD
+    API-&gt;&gt;Model: stream=true
+    Model--&gt;&gt;API: SSE 数据块
+    API-&gt;&gt;API: AnalysisSseDecoder 增量解码
+    API--&gt;&gt;UI: summary NDJSON
+    API--&gt;&gt;UI: revision NDJSON
+    API--&gt;&gt;UI: revision NDJSON
+    API--&gt;&gt;UI: done NDJSON
+</code></pre>
+<p><code>AnalysisEventDecoder</code> 不依赖网络分块边界，而是按 JSON 对象的括号深度、字符串和转义状态判断一个对象是否完整。它同时兼容：</p>
+<ul>
+<li>原始 NDJSON；</li>
+<li>被 JSON 字符串再次编码的 NDJSON；</li>
+<li>CRLF/LF 两种 SSE 分帧；</li>
+<li>任意位置被切开的网络数据块。</li>
+</ul>
+<h3>4.4 建议数据结构</h3>
+<p>每条修改建议包含：</p>
+<pre><code class="language-ts">type Revision = {
+  id: string;
+  priority: &quot;高&quot; | &quot;中&quot; | &quot;低&quot;;
+  category: string;
+  title: string;
+  original: string;
+  revised: string;
+  reason: string;
+};
+</code></pre>
+<p>AI 提示词要求 <code>original</code> 必须逐字引用简历中唯一、完整、连续的一段原文，<code>revised</code> 是修改后的完整正文；没有事实依据的要求只能进入 <code>gaps</code>，不能生成可采纳建议。</p>
+<figure class="article-media"><a href="./images/jobtailor/revision-review.webp" target="_blank" rel="noopener"><img src="./images/jobtailor/revision-review.webp" alt="JobTailor 修改建议审阅界面" loading="lazy"></a><figcaption>图 3：每条建议同时展示优先级、原因、当前内容和建议文本，用户可以逐条采纳或跳过。</figcaption></figure>
+<h3>4.5 确定性写回算法</h3>
+<p>生成优化版简历时不再调用模型，而是使用 <code>applyAcceptedRevisions()</code> 直接替换用户已确认的文本：</p>
+<ol>
+<li>对原文建立“忽略空白后的文本 → 原字符位置”映射，兼容 PDF 提取导致的换行差异。</li>
+<li>每个 <code>original</code> 必须能在原文中找到且只出现一次。</li>
+<li>所有修改都基于同一份原文定位，前一条替换不会改变后一条的位置。</li>
+<li>检测多条建议的修改范围是否重叠。</li>
+<li>按位置从后向前替换，避免前面的文本长度变化影响后面的索引。</li>
+</ol>
+<p>这个设计解决了几个典型风险：</p>
+<ul>
+<li>模型建议找不到对应原文却被追加到末尾；</li>
+<li>相同短句出现多次导致改错位置；</li>
+<li>两条建议同时修改同一段；</li>
+<li>生成阶段二次调用 AI，导致已经确认的修改被再次改写。</li>
+</ul>
+<figure class="article-media"><a href="./images/jobtailor/fact-guardrail.webp" target="_blank" rel="noopener"><img src="./images/jobtailor/fact-guardrail.webp" alt="JobTailor 对 AI 建议进行事实核对的界面示例" loading="lazy"></a><figcaption>图 4：高亮核对建议中的工具与事实依据，避免把原简历中不存在的经历直接写入最终版本。</figcaption></figure>
+<h3>4.6 AI 继续修改与撤销</h3>
+<p>“继续修改”把当前编辑区内容和用户指令发送给模型，并要求：</p>
+<ul>
+<li>用户点名某部分时只改指定部分；</li>
+<li>只有明确要求整体调整时才改全文；</li>
+<li>禁止新增事实；</li>
+<li>只返回纯文本，不返回 Markdown 代码块。</li>
+</ul>
+<p>发起修改前会把当前正文加入历史栈。流式返回过程中编辑区实时更新；失败时保留已收到的内容，用户可撤销回上一个版本。</p>
+<h3>4.7 文件导出</h3>
+<ul>
+<li>DOCX：使用 <code>docx</code> 生成段落，默认微软雅黑，首行加粗放大。</li>
+<li>PDF：使用 <code>pdfkit</code> 生成 A4 页面；Windows 使用微软雅黑，Linux 使用项目中的 Noto Sans SC 字体。</li>
+<li>文件名会清除系统非法字符，基础名称最长保留 80 个字符。</li>
+<li>最终导出始终以编辑区的当前正文为准。</li>
+</ul>
+<h2>五、部署架构与运维</h2>
+<h3>5.1 生产链路</h3>
+<pre><code class="language-text">flowchart LR
+    User[用户浏览器] --&gt; HTTPS[域名 / HTTPS 反向代理]
+    HTTPS --&gt; Port[宿主机 3200 端口]
+    Port --&gt; Container[JobTailor Docker 容器]
+    Container --&gt; NextServer[Next.js standalone :3000]
+    NextServer --&gt; Provider[可选 AI 模型服务]
+</code></pre>
+<p>Docker 使用三阶段构建：</p>
+<ol>
+<li><code>dependencies</code>：执行 <code>npm ci</code>；</li>
+<li><code>builder</code>：执行 <code>npm run build</code>；</li>
+<li><code>runner</code>：只复制 <code>.next/standalone</code> 和静态资源，并使用非 root 用户运行。</li>
+</ol>
+<p>Compose 将宿主机 <code>3200</code> 映射到容器 <code>3000</code>，每 15 秒访问一次 <code>/api/health</code>。</p>
+<h3>5.2 部署命令</h3>
+<pre><code class="language-bash">bash scripts/deploy.sh
+</code></pre>
+<p>脚本会：</p>
+<ol>
+<li><code>git pull --ff-only</code>；</li>
+<li>缺少 <code>.env.production</code> 时创建默认配置；</li>
+<li>重新构建 Docker 镜像；</li>
+<li>重启服务并移除失效容器；</li>
+<li>最多等待约 60 秒检查 <code>http://127.0.0.1:3200/api/health</code>；</li>
+<li>失败时输出最后 100 行容器日志。</li>
+</ol>
+<p>可选安装仓库本地 <code>post-merge</code> 钩子，让服务器每次成功拉取或合并后自动重新部署：</p>
+<pre><code class="language-bash">bash scripts/install-post-merge-hook.sh
+</code></pre>
+<h3>5.3 生产环境 PDF 解析事故复盘</h3>
+<p><strong>现象</strong></p>
+<p>线上上传简历时先出现 <code>Unexpected end of JSON input</code>，前端补充容错后进一步确认服务端返回空的 <code>HTTP 500</code>。开发环境上传正常，Docker standalone 生产环境异常。</p>
+<p><strong>根因</strong></p>
+<p><code>pdf-parse</code> 运行时动态加载：</p>
+<ul>
+<li><code>pdfjs-dist/legacy/build/pdf.worker.mjs</code>；</li>
+<li><code>@napi-rs/canvas</code> 的当前平台文件。</li>
+</ul>
+<p>Next.js 的 standalone 文件追踪没有自动识别这些动态依赖。本机直接运行时会向项目根目录继续寻找完整的 <code>node_modules</code>，容易产生“本地生产测试正常”的假象；真正的 Docker runner 只有 standalone 产物，因此解析接口失败。</p>
+<p><strong>解决</strong></p>
+<p>在 <code>next.config.ts</code> 中为 <code>/api/resume/extract</code> 明确配置 <code>outputFileTracingIncludes</code>，把 PDF worker 和 <code>@napi-rs</code> 平台文件打进 standalone 产物。</p>
+<p><strong>验证方法</strong></p>
+<p>不要只在项目根运行 <code>.next/standalone/server.js</code>。应把 standalone 复制到与项目根隔离的位置，再上传真实 PDF，确认它不会借用上级 <code>node_modules</code>。</p>
+<p><strong>经验</strong></p>
+<ul>
+<li>开发构建成功不等于精简生产镜像依赖完整。</li>
+<li>遇到“开发正常、容器异常”时，优先检查动态依赖、原生模块和文件追踪。</li>
+<li>前端错误提示要能处理空响应和非 JSON 响应，否则真正的服务端问题会被 JSON 解析异常遮住。</li>
+<li>部署不能只 <code>git pull</code> 或重启旧容器；涉及构建产物变化时必须重新构建镜像。</li>
+</ul>
+<h2>六、测试与质量保障</h2>
+<h3>6.1 当前测试覆盖</h3>
+<p>Node 单元测试覆盖：</p>
+<ul>
+<li>流式 JSON 对象跨网络块解析；</li>
+<li>JSON 字符串编码的 NDJSON；</li>
+<li>CRLF SSE 分帧；</li>
+<li>已采纳建议准确替换；</li>
+<li>PDF 空白差异；</li>
+<li>多处相同原文；</li>
+<li>原文缺失和修改范围重叠。</li>
+</ul>
+<p>Playwright 端到端测试覆盖：</p>
+<ul>
+<li>载入示例、完成分析、采纳建议并生成优化版；</li>
+<li>390px 移动端上传、JD 输入和分析控件可用性；</li>
+<li>上传接口返回空响应时显示可理解的中文错误。</li>
+</ul>
+<h3>6.2 常用检查命令</h3>
+<pre><code class="language-bash">npm run lint
+npm run build
+node --test tests/*.test.mjs
+npm run test:e2e
+</code></pre>
+<p>生产部署相关改动还应额外检查：</p>
+<pre><code class="language-bash"># 确认 standalone 产物包含动态依赖
+ls .next/standalone/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs
+ls .next/standalone/node_modules/@napi-rs
+
+# 在隔离目录启动 standalone 后上传真实 PDF
+curl -F &quot;file=@resume.pdf;type=application/pdf&quot; \
+  http://127.0.0.1:3000/api/resume/extract
+</code></pre>
+<h2>七、当前限制</h2>
+<ul>
+<li>没有 OCR，扫描版 PDF 必须先转换成可搜索文本。</li>
+<li>编辑器以纯文本为主，不保留原文件中的复杂排版、图片、表格或多栏布局。</li>
+<li>本地规则分析依赖有限的技术关键词，对非技术岗位支持较弱。</li>
+<li>AI 输出仍受模型质量影响，用户必须核对事实。</li>
+<li>没有账号、数据库和持久化版本历史，刷新页面后状态会丢失。</li>
+<li>撤销只覆盖最近的生成/AI 修改版本，不是键盘输入级完整历史。</li>
+</ul>
+<h2>八、后续方向</h2>
+<p>按价值和复杂度排序：</p>
+<ol>
+<li>增加 OCR，支持扫描版 PDF。</li>
+<li>增加事实核对清单和投递前检查报告。</li>
+<li>扩展岗位类型与可配置技能词库。</li>
+<li>允许编辑、重生成或批量决策修改建议。</li>
+<li>增加简历版本历史和跨设备同步。</li>
+<li>增加更丰富但仍可控的导出样式。</li>
+</ol>
+<p>暂时不应优先做自动投递、职位聚合和复杂模板市场，这些方向会快速扩大产品边界，并削弱当前“基于证据的岗位定制”这一核心价值。</p>
+<h2>九、项目成果与个人总结</h2>
+<p>这个项目完成了一个可线上使用的闭环，而不只是一个 AI 对话壳：</p>
+<ul>
+<li>从 PDF/DOCX 文件解析一直走到诊断、人工决策、确定性写回、继续编辑和文件导出。</li>
+<li>用“证据可见 + 用户确认 + 确定性替换”约束模型，降低 AI 简历工具最危险的事实编造问题。</li>
+<li>将上游模型 SSE 转换为浏览器易消费的 NDJSON，实现摘要先到、建议逐条出现。</li>
+<li>同时支持 AI 模式和无密钥的本地预览模式，降低开发、演示和故障恢复成本。</li>
+<li>建立 Docker 自动部署、健康检查和回归测试，并完成一次真实的 standalone 动态依赖排障。</li>
+</ul>
+<p>最值得保留的设计判断是：<strong>AI 负责提出有依据的候选修改，人负责决定，程序负责确定性执行。</strong> 这比让模型一次性重写全文更可信，也更符合真实求职场景。</p>
+<h2>十、版本节点</h2>
+<ul>
+<li><code>feat(app)</code>：从前后端分离方案收敛为 Next.js 全栈单体。</li>
+<li><code>feat(ai)</code>：加入流式分析和逐条建议展示。</li>
+<li><code>feat(resume)</code>：加入建议采纳、确定性写回、继续编辑与导出。</li>
+<li><code>feat(ui)</code>：重塑诊断工作台与移动端布局。</li>
+<li><code>feat(deploy)</code>：加入 Docker Compose、健康检查和自动部署脚本。</li>
+<li><code>fix(resume)</code>：处理上传接口空响应，避免暴露 JSON 解析异常。</li>
+<li><code>fix(deploy)</code>：补齐 standalone 中 PDF 解析所需的运行时文件。</li>
+</ul>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+</body>
+</html>
