@@ -14,6 +14,12 @@ export default [
     description: "对照真实经历诊断岗位匹配，逐条审阅并采纳修改",
   },
   {
+    title: "LearnSphere · AI 学习测验",
+    slug: "learnsphere",
+    thumbnail: "/notes/images/learnsphere/quiz-summary.png",
+    description: "从文档章节到有原文依据的测验、评分与复盘",
+  },
+  {
     title: "FastGPT 标识全链路透传",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,

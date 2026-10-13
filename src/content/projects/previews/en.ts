@@ -14,6 +14,12 @@ export default [
     description: "Review role fit against real experience and apply suggestions individually",
   },
   {
+    title: "LearnSphere · AI Learning Quizzes",
+    slug: "learnsphere",
+    thumbnail: "/notes/images/learnsphere/quiz-summary.png",
+    description: "Source-grounded quizzes, scoring and review from selected document chapters",
+  },
+  {
     title: "FastGPT Workflow Tracing",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,

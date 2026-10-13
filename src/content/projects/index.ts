@@ -2,6 +2,7 @@ import type { Locale } from "../../i18n/types";
 
 export const projectIds = [
   "jobtailor",
+  "learnsphere",
   "fastgpt-workflow",
   "enterprise-knowledge-base",
   "wechat-media-ai",
