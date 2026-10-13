@@ -1,30 +1,64 @@
 import type { ProjectContent } from "../../types";
 
 export default {
-  title: "FastGPT Workflow Identifier Tracing",
+  title: "FastGPT · Workflow Call Tracing",
   theme: "dark",
   tags: ["fastgpt", "llm", "postgresql", "docker"],
   live: "/notes/fastgpt-workflow-identifiers.html",
+  liveLabel: "Read the tracing case study",
   description:
-    "An end-to-end tracing path for FastGPT workflow appId and chatId across FastGPT, AI Proxy, llm-router, new-api, and the log database.<br/><br/>The work covers allowlisted header forwarding after request reconstruction, legacy header compatibility, sanitized diagnostics, LOG_DB persistence, and hop-by-hop troubleshooting in a multi-container deployment.",
+    "Connecting a model call to its FastGPT application and conversation. I carried appId and chatId through FastGPT, AI Proxy, llm-router, and new-api into the log database, addressing proxy forwarding, legacy formats, and deployment troubleshooting.",
   components: [
     {
       type: "text",
       props: {
-        title: "Pipeline design",
-        text: "X-App-Id and X-Chat-Id form the shared tracing contract. FastGPT injects values from workflow context, both proxies forward an explicit allowlist, and new-api records the authenticated inbound values before persisting them to logs.app_id and logs.chat_id.",
+        title: "The problem",
+        text: "Proxies rebuild model requests, so custom identifiers do not survive automatically. Gateways can also filter legacy underscore headers, leaving downstream values empty. Application and conversation identifiers needed to travel with each request and reach the correct log database so business calls could be associated and failures investigated.",
       },
     },
     {
       type: "list",
       props: {
-        title: "Engineering outcomes",
+        title: "My contribution",
         size: "lg",
         items: [
-          "Connected workflow identifiers across four services while retaining compatibility with legacy underscore headers.",
-          "Added inbound, outbound, and pre-write diagnostics with credential sanitization.",
-          "Documented Docker networking, image-version drift, gateway filtering, and LOG_DB troubleshooting.",
+          "Read appId and chatId from the FastGPT workflow context and sent them as X-App-Id and X-Chat-Id.",
+          "Explicitly forwarded business headers after proxy request reconstruction, retained legacy underscore compatibility, and applied a forwarding allowlist to the Chat Completions path.",
+          "Recorded inbound values after new-api authentication, persisted logs.app_id and logs.chat_id, and distinguished the main database from the separate LOG_DB.",
+          "Added inbound, outbound, and pre-write diagnostics with credential sanitization, and documented hop-by-hop checks for Docker networking, image versions, and gateway filtering.",
         ],
+      },
+    },
+    {
+      type: "media",
+      props: {
+        type: "image",
+        presentation: "screenshot",
+        src: "/notes/images/fastgpt-workflow-identifiers/new-api-identifiers-received.png",
+        alt: "new-api logs receiving application and conversation identifiers",
+        caption: "Reception record example: new-api receives nonempty application and conversation identifiers.",
+      },
+    },
+    {
+      type: "list",
+      props: {
+        title: "Implemented results",
+        size: "lg",
+        items: [
+          "Connected identifier forwarding across four services; hyphenated headers restored downstream reception.",
+          "Persisted app_id and chat_id in the log database, providing a basis for associating call records with applications and conversations.",
+          "Documented the implementation, sample logs, and hop-by-hop troubleshooting to locate where identifiers are lost.",
+        ],
+      },
+    },
+    {
+      type: "media",
+      props: {
+        type: "image",
+        presentation: "screenshot",
+        src: "/notes/images/fastgpt-workflow-identifiers/log-db-workflow-identifiers.png",
+        alt: "app_id and chat_id fields in the log database",
+        caption: "Persistence record example: the separate log database stores app_id and chat_id.",
       },
     },
   ],

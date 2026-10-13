@@ -26,10 +26,10 @@ export default [
     description: "联动三个服务，让视频预扣、退款与最终用量可核对",
   },
   {
-    title: "FastGPT 标识全链路透传",
+    title: "FastGPT · 工作流调用追踪",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,
-    description: "从工作流上下文到日志数据库的可追溯链路",
+    description: "保留应用与会话标识，从业务请求追踪到数据库记录",
   },
   {
     title: "企业知识库 · GraphRAG 系统",

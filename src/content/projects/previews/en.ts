@@ -26,10 +26,10 @@ export default [
     description: "Reconcile video precharges, refunds and final usage across three services",
   },
   {
-    title: "FastGPT Workflow Tracing",
+    title: "FastGPT · Workflow Call Tracing",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,
-    description: "End-to-end identifiers from workflow context to log storage",
+    description: "Keep app and chat identifiers from business requests to database records",
   },
   {
     title: "Enterprise Knowledge Base · GraphRAG",
