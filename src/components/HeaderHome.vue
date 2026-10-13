@@ -8,20 +8,17 @@ import { useHeaderTheme } from "../composables/useHeaderTheme";
 import { projectId } from "../composables/useRouteObserver";
 
 const handleLinkClick = (link: string) => {
-  if (!lenis.value) return;
-  lenis.value.scrollTo(link);
+  if (lenis.value) {
+    lenis.value.scrollTo(link);
+  } else {
+    document.querySelector(link)?.scrollIntoView();
+  }
 };
 
 type ActiveLink = "about" | "stack" | "projects" | "notes" | "contact";
 const activeLink = ref<ActiveLink | null>(null);
 const sections: ActiveLink[] = ["about", "stack", "projects", "notes", "contact"];
-const ariaLabels = {
-  about: t("about"),
-  stack: t("stack"),
-  projects: t("projects"),
-  notes: t("notes"),
-  contact: t("contact"),
-};
+const mobileSections: ActiveLink[] = ["projects", "notes", "contact"];
 
 const isMounted = ref(false);
 
@@ -64,7 +61,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="['header-home', { 'header-home-mounted': isMounted, 'header-home-isProjectPage': projectId !== null }]">
+  <nav
+    :aria-label="t('page-navigation')"
+    :class="['header-home', { 'header-home-mounted': isMounted, 'header-home-isProjectPage': projectId !== null }]"
+  >
+    <div :class="['header-home-mobile-links', { 'header-home-mobile-links-dark': isDarkTheme }]">
+      <HeaderLink
+        v-for="section in mobileSections"
+        :key="section"
+        class="header-home-mobile-link"
+        :is-active="activeLink === section"
+        :is-dark-theme="isDarkTheme"
+        :aria-current="activeLink === section ? 'location' : undefined"
+        @click="handleLinkClick('#' + section)"
+      >{{ t(section) }}</HeaderLink>
+    </div>
     <div :class="['header-home-links', { 'header-home-links-dark': isDarkTheme }]">
       <div
         :class="[
@@ -84,34 +95,36 @@ onMounted(() => {
         ]"
         @click="handleLinkClick('#' + section)"
         :is-dark-theme="isDarkTheme"
-        :aria-label="ariaLabels[section]"
+        :aria-label="t(section)"
         data-sound="click"
         data-hoversound="hover"
       >
         {{ t(section) }}
       </HeaderLink>
     </div>
-  </div>
+  </nav>
 </template>
 
 <style scoped lang="scss">
 .header-home {
   position: fixed;
-  top: 0;
+  bottom: calc(12px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--z-index-header-home);
-  height: var(--height-header);
+  width: min(calc(100% - 32px), 360px);
   align-items: center;
   justify-content: center;
-  display: none;
+  display: flex;
   opacity: 0;
   transition:
     opacity 0.3s ease-in-out,
     transform var(--transition-route-duration) var(--transition-route-ease);
 
   &-isProjectPage {
-    transform: translateX(-50%) translateY(-100%);
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(150%);
   }
 
   &-mounted {
@@ -119,12 +132,55 @@ onMounted(() => {
   }
 
   @include mixins.mq("lg") {
+    top: 0;
+    bottom: auto;
+    width: auto;
+    height: var(--height-header);
+
+    &-isProjectPage {
+      transform: translateX(-50%) translateY(-100%);
+    }
+  }
+
+  &-mobile-links {
     display: flex;
+    width: 100%;
+    padding: 4px;
+    background-color: var(--color-beige-500);
+    border: 1px solid var(--color-text-300);
+    border-radius: 100px;
+
+    &-dark {
+      background-color: var(--color-dark-blue-500);
+      border-color: var(--color-text-cyan-300);
+      color: var(--color-white-400);
+    }
+
+    @include mixins.mq("lg") {
+      display: none;
+    }
+  }
+
+  &-mobile-link {
+    position: relative;
+    flex: 1;
+    width: auto;
+    min-height: 44px;
+
+    &[aria-current="location"] {
+      background: var(--color-orange-400);
+      color: var(--color-text-400);
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: -4px;
+    }
   }
 
   &-links {
     position: relative;
-    display: flex;
+    display: none;
     padding: 3px;
     background-color: var(--color-beige-500);
     border-radius: 100px;
@@ -132,6 +188,10 @@ onMounted(() => {
     transition:
       color 0.1s ease-in-out,
       background-color 0.1s ease-in-out;
+
+    @include mixins.mq("lg") {
+      display: flex;
+    }
 
     &-dark {
       background-color: var(--color-dark-blue-500);

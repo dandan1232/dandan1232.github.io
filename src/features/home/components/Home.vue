@@ -193,6 +193,10 @@ watch(
   &-wrapper {
     transform-origin: center center;
 
+    @media (max-width: 1023px) {
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+
     &-out {
       animation: home-wrapper-out var(--transition-route-duration) var(--transition-route-ease);
     }
