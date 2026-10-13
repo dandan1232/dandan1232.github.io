@@ -5,6 +5,7 @@ export default {
   theme: "light",
   tags: ["python", "docker", "automation"],
   live: "/notes/step1x-3d-arm64-deployment.html",
+  liveLabel: "阅读部署笔记",
   description:
     "在 NVIDIA GB10、ARM64 远程服务器上完成 StepFun Step1X-3D 的容器化部署，实现单张图片到几何模型与纹理模型的端到端生成。<br/><br/>实践覆盖 CUDA 13 环境适配、ARM64 原生扩展编译、百 GB 级模型本地加载、Gradio 服务启动、SSH 隧道与公开访问安全处理。",
   components: [
@@ -12,6 +13,7 @@ export default {
       type: "media",
       props: {
         type: "image",
+        presentation: "screenshot",
         src: "/notes/images/step1x-3d-arm64-deployment/generation-result.webp",
         alt: "Step1X-3D 图生 3D 的纹理模型与几何模型结果",
         caption: "单图生成纹理模型与几何模型",
@@ -40,6 +42,7 @@ export default {
       type: "media",
       props: {
         type: "image",
+        presentation: "screenshot",
         src: "/notes/images/step1x-3d-arm64-deployment/gradio-api.webp",
         alt: "Step1X-3D Gradio API 调用文档",
         caption: "Gradio 自动生成的 Python API 调用说明",

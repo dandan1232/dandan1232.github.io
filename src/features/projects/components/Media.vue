@@ -1,31 +1,34 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watchEffect } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import gsap from "gsap";
 import Notch from "../../../components/Notch.vue";
+import { t } from "../../../i18n/utils/translate";
 
-const wrapperRef = ref<HTMLDivElement | null>(null);
+const wrapperRef = ref<HTMLElement | null>(null);
 const mediaRef = ref<HTMLVideoElement | HTMLImageElement | null>(null);
-const mediaContentRef = ref<HTMLDivElement | null>(null);
-const isMounted = ref(false);
+const mediaContentRef = ref<HTMLElement | null>(null);
 
 export interface Props {
   type: "image" | "video";
   src: string;
   alt?: string;
   caption?: string;
+  presentation?: "cover" | "screenshot";
   index: number;
 }
 
 const props = defineProps<Props>();
+const isScreenshot = computed(() => props.type === "image" && props.presentation === "screenshot");
 
 const wrapperClasses = computed(() => {
   return {
     "project-media": true,
+    "project-media-screenshot": isScreenshot.value,
   };
 });
 
 watchEffect(async (onInvalidate) => {
-  if (!wrapperRef.value) {
+  if (!wrapperRef.value || isScreenshot.value || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     return;
   }
 
@@ -46,21 +49,25 @@ watchEffect(async (onInvalidate) => {
     gsap.set(mediaRef.value, { scale: 1 });
   });
 });
-
-onMounted(async () => {
-  isMounted.value = true;
-});
 </script>
 
 <template>
-  <div :class="wrapperClasses" ref="wrapperRef">
-    <div class="project-media-content" ref="mediaContentRef">
+  <figure :class="wrapperClasses" ref="wrapperRef">
+    <component
+      :is="isScreenshot ? 'a' : 'div'"
+      class="project-media-content"
+      ref="mediaContentRef"
+      :href="isScreenshot ? props.src : undefined"
+      :target="isScreenshot ? '_blank' : undefined"
+      :rel="isScreenshot ? 'noopener noreferrer' : undefined"
+      :aria-label="isScreenshot ? `${t('view-full-image')}: ${props.alt || props.caption || ''}` : undefined"
+    >
       <img
         v-if="props.type === 'image'"
         :src="props.src"
         :alt="props.alt"
         loading="lazy"
-        fetchpriority="high"
+        decoding="async"
         class="project-media-image"
         ref="mediaRef"
       />
@@ -77,17 +84,19 @@ onMounted(async () => {
       >
         <source :src="props.src" type="video/mp4" />
       </video>
-    </div>
-    <div class="project-media-caption" v-if="props.caption">
-      <Notch class="project-media-caption-notch project-media-caption-notch-left" />
-      <Notch class="project-media-caption-notch project-media-caption-notch-top" />
+    </component>
+    <figcaption class="project-media-caption" v-if="props.caption">
+      <Notch v-if="!isScreenshot" class="project-media-caption-notch project-media-caption-notch-left" />
+      <Notch v-if="!isScreenshot" class="project-media-caption-notch project-media-caption-notch-top" />
       <p class="project-media-caption-copy">{{ props.caption }}</p>
-    </div>
-  </div>
+      <p v-if="isScreenshot" class="project-media-hint">{{ t("view-full-image") }}</p>
+    </figcaption>
+  </figure>
 </template>
 
 <style scoped lang="scss">
 .project-media {
+  margin: 0;
   width: 100%;
   height: 100%;
   grid-column: 1 / 13;
@@ -172,6 +181,42 @@ onMounted(async () => {
     background-color: var(--color-background-300);
     width: 100%;
     height: 100%;
+  }
+
+  &-screenshot {
+    height: auto;
+    aspect-ratio: auto;
+
+    .project-media-content {
+      display: block;
+      height: auto;
+
+      &:focus-visible {
+        outline: 3px solid var(--color-accent-400);
+        outline-offset: 4px;
+      }
+    }
+
+    .project-media-image {
+      display: block;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .project-media-caption {
+      position: static;
+      padding: var(--space-sm) 0 0;
+      border-radius: 0;
+      background: transparent;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &-hint {
+    margin-top: var(--space-xxs);
+    color: var(--color-text-300);
+    font-size: var(--font-size-sm);
   }
 }
 </style>

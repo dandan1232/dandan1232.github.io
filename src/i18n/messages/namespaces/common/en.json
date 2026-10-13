@@ -33,5 +33,6 @@
   "stack": "Stack",
   "switch-to-project": "Switch to project {project}",
   "version": "Version",
-  "view-project": "View project"
+  "view-project": "View project",
+  "view-full-image": "View full screenshot"
 }
