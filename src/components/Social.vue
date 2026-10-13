@@ -123,7 +123,7 @@ const getWechatAccount = (item: (typeof social)[number]) => ("account" in item ?
 .social-qr {
   position: absolute;
   top: calc(100% + 12px);
-  left: 50%;
+  left: 0;
   z-index: 20;
   width: 156px;
   padding: 10px;
@@ -133,7 +133,7 @@ const getWechatAccount = (item: (typeof social)[number]) => ("account" in item ?
   box-shadow: 0 18px 44px rgba(45, 42, 36, 0.18);
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -4px);
+  transform: translateY(-4px);
   transition:
     opacity 0.16s ease-out,
     transform 0.16s ease-out;
@@ -142,7 +142,7 @@ const getWechatAccount = (item: (typeof social)[number]) => ("account" in item ?
     content: "";
     position: absolute;
     top: -7px;
-    left: 50%;
+    left: 22px;
     width: 14px;
     height: 14px;
     background: var(--color-background-400);
@@ -154,7 +154,7 @@ const getWechatAccount = (item: (typeof social)[number]) => ("account" in item ?
   &-visible {
     opacity: 1;
     pointer-events: auto;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 
   &-image,
