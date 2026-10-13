@@ -20,6 +20,12 @@ export default [
     description: "从文档章节到有原文依据的测验、评分与复盘",
   },
   {
+    title: "AI 模型平台 · 异步计费治理",
+    slug: "ai-model-platform",
+    thumbnail: "/notes/images/video-model-async-billing-fixes/after-ledger.png",
+    description: "联动三个服务，让视频预扣、退款与最终用量可核对",
+  },
+  {
     title: "FastGPT 标识全链路透传",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,

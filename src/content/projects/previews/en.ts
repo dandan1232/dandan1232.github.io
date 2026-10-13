@@ -20,6 +20,12 @@ export default [
     description: "Source-grounded quizzes, scoring and review from selected document chapters",
   },
   {
+    title: "AI Model Platform · Async Billing",
+    slug: "ai-model-platform",
+    thumbnail: "/notes/images/video-model-async-billing-fixes/after-ledger.png",
+    description: "Reconcile video precharges, refunds and final usage across three services",
+  },
+  {
     title: "FastGPT Workflow Tracing",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,
