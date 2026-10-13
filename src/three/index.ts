@@ -8,12 +8,15 @@ import { raycast } from "./utils/raycast";
 
 let canvas: HTMLCanvasElement | null = null;
 let initialized = false;
+let pendingSetup: (() => void) | null = null;
 
 const init = (_canvas: HTMLCanvasElement) => {
   canvas = _canvas;
 
   const setup = () => {
-    if (initialized || !canvas) return;
+    if (pendingSetup) resources.off("ready", pendingSetup);
+    pendingSetup = null;
+    if (initialized || !canvas || resources.disabled || resources.failure) return;
     initialized = true;
 
     threeSizes.init(canvas);
@@ -27,17 +30,21 @@ const init = (_canvas: HTMLCanvasElement) => {
   if (resources.isReady) {
     setup();
   } else {
-    resources.once("ready", setup);
+    pendingSetup = setup;
+    resources.on("ready", setup);
   }
 };
 
 const destroy = () => {
+  if (pendingSetup) resources.off("ready", pendingSetup);
+  pendingSetup = null;
+  canvas = null;
+  if (!initialized) return;
   threeSizes.destroy();
   renderTarget.destroy();
   renderer.destroy();
   objects.destroy();
   camera.destroy();
-  canvas = null;
   initialized = false;
 };
 

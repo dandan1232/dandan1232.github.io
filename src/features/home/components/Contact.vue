@@ -1,19 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, watchEffect } from "vue";
 import { transitions } from "../../../animations";
 import { t } from "../../../i18n/utils/translate";
 import Social from "../../../components/Social.vue";
+import { staticMode } from "../../../composables/usePreloader";
 
 const contactElement = ref<HTMLElement | null>(null);
 
-onMounted(() => {
-  if (contactElement.value) {
+watchEffect((onInvalidate) => {
+  if (contactElement.value && !staticMode.value) {
     transitions.contact.setup(contactElement.value);
+    onInvalidate(() => transitions.contact.destroy());
   }
-});
-
-onUnmounted(() => {
-  transitions.contact.destroy();
 });
 </script>
 

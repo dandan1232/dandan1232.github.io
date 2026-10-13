@@ -12,7 +12,8 @@ import { ref, onMounted, onUnmounted, watchEffect, computed, watch } from "vue";
 import { three } from "../../../three";
 import { animations } from "../../../animations";
 import HeaderHome from "../../../components/HeaderHome.vue";
-import { preloaderVisible } from "../../../composables/usePreloader";
+import { preloaderVisible, staticMode } from "../../../composables/usePreloader";
+import { t } from "../../../i18n/utils/translate";
 import ScrollIcon from "../../../components/ScrollIcon.vue";
 import { raycast } from "../../../three/utils/raycast";
 import gsap from "gsap";
@@ -112,10 +113,11 @@ const handleProjectsLoaded = () => {
 
 watchEffect((onInvalidate) => {
   if (
-    projectsLoaded &&
-    threeInitialized &&
+    projectsLoaded.value &&
+    threeInitialized.value &&
     //(projectId.value === null || isTransitioning.value) &&
-    !preloaderVisible.value
+    !preloaderVisible.value &&
+    !staticMode.value
   ) {
     animations.init();
   }
@@ -125,10 +127,19 @@ watchEffect((onInvalidate) => {
   });
 });
 
+watch(staticMode, (enabled) => {
+  if (!enabled) return;
+  stickyObserver.value?.disconnect();
+  gsap.ticker.remove(updateCursor);
+  document.documentElement.style.cursor = "";
+  three.destroy();
+  threeInitialized.value = false;
+});
+
 watch(
-  projectVisible,
-  (newVal) => {
-    renderer.setIsActive(!newVal);
+  [projectVisible, staticMode],
+  ([visible, without3D]) => {
+    renderer.setIsActive(!visible && !without3D);
   },
   { immediate: true },
 );
@@ -138,13 +149,22 @@ watch(
   <div
     :class="[
       'home-wrapper',
+      { 'home-wrapper-static': staticMode },
       typeof projectId === 'string' && isTransitioning && `home-wrapper-out`,
       typeof projectId !== 'string' && isTransitioning && `home-wrapper-in`,
     ]"
   >
-    <ScrollIcon />
+    <ScrollIcon v-if="!staticMode" />
     <Layout>
-      <div class="intro-wrapper" ref="introRef">
+      <section v-if="staticMode" class="home-static-intro" id="hero">
+        <h1 tabindex="-1">念安 · Echo</h1>
+        <p>{{ t('job-title') }}</p>
+        <div id="about">
+          <h2>{{ t('about') }}</h2>
+          <p v-html="t('about-intro')"></p>
+        </div>
+      </section>
+      <div v-else class="intro-wrapper" ref="introRef">
         <div
           class="intro-sticky"
           :class="{ 'intro-sticky-visible': isStickyVisible }"
@@ -190,6 +210,29 @@ watch(
 }
 
 .home {
+  &-static-intro {
+    width: min(100%, 960px);
+    padding: calc(var(--height-header) + 48px) var(--space-outer) 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    line-height: 1.7;
+
+    h1 {
+      font-size: clamp(36px, 7vw, 56px);
+      line-height: 1.2;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+    }
+  }
+
+  &-wrapper-static .home-contact {
+    min-height: 400px;
+    max-height: none;
+  }
+
   &-wrapper {
     transform-origin: center center;
 

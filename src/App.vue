@@ -14,12 +14,13 @@ import { useScroll } from "./composables/useScroll";
 import { projectVisible } from "./composables/useRouteObserver";
 import ProjectBackground from "./features/projects/components/ProjectBackground.vue";
 import { useClickSound } from "./features/sounds/composables/useClickSounds";
+import { t } from "./i18n/utils/translate";
 //import { useHoverSound } from "./features/sounds/composables/useHoverSounds";
 
 const { isTransitioning } = useProjectTransition();
 
 useTranslations();
-usePreloader();
+const { loadingFailure, retryLoading, continueWithout3D } = usePreloader();
 useMusic();
 useHowler();
 useScroll();
@@ -30,6 +31,16 @@ const { isTouch } = useAgent();
 </script>
 
 <template>
+  <Teleport to=".preloader">
+    <div v-if="loadingFailure" class="preloader-error" role="alert">
+      <h2>{{ t('loading-error-title') }}</h2>
+      <p>{{ t(loadingFailure === 'timeout' ? 'loading-timeout-copy' : 'loading-error-copy') }}</p>
+      <div class="preloader-error-actions">
+        <button type="button" @click="retryLoading">{{ t('retry-loading') }}</button>
+        <button type="button" @click="continueWithout3D">{{ t('continue-without-3d') }}</button>
+      </div>
+    </div>
+  </Teleport>
   <Header />
 
   <!-- main page -->

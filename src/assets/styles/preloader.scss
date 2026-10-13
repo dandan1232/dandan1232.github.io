@@ -9,6 +9,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
   transition: opacity 0.3s ease-in-out;
   opacity: 1;
 
@@ -27,6 +30,38 @@
 
   &-path {
     fill: var(--color-text-400);
+  }
+
+  &-error {
+    width: min(100%, 400px);
+    text-align: center;
+    line-height: 1.6;
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+
+    &-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 24px;
+
+      button {
+        min-height: 44px;
+        padding: 10px 18px;
+        border: 1px solid var(--color-text-300);
+        border-radius: var(--radius-sm);
+        background: var(--color-beige-500);
+
+        &:focus-visible {
+          outline: 2px solid currentColor;
+          outline-offset: 3px;
+        }
+      }
+    }
   }
 
   &-hidden {
