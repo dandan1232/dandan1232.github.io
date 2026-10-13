@@ -130,6 +130,69 @@ body {
   line-height: 1.6;
 }
 
+.notes-search {
+  margin: 24px 0;
+}
+
+.notes-search label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.notes-search-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.notes-search input {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-card-solid);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 16px;
+}
+
+.notes-search input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.notes-search button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-card-solid);
+  color: var(--text-main);
+  font: inherit;
+}
+
+.notes-search :is(input, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+#notes-search-summary,
+.notes-no-results {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.notes-search [hidden],
+#notes-list [hidden],
+#notes-no-results[hidden] {
+  display: none !important;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

@@ -363,6 +363,53 @@ function initImageLightbox() {
   });
 }
 
+function initNotesIndex() {
+  const list = document.getElementById("notes-list");
+  const input = document.getElementById("notes-search-input");
+  if (!list || !input) return;
+
+  const clear = document.getElementById("notes-search-clear");
+  const summary = document.getElementById("notes-search-summary");
+  const empty = document.getElementById("notes-no-results");
+  const normalize = (text) => text.normalize("NFKC").trim().toLowerCase();
+  const notes = Array.from(list.querySelectorAll(".card")).map((element) => ({
+    element,
+    title: normalize(element.querySelector(".note-title")?.textContent || ""),
+    date: element.querySelector(".meta")?.textContent.match(/\d{4}-\d{2}-\d{2}/)?.[0] || "",
+  }));
+  notes.sort((a, b) => b.date.localeCompare(a.date));
+  list.append(...notes.map((note) => note.element));
+
+  const update = () => {
+    const query = normalize(input.value);
+    let count = 0;
+    notes.forEach((note) => {
+      const matches = note.title.includes(query);
+      note.element.hidden = !matches;
+      if (matches) count++;
+    });
+    clear.hidden = input.value.length === 0;
+    empty.hidden = count !== 0;
+    summary.textContent = query
+      ? `找到 ${count} 篇笔记，按日期从新到旧排列`
+      : `共 ${notes.length} 篇笔记，按日期从新到旧排列`;
+  };
+  const clearSearch = () => {
+    input.value = "";
+    update();
+    input.focus();
+  };
+  input.addEventListener("input", (event) => {
+    if (!event.isComposing) update();
+  });
+  input.addEventListener("compositionend", update);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") clearSearch();
+  });
+  clear.addEventListener("click", clearSearch);
+  update();
+}
+
 if (toggleBtn) {
   toggleBtn.addEventListener("click", () => {
     const newTheme = htmlEl.dataset.theme === "dark" ? "pink" : "dark";
@@ -371,6 +418,7 @@ if (toggleBtn) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initNotesIndex();
   const savedTheme = localStorage.getItem("theme") || "dark";
   initMigrationBackground(savedTheme);
   initDetailSidebar();
