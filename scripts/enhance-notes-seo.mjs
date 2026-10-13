@@ -11,7 +11,7 @@ import path from "node:path";
 
 const SITE = "https://dandan1232.github.io";
 const MARKER = "<!-- seo-enhanced -->";
-const OG_IMAGE = `${SITE}/meta/og-image.webp`;
+const OG_IMAGE = `${SITE}/meta/echo-home-20261013.jpg`;
 
 const notesDir = process.argv[2] ?? path.join("dist", "notes");
 if (!fs.existsSync(notesDir)) {
@@ -69,6 +69,7 @@ for (const entry of fs.readdirSync(notesDir)) {
     `  <meta property="og:url" content="${canonical}" />`,
     `  <meta property="og:image" content="${OG_IMAGE}" />`,
     `  <meta name="twitter:card" content="summary_large_image" />`,
+    `  <meta name="twitter:image" content="${OG_IMAGE}" />`,
   ].join("\n");
 
   html = html.replace(anchor, `${anchor}\n${block}`);
