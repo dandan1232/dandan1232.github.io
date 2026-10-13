@@ -65,7 +65,18 @@ watch(projectId, () => {
   }
 
   &-button {
-    flex: 0.5;
+    flex: 0 1 auto;
+    max-width: 100%;
+
+    :deep(.button) {
+      height: auto;
+      min-height: 44px;
+      padding-top: var(--space-xs);
+      padding-bottom: var(--space-xs);
+      white-space: normal;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
 
     @include mixins.mq("md") {
       width: fit-content;
@@ -76,6 +87,7 @@ watch(projectId, () => {
     grid-row: 3;
     grid-column: 1 / 13;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: var(--space-sm);
@@ -116,9 +128,11 @@ watch(projectId, () => {
   }
 
   &-title {
-    font-size: var(--font-size-title-lg);
+    font-size: clamp(32px, 10vw, var(--font-size-title-lg));
     color: var(--color-text-400);
     line-height: var(--line-height-title);
+    text-wrap: balance;
+    overflow-wrap: anywhere;
     transform: translateY(0%);
     animation: project-hero-title-visible 0.5s var(--ease-smooth);
 
