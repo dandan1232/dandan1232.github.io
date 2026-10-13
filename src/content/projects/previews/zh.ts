@@ -8,6 +8,12 @@ import type { ProjectPreview } from "../../types";
 
 export default [
   {
+    title: "JobTailor · AI 简历诊断与岗位定制",
+    slug: "jobtailor",
+    thumbnail: "/notes/images/jobtailor/input-workspace.webp",
+    description: "对照真实经历诊断岗位匹配，逐条审阅并采纳修改",
+  },
+  {
     title: "FastGPT 标识全链路透传",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,

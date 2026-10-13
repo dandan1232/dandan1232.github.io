@@ -8,6 +8,12 @@ import type { ProjectPreview } from "../../types";
 
 export default [
   {
+    title: "JobTailor · Evidence-Based Resume Review",
+    slug: "jobtailor",
+    thumbnail: "/notes/images/jobtailor/input-workspace.webp",
+    description: "Review role fit against real experience and apply suggestions individually",
+  },
+  {
     title: "FastGPT Workflow Tracing",
     slug: "fastgpt-workflow",
     thumbnail: thumbnailFastGPT,
