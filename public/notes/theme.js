@@ -26,6 +26,7 @@ const NOTES_GROUPS = [
     id: "ai-infra",
     label: "AI 基础设施",
     items: [
+      { title: "new-api 视频小数秒差额结算", href: "./new-api-video-duration-reconciliation.html" },
       { title: "Anthropic 渠道 Responses 与 Codex 兼容", href: "./new-api-anthropic-responses-codex.html" },
       { title: "new-api 管理员菜单子角色", href: "./new-api-admin-menu-roles.html" },
       { title: "视频模型异步计费链路治理", href: "./video-model-async-billing-fixes.html" },

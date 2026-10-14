@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New-api 视频生成秒数不为整数的扣费问题 | Echo Notes</title>
+  <meta name="description" content="复盘视频生成时长与预扣不一致的差额结算：冻结预扣快照、十进制小数秒计算、两条流水一次调用、三个项目衔接及未完成的数据保护边界。" />
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/new-api-video-duration-reconciliation.html" />
+  <meta property="og:title" content="New-api 视频生成秒数不为整数的扣费问题 | Echo Notes" />
+  <meta property="og:description" content="复盘视频生成时长与预扣不一致的差额结算：冻结预扣快照、十进制小数秒计算、两条流水一次调用、三个项目衔接及未完成的数据保护边界。" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://dandan1232.github.io/notes/new-api-video-duration-reconciliation.html" />
+  <meta property="og:image" content="https://dandan1232.github.io/meta/echo-home-20261013.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://dandan1232.github.io/meta/echo-home-20261013.jpg" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+<h1 id="new-api-视频生成秒数不为整数的扣费问题">New-api 视频生成秒数不为整数的扣费问题</h1>
+<p class="meta">记录日期：2026-10-14 · 分类：AMAX / AI 基础设施 / 视频异步计费</p>
+<p>一次视频任务按 15 秒预扣，完成后上游报告的计费时长却可能是 15.3 秒或 14.7 秒。继续按 15 秒收费，平台会少收一部分成本，或者让用户多付费用。这次改造通过“提交时保存预扣快照，成功后按上游用量核对差额”，打通 new-api、llm-router 和 amax-router 的结算、账务查询与页面展示。</p>
+<p>本文整理本次需求、技术设计、实际开发与排障记录。小数秒补扣、退款已经通过隔离测试；本文保存的实际页面截图验证的是 5 秒 → 5 秒的无差额分支。新旧实例混跑的快照保护、独立结算表和故障自动补账仍属于后续工作。</p>
+<h2 id="目录">目录</h2>
+<ol>
+<li><a href="#%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF%E4%B8%8E%E8%AE%A1%E8%B4%B9%E4%BE%9D%E6%8D%AE">问题背景与计费依据</a></li>
+<li><a href="#%E4%B8%9A%E5%8A%A1%E8%A7%84%E5%88%99%E4%B8%8E%E6%94%B9%E9%80%A0%E8%8C%83%E5%9B%B4">业务规则与改造范围</a></li>
+<li><a href="#%E4%B8%89%E4%B8%AA%E9%A1%B9%E7%9B%AE%E7%9A%84%E8%81%8C%E8%B4%A3%E4%B8%8E%E6%9E%B6%E6%9E%84">三个项目的职责与架构</a></li>
+<li><a href="#%E5%B0%8F%E6%95%B0%E7%A7%92%E8%B4%B9%E7%94%A8%E4%B8%8E%E6%88%90%E6%9C%AC%E8%AE%A1%E7%AE%97">小数秒费用与成本计算</a></li>
+<li><a href="#%E9%A2%84%E6%89%A3%E5%BF%AB%E7%85%A7%E4%B8%8E%E6%88%90%E5%8A%9F%E7%BB%93%E7%AE%97%E6%B5%81%E7%A8%8B">预扣快照与成功结算流程</a></li>
+<li><a href="#%E4%B8%A4%E6%9D%A1%E8%B4%A6%E5%8A%A1%E6%B5%81%E6%B0%B4%E4%B8%8E%E4%B8%80%E6%AC%A1%E8%B0%83%E7%94%A8">两条账务流水与一次调用</a></li>
+<li><a href="#%E9%A1%B5%E9%9D%A2%E5%B1%95%E7%A4%BA%E4%B8%8E%E5%AE%9E%E9%99%85%E6%88%AA%E5%9B%BE">页面展示与实际截图</a></li>
+<li><a href="#%E9%AA%8C%E8%AF%81%E7%BB%93%E6%9E%9C%E4%B8%8E%E9%AA%8C%E6%94%B6%E6%96%B9%E6%B3%95">验证结果与验收方法</a></li>
+<li><a href="#%E5%85%B1%E4%BA%AB%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%8E%E6%95%85%E9%9A%9C%E8%BE%B9%E7%95%8C">共享数据库与故障边界</a></li>
+<li><a href="#%E6%9E%84%E5%BB%BA%E6%8E%92%E9%9A%9C%E4%B8%8E%E4%BA%A4%E4%BB%98%E8%AE%B0%E5%BD%95">构建排障与交付记录</a></li>
+<li><a href="#%E8%BF%99%E6%AC%A1%E6%94%B9%E9%80%A0%E6%B2%89%E6%B7%80%E7%9A%84%E7%BB%8F%E9%AA%8C">这次改造沉淀的经验</a></li>
+<li><a href="#%E5%8F%82%E8%80%83%E8%AE%B0%E5%BD%95">参考记录</a></li>
+</ol>
+<h2 id="问题背景与计费依据">问题背景与计费依据</h2>
+<p>视频生成是异步任务。提交成功时，视频通常还没有生成完，平台先按照当时生效的规格预扣额度；任务完成后，才能拿到上游报告的用量。</p>
+<p>最初要解决两个问题：让下游查询接口获得原始计费用量，并让最终收费与该用量一致。请求里写了 15 秒，不代表上游最终一定按整数 15 秒计费。若实际用量是 15.3 秒，原有收费会少算 0.3 秒；若实际用量是 14.7 秒，则需要退回多预扣的 0.3 秒费用。</p>
+<p>这里必须区分三种时长：</p>
+<table>
+<thead>
+<tr>
+<th>时长</th>
+<th>含义</th>
+<th>在本次方案中的作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>请求中的时长</td>
+<td>客户端希望生成的长度，提交阶段可能被规范化或调整</td>
+<td>不能直接代替最终预扣事实</td>
+</tr>
+<tr>
+<td>实际预扣计费时长</td>
+<td>提交阶段已经用于扣费的时长</td>
+<td>保存到快照，作为比较基准</td>
+</tr>
+<tr>
+<td>上游 <code>usage.duration</code></td>
+<td>任务完成后上游报告的计费用量</td>
+<td>有效时用于最终核对</td>
+</tr>
+</tbody></table>
+<p>下载视频后用播放器或工具测得的播放时长，不是这次方案的结算依据。例如，视频文件播放 15.3 秒，但上游 <code>usage.duration</code> 返回 15，本功能仍按 15 秒核对，不自行增加收费。</p>
+<p>两种查询接口继续透传上游用量：</p>
+<table>
+<thead>
+<tr>
+<th>查询接口</th>
+<th>上游用量位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /v1/videos/{task_id}</code></td>
+<td><code>usage.duration</code></td>
+</tr>
+<tr>
+<td><code>GET /v1/video/generations/{task_id}</code></td>
+<td><code>data.usage.duration</code></td>
+</tr>
+</tbody></table>
+<p>上游返回 15 就保存 15，返回 15.3 就保存 15.3。预扣秒数、差额秒数与最终费用放在内部核对记录中，不改写原始 <code>usage</code>。</p>
+<h2 id="业务规则与改造范围">业务规则与改造范围</h2>
+<p>本次范围覆盖新提交的、按秒计费的视频任务，包括直连供应商以及经过兼容网关的链路；判断依据是计费模式与快照版本，不依赖模型名称里是否包含 Wan。</p>
+<ul>
+<li>实际计费时长增加时补扣，减少时退款。</li>
+<li>价格、折扣、倍率与资金来源沿用任务提交时的事实，完成时不读取新价格重算。</li>
+<li>时长相同且没有费用、成本差额时，只保存核对结果，不新增调整流水。</li>
+<li>缺失、null、空值、非法字符串、非有限值以及小于等于 0 的时长，保留预扣金额并记录未结算原因。</li>
+<li>钱包补扣允许负余额；订阅和团队密钥沿用原资金来源，不自动改扣个人钱包。</li>
+<li>保留原预扣流水，补扣或退款另外记录，关联同一任务与原请求。</li>
+<li>费用合计按“预扣＋补扣－退款”，差额记录不增加调用次数。</li>
+<li>没有新版本快照的旧任务不追溯；真正的按次、Token 和表达式计费继续走原路径。</li>
+<li>成功任务缺少可计费时长，不应被改成生成失败；原失败任务退款继续使用已有流程。</li>
+</ul>
+<p>普通任务查询仍是读取操作，资金调整发生在后台成功结算入口，不能因用户重复打开详情或查询任务而再次扣费。</p>
+<h2 id="三个项目的职责与架构">三个项目的职责与架构</h2>
+<p>这次差额调整涉及三个项目，但收费规则集中在 new-api。查询服务和页面消费已经保存的账务结果。</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>职责</th>
+<th>本次改造</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>new-api</td>
+<td>提交、轮询、用量透传、资金调整与账务落库</td>
+<td>冻结快照、计算差额、保存核对结果，补齐后台展示字段</td>
+</tr>
+<tr>
+<td>llm-router</td>
+<td>账务查询、汇总、筛选与 CSV 导出</td>
+<td>识别调整流水，统一金额方向与调用次数口径</td>
+</tr>
+<tr>
+<td>amax-router</td>
+<td>用户日志与统计界面</td>
+<td>展示预扣、补扣、退款、核对状态及费用详情</td>
+</tr>
+</tbody></table>
+<figure class="sequence-diagram" data-sequence-diagram><figcaption class="sequence-diagram-header"><span><strong class="sequence-diagram-title">视频时长差额结算架构</strong><span class="sequence-diagram-route">提交预扣 → 上游用量 → 差额账务 → 查询与展示</span></span><span class="sequence-diagram-controls" role="group" aria-label="架构图缩放控制"><button type="button" data-diagram-zoom-out title="缩小架构图" aria-label="缩小架构图">−</button><output data-diagram-zoom-output aria-live="polite">100%</output><button type="button" data-diagram-zoom-in title="放大架构图" aria-label="放大架构图">+</button><button class="sequence-diagram-reset" type="button" data-diagram-reset title="恢复为 100%" aria-label="重置架构图缩放">重置</button></span></figcaption><div class="sequence-diagram-viewport" tabindex="0" aria-label="视频时长结算架构图；放大后可拖动查看"><div class="sequence-diagram-stage"><pre class="mermaid">flowchart LR
+    A[&quot;amax-router&lt;br/&gt;发起任务与查看账单&quot;] --&gt; B[&quot;llm-router&lt;br/&gt;转发与账务查询&quot;]
+    B --&gt; C[&quot;new-api&lt;br/&gt;预扣、轮询与差额结算&quot;]
+    C --&gt; D[&quot;上游视频模型&quot;]
+    D --&gt;|&quot;任务结果与 usage.duration&quot;| C
+    C --&gt; E[&quot;tasks&lt;br/&gt;原始响应、预扣快照与核对结果&quot;]
+    C --&gt; F[&quot;logs&lt;br/&gt;原预扣与差额流水&quot;]
+    F --&gt;|&quot;查询、汇总与导出&quot;| B
+    B --&gt;|&quot;核对信息与带方向的金额&quot;| A</pre></div></div><p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看</p></figure>
+<p>本期复用已有数据结构：</p>
+<ul>
+<li><code>tasks.data</code> 保存原始任务响应和上游用量。</li>
+<li><code>tasks.private_data.billing_context.duration_billing</code> 保存新任务的预扣快照。</li>
+<li><code>tasks.private_data.duration_settlement_result</code> 保存结算状态、时长、费用差额与原因。</li>
+<li><code>tasks.quota</code> 回写最终用户费用。</li>
+<li><code>logs.other.duration_settlement</code> 保存用于账务展示的核对信息。</li>
+<li><code>llm_request_logs</code> 继续保存请求与响应事实，不为每条差额另造一次上游调用。</li>
+</ul>
+<p>new-api 没有为本期功能新增数据库表或列。查询层使用已有账务行和关联信息；展示层显示字段，不在浏览器中执行扣款。</p>
+<h2 id="小数秒费用与成本计算">小数秒费用与成本计算</h2>
+<h3 id="用户费用">用户费用</h3>
+<p>设 <code>D0</code> 为实际预扣计费时长，<code>D1</code> 为有效上游时长，<code>Q0</code> 为已经预扣的整数额度：</p>
+<pre><code class="language-text">D1 = D0 时：Q1 = Q0
+否则：Q1 = truncate_toward_zero(Q0 × D1 ÷ D0)
+额度差额 = Q1 - Q0</code></pre>
+<p><code>truncate_toward_zero</code> 表示最终向零截断为整数额度。时长和比例使用十进制计算，保留 15.3 这样的值，最后才转换为系统的整数额度。</p>
+<p>采用“原已收费额度 × 时长比例”，能够保留提交时已经生效的价格、折扣、倍率及原有取整结果。任务完成期间即使管理员改价，也不会把同一个任务切换到新价格。这一方法不回头修正原预扣阶段已有的额度截断误差。</p>
+<p>差额大于 0 补扣，小于 0 退款，等于 0 不进行用户资金调整。免费任务 <code>Q0 = 0</code> 保持免费；合法的最终额度为 0 时，也需要支持退回原预扣费用。</p>
+<p>以下为隔离测试样例：固定测试汇率为 1，500000 额度对应 1 元；预扣 15 秒、6750000 额度，即 13.50 元。</p>
+<table>
+<thead>
+<tr>
+<th>上游时长</th>
+<th>最终额度</th>
+<th>差额额度</th>
+<th>调整金额</th>
+<th>最终净额</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>15.3 秒</td>
+<td>6885000</td>
+<td>+135000</td>
+<td>补扣 0.27 元</td>
+<td>13.77 元</td>
+</tr>
+<tr>
+<td>14.7 秒</td>
+<td>6615000</td>
+<td>-135000</td>
+<td>退款 0.27 元</td>
+<td>13.23 元</td>
+</tr>
+<tr>
+<td>15 秒</td>
+<td>6750000</td>
+<td>0</td>
+<td>不调整</td>
+<td>13.50 元</td>
+</tr>
+<tr>
+<td>无效时长</td>
+<td>保留 6750000</td>
+<td>不执行差额</td>
+<td>保存未结算原因</td>
+<td>保留 13.50 元</td>
+</tr>
+</tbody></table>
+<p>这些金额用于验证计算方向，不是所有模型的真实价格。</p>
+<h3 id="平台成本">平台成本</h3>
+<p>用户实付费用和平台上游成本分别核对。设原平台成本快照为 <code>C0</code>：</p>
+<pre><code class="language-text">C1 = round_to_6_places(C0 × D1 ÷ D0)
+成本差额 = C1 - C0</code></pre>
+<p>成本按六位小数处理。原预扣成本保留，新调整流水只写成本差额，避免把最终整笔成本再次累加。</p>
+<p>如果用户额度差额为 0，但平台成本仍有差额，可以保存金额为 0 的“成本核对”记录；页面应说明用户费用未调整。用户费用与平台成本都没有差额时，只保存核对结果。</p>
+<h2 id="预扣快照与成功结算流程">预扣快照与成功结算流程</h2>
+<h3 id="在正确的时刻保存快照">在正确的时刻保存快照</h3>
+<p>快照应在提交成功、提交阶段的费用调整已经完成后生成。时长取真正生效的 <code>OtherRatios[&quot;seconds&quot;]</code>，额度取提交阶段最终的 <code>result.Quota</code>，而不是最早的请求参数。</p>
+<p>简化后的内部结构如下：</p>
+<pre><code class="language-json">{
+  &quot;billing_context&quot;: {
+    &quot;duration_billing&quot;: {
+      &quot;version&quot;: 1,
+      &quot;billing_mode&quot;: &quot;per-second&quot;,
+      &quot;pre_billed_duration&quot;: &quot;15&quot;,
+      &quot;pre_billed_quota&quot;: 6750000,
+      &quot;pre_billed_cost_rmb&quot;: &quot;13.500000&quot;,
+      &quot;quota_per_unit&quot;: &quot;500000&quot;,
+      &quot;exchange_rate&quot;: &quot;1&quot;
+    }
+  }
+}</code></pre>
+<p>内部小数以字符串保存，便于十进制精确计算。原请求、任务 ID、所属用户、密钥、团队和预扣日志 ID 等审计信息也在提交时保留，供后续关联使用。</p>
+<h3 id="在已有的成功结算入口执行">在已有的成功结算入口执行</h3>
+<ol>
+<li>轮询获取上游状态和用量，保存原始响应。</li>
+<li>用已有条件状态更新取得任务首次成功终态的处理权。</li>
+<li>检查按秒模式、快照版本及完整性。</li>
+<li>计算前后时长、额度和成本差额，生成可独立测试的结果。</li>
+<li>差额非零时调整原资金来源、密钥及对应额度统计。</li>
+<li>保存最终任务额度、核对结果，补充原预扣日志的核对信息。</li>
+<li>如有差额，写入调整流水；同值且无差额只保存核对结果。</li>
+</ol>
+<p>新按秒分支放在原按次早退之前，因为现有 <code>PerCallBilling</code> 标记也可能包含按秒的视频任务。不能为了加入本功能，把整个原按次判断删除。</p>
+<p>用量读取兼容 <code>usage</code>、<code>data.usage</code> 和 <code>data.data.usage</code> 的有限层级响应。无效用量不能误走 Token 重算，也不能阻止一个已经成功的视频继续查询和获取。</p>
+<h2 id="两条账务流水与一次调用">两条账务流水与一次调用</h2>
+<p>发生补扣或退款时，使用日志通常有两条账务记录，任务列表仍只有同一个生成任务：</p>
+<table>
+<thead>
+<tr>
+<th>记录</th>
+<th>保存的事实</th>
+<th>对调用次数的贡献</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原预扣流水</td>
+<td>原预扣时长、费用、成本和创建时间</td>
+<td>保持原调用事实</td>
+</tr>
+<tr>
+<td>差额流水</td>
+<td>本次补扣、退款或零额度成本核对</td>
+<td>0</td>
+</tr>
+<tr>
+<td>任务记录</td>
+<td>一个任务的生成状态与最终核对结果</td>
+<td>仍是同一次生成</td>
+</tr>
+</tbody></table>
+<p>调整行使用结构化字段，例如：</p>
+<pre><code class="language-json">{
+  &quot;billing_type&quot;: &quot;video_duration_adjustment&quot;,
+  &quot;billing_phase&quot;: &quot;adjustment&quot;,
+  &quot;billing_direction&quot;: -1,
+  &quot;request_count_delta&quot;: 0,
+  &quot;task_id&quot;: &quot;task_example&quot;
+}</code></pre>
+<p><code>billing_direction = -1</code> 表示该退款方向；<code>request_count_delta = 0</code> 表示账务调整不新增生成调用。底层退款 <code>quota</code> 保存差额绝对值，查询与展示按方向输出负金额。</p>
+<p>列表行数和调用次数不能都用 <code>COUNT(*)</code> 表示。也不能按请求 ID 把两条流水直接去重金额，否则会漏掉差额：</p>
+<pre><code class="language-text">最终用户费用 = 原预扣费用 + 补扣费用 - 退款费用</code></pre>
+<p>跨天统计按照每条流水实际发生的时间归属。例如昨天预扣 13.50 元、今天退款 0.27 元：昨天显示预扣，今天显示 -0.27 元且新增调用为 0；范围覆盖两天时，净额为 13.23 元，仍是一次调用。</p>
+<p>差额记录即使没有对应的历史请求详情行，也应能按所属密钥和权限展示。未开启提示词记录，不应导致账务详情不可查看。</p>
+<h2 id="页面展示与实际截图">页面展示与实际截图</h2>
+<p>new-api 的 default 与 classic 两套后台，以及 amax-router 的用户界面，均展示保存下来的核对结果。</p>
+<p>状态包括已补扣、已退款、时长一致且费用未调整、待结算、未结算，以及暂无核对记录。生成成功和结算状态分别显示：没有保存核对结果时，不能仅凭“成功”推断费用已经核对。</p>
+<p>详情展示预扣时长、上游计费时长、时长差额、预扣费用、补扣／退款金额、任务最终费用、任务 ID 和异常原因。未知字段显示 <code>-</code>，不把缺少数据伪造为 0。</p>
+<p>以下截图保留自本次原笔记，请求与任务标识已遮挡。截图验证的是 <strong>5 秒 → 5 秒、预扣 3 元、差额 0、最终费用 3 元</strong>；它们不作为真实小数秒补扣／退款已经验收的证据。</p>
+<h3 id="new-api-使用日志">new-api 使用日志</h3>
+<p><figure class="article-media"><a href="images/new-api-video-duration-reconciliation/file-20261014144339499.png" target="_blank" rel="noopener"><img src="images/new-api-video-duration-reconciliation/file-20261014144339499.png" alt="new-api 使用日志显示时长一致、费用未调整" loading="lazy"></a><figcaption>new-api 使用日志显示时长一致、费用未调整</figcaption></figure>
+</p>
+<p>使用日志在原消费记录旁补充“时长一致，费用未调整”标记。同值且无费用、成本差额时，不新增补扣或退款流水。</p>
+<h3 id="new-api-核对详情">new-api 核对详情</h3>
+<p><figure class="article-media"><a href="images/new-api-video-duration-reconciliation/file-20261014144400086.png" target="_blank" rel="noopener"><img src="images/new-api-video-duration-reconciliation/file-20261014144400086.png" alt="new-api 日志详情显示五秒预扣与五秒上游时长核对" loading="lazy"></a><figcaption>new-api 日志详情显示五秒预扣与五秒上游时长核对</figcaption></figure>
+</p>
+<p>详情同时展示 5 秒预扣、5 秒上游计费时长、0 秒差额及最终 3 元。原预扣金额保留，最终费用单独展示。</p>
+<h3 id="amax-router-账务详情">amax-router 账务详情</h3>
+<p><figure class="article-media"><a href="images/new-api-video-duration-reconciliation/file-20261014144417579.png" target="_blank" rel="noopener"><img src="images/new-api-video-duration-reconciliation/file-20261014144417579.png" alt="amax-router 账务详情显示已核对、无费用差额" loading="lazy"></a><figcaption>amax-router 账务详情显示已核对、无费用差额</figcaption></figure>
+</p>
+<p>客户端读取后端核对结果，显示“已核对，无费用差额”。即使没有记录提示词内容，用户仍可查看账务信息。</p>
+<h3 id="经过网关与直接调用的对照">经过网关与直接调用的对照</h3>
+<p><figure class="article-media"><a href="images/new-api-video-duration-reconciliation/file-20261014144600265.png" target="_blank" rel="noopener"><img src="images/new-api-video-duration-reconciliation/file-20261014144600265.png" alt="经过 new-api 与直接调用的五秒用量展示对照" loading="lazy"></a><figcaption>经过 new-api 与直接调用的五秒用量展示对照</figcaption></figure>
+</p>
+<p>截图保留了经过 new-api 与直接调用的页面对照，两条任务都显示 5 秒 → 5 秒。它能说明当前样例的展示情况，不能仅凭两行数据推断所有渠道的小数秒计费都已完成真实联调。</p>
+<h2 id="验证结果与验收方法">验证结果与验收方法</h2>
+<h3 id="已记录的验证">已记录的验证</h3>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>已验证内容</th>
+<th>边界</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>new-api 后端</td>
+<td>十进制费用计算、钱包／订阅／团队、负余额、日志净额、旧任务、改价、无效用量、终态竞争及模拟上游透传</td>
+<td>隔离内存 SQLite 和本地模拟上游，不等同于真实供应商验收</td>
+</tr>
+<tr>
+<td>llm-router</td>
+<td>9 项真实 PostgreSQL SQL／HTTP 测试；相关回归合计 24 项通过</td>
+<td>独立临时数据库；原全套测试存在既有断言问题，未宣称全套通过</td>
+</tr>
+<tr>
+<td>amax-router</td>
+<td>84 项测试、类型检查、相关代码检查、生产构建和模拟页面验证</td>
+<td>页面验证使用模拟接口，真实小数秒与余额联调仍需单独验收</td>
+</tr>
+<tr>
+<td>new-api 两套后台</td>
+<td>各自 9 项逻辑测试，共 18 项；default 类型检查、相关代码检查与两个生产构建通过</td>
+<td>两套主题独立维护本地实现；本地构建通过不能代替 Jenkins 整个镜像流水线结果</td>
+</tr>
+<tr>
+<td>本次实际页面</td>
+<td>5 秒 → 5 秒的状态标记、核对详情与客户端展示</td>
+<td>没有据此宣称 15.3 秒、14.7 秒真实上游场景已验收</td>
+</tr>
+</tbody></table>
+<h3 id="后续真实验收看什么">后续真实验收看什么</h3>
+<p>选择隔离的测试账号和新任务，分别验证时长增加、减少、相同和无效四种情况：</p>
+<ol>
+<li>提交后确认预扣快照的版本、时长、额度与原账务一致。</li>
+<li>完成后核对原始 <code>usage.duration</code>、保存的结算结果与最终 <code>tasks.quota</code>。</li>
+<li>费用有差额时，应看到原预扣＋调整两行；关联任务与请求一致。</li>
+<li>钱包、密钥、渠道及原资金来源的变化，应与差额一致。</li>
+<li>列表、汇总、筛选和 CSV 使用一致的正负方向，调用次数不翻倍。</li>
+<li>重复查询与正常重复轮询，不应再产生第二次资金调整。</li>
+<li>无效时长保留原金额和原因；生成成功的视频仍可获取。</li>
+</ol>
+<p>自动测试样例存在于独立临时库，不能拿测试输出里的任务 ID 去线上查询。真实供应商通常返回整数时，可以先用模拟响应验证小数规则，再单独补真实链路验收。</p>
+<h2 id="共享数据库与故障边界">共享数据库与故障边界</h2>
+<h3 id="快照被覆盖，是另一类数据一致性问题">快照被覆盖，是另一类数据一致性问题</h3>
+<p>联调时实际发现：任务提交后存在新计费快照，后续进度更新后快照却丢失。本地开发与其他实例使用同一任务数据库，新旧版本共同写入是需要排查的风险。</p>
+<p>这会使已成功任务缺少结算依据。界面应显示“暂无核对记录”，不能把未知结果显示成“时长一致”，也不能从上游秒数反向伪造原计费快照。</p>
+<p>已记录的排查确认过快照丢失，但不能仅凭数据库连接来源认定具体哪个实例覆盖了哪一条任务。缺少快照的任务，也不能直接据当前价格自动重新扣费。</p>
+<p>新旧版本混跑保护、独立结算存储及后台故障补处理方案已经讨论，<strong>尚未在本期实现</strong>。后续设计应单独考虑字段更新范围、结算唯一性、资金操作幂等与故障恢复，不能把它们写成本次已交付成果。</p>
+<h3 id="正常防重复不等于完整故障恢复">正常防重复不等于完整故障恢复</h3>
+<p>本期依靠原有条件终态更新和保存的核对结果，防止正常重复轮询、查询或竞争处理时多次结算。</p>
+<p>资金来源、密钥额度、渠道统计、任务结果、主数据库与日志数据库之间，并没有新增一笔覆盖全部步骤的事务。若发生资金调整后写日志失败或进程中断，本期沿用原有错误处理，不新增持久重试队列、自动补账或欠款追扣系统。</p>
+<p>因此，需要分别验证“正常重复处理不会重扣”和“故障中断后能否恢复”。前者已有本期测试，后者仍是后续工作。</p>
+<h2 id="构建排障与交付记录">构建排障与交付记录</h2>
+<p>本次发布还遇到了两个不同阶段的问题：</p>
+<ul>
+<li><strong>基础镜像拉取：</strong> Docker 读取镜像附加元数据时报 <code>failed to decode referrers index</code>，返回内容以 <code>&lt;</code> 开头。指定的镜像代理另一次返回 HTTP 502。核对官方清单后，按服务器对应的 <code>linux/amd64</code> 平台摘要拉取并补上原标签，成功绕过当时的附加信息查询错误。</li>
+<li><strong>前端打包：</strong> 新增 <code>web/shared</code> 后，Dockerfile 只复制 default 和 classic 的代码，导致容器缺少共享文件。最终按两个主题各自构建的边界拆开实现：default 的逻辑放进 <code>src/features/usage-logs/lib/</code>，classic 放进 <code>src/helpers/</code>，各自保留测试，清除全部跨主题引用。</li>
+</ul>
+<p>服务器当时的可用内存和磁盘空间充足；清理镜像释放的是磁盘空间，无法补齐缺失的源码。排障应先看失败阶段和第一条具体错误，再选择检查方式。</p>
+<table>
+<thead>
+<tr>
+<th>仓库与阶段</th>
+<th>提交</th>
+<th>已完成内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>new-api 后端结算</td>
+<td><code>23832dfce</code></td>
+<td>新按秒任务快照、上游时长差额结算与账务保存</td>
+</tr>
+<tr>
+<td>llm-router 查询</td>
+<td><code>18508bb</code></td>
+<td>差额明细、方向、汇总、筛选与导出</td>
+</tr>
+<tr>
+<td>amax-router 展示</td>
+<td><code>7947733</code></td>
+<td>预扣、补扣／退款与核对详情</td>
+</tr>
+<tr>
+<td>new-api 后台展示</td>
+<td><code>b520880a4</code></td>
+<td>两套后台结算标记与费用详情</td>
+</tr>
+<tr>
+<td>new-api 构建修复</td>
+<td><code>b47711703</code></td>
+<td>移除跨主题共享目录，两个主题分别维护实现</td>
+</tr>
+</tbody></table>
+<p>这些提交已经按阶段推送。本地测试、用户页面观察与整条部署流水线是不同的验证层级，应分别记录结果。</p>
+<h2 id="这次改造沉淀的经验">这次改造沉淀的经验</h2>
+<p>小数秒问题把异步计费中的几个事实拉到了一起：提交时已经收了多少、上游最终报告了多少、差额实际如何入账，以及用户如何核对。</p>
+<p>我在这次改造中采用的几个判断标准：</p>
+<ul>
+<li>先固定计费依据，明确比较的是已预扣时长与上游计费用量。</li>
+<li>把计算与资金操作分开，先用隔离样例验证 15.3、14.7 和精度边界。</li>
+<li>保留原账务事实，用追加差额流水解释最终净额。</li>
+<li>区分流水行数与调用次数，让查询、统计、导出和页面使用同一方向。</li>
+<li>为未知结果保留明确状态，避免“生成成功”掩盖“尚无核对依据”。</li>
+<li>按各主题实际构建范围组织代码，并验证打包路径。</li>
+<li>对正常防重复、混跑写入和故障恢复分别描述，不把未实现的方案当作完成状态。</li>
+</ul>
+<p>这次已完成的是一条可核对的视频按秒结算路径。剩余的数据保护与故障恢复问题，需要在后续独立方案和验收中继续解决。</p>
+<h2 id="参考记录">参考记录</h2>
+<ul>
+<li>本次内部需求：<code>new-api/docs/2026-10-13-video-duration-settlement-requirements.md</code>。</li>
+<li>本次内部技术设计与分段验收：<code>new-api/docs/2026-10-13-video-duration-settlement-technical-design.md</code>。</li>
+<li>核心实现：<code>service/video_duration_billing.go</code>、<code>model/task.go</code>、<code>model/log.go</code>，以及 llm-router 的 <code>utils/db_logger.py</code>。</li>
+<li><a href="https://dandan1232.github.io/notes/token-router-precharge-refund-ledger.html">把异步计费变成可核对账单：预扣款与退款记录全链路改造</a>。</li>
+<li><a href="https://dandan1232.github.io/notes/video-model-async-billing-fixes.html">从“金额看不懂”到可核对：视频模型积分与异步计费链路治理</a>。</li>
+</ul>
+
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+  <script type="module" src="./diagrams.js"></script>
+</body>
+</html>
