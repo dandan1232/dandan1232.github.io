@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from "vue";
 import { previews } from "../../../content/projects/previews";
 import { locale } from "../../../i18n/store";
 import PreviewCard from "../../projects/components/PreviewCard.vue";
+import ProjectCollection from "./ProjectCollection.vue";
 import NotchSection from "../../../components/NotchSection.vue";
 import Banner from "../../../components/Banner.vue";
 import { t } from "../../../i18n/utils/translate";
@@ -40,6 +41,7 @@ onMounted(loadPreviews);
       </div>
     </div>
     <div class="grid">
+      <ProjectCollection />
       <div class="projects-cards">
         <PreviewCard v-for="preview in loadedPreviews" :key="preview.title" :preview="preview" />
       </div>
