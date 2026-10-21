@@ -17,6 +17,7 @@ export const projectCollection = [
     },
     source: "https://github.com/dandan1232/mai-recap",
     thumbnail: "mai-recap",
+    badge: { zh: "开发者大赛", en: "Developer Contest" },
   },
   {
     title: { zh: "层境 · LayerScape", en: "LayerScape" },
