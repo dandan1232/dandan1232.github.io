@@ -10,6 +10,15 @@ interface CollectionProject {
 
 export const projectCollection = [
   {
+    title: { zh: "麦迹 · mai-recap", en: "Mai Recap" },
+    description: {
+      zh: "把近期麦当劳点餐记录变成五页回顾与分享卡，支持网页查询和本地生成。",
+      en: "Turn recent McDonald's orders into a five-page recap and share card, online or locally.",
+    },
+    source: "https://github.com/dandan1232/mai-recap",
+    thumbnail: "mai-recap",
+  },
+  {
     title: { zh: "层境 · LayerScape", en: "LayerScape" },
     description: {
       zh: "用中文课程、二维计算与三维模型，逐步看懂 Transformer。",
