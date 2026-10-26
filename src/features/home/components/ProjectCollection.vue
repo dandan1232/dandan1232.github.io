@@ -62,9 +62,9 @@ watch(language, refreshLayout);
             decoding="async"
           />
           <span class="project-collection-copy">
+            <span v-if="project.badge" class="project-collection-badge">{{ project.badge[language] }}</span>
             <span class="project-collection-name">
               {{ project.title[language] }}
-              <span v-if="project.badge" class="project-collection-badge">{{ project.badge[language] }}</span>
             </span>
             <span class="project-collection-project-description">{{ project.description[language] }}</span>
           </span>
@@ -220,8 +220,8 @@ watch(language, refreshLayout);
   }
 
   &-badge {
+    align-self: flex-start;
     display: inline-block;
-    margin-left: var(--space-xxs);
     padding: 1px 6px;
     border-radius: var(--radius-sm);
     background: var(--color-beige-500);

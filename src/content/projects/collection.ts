@@ -128,4 +128,44 @@ export const projectCollection = [
     source: "https://github.com/dandan1232/raiden_pause",
     thumbnail: "raiden",
   },
+  {
+    title: { zh: "洞庭山泉 · 山泉弹珠台", en: "Mountain Spring Pinball" },
+    description: {
+      zh: "操控一滴山泉穿过岩层、灌装站与配送岔路，把它送进你的杯子。",
+      en: "Guide a spring-water droplet through rock layers, bottling and delivery into your cup.",
+    },
+    source: "https://github.com/dandan1232/WaytoAGI-MountainSpringPinball-games",
+    thumbnail: "mountain-spring-pinball",
+    badge: { zh: "WaytoAGI黑客松", en: "WaytoAGI Hackathon" },
+  },
+  {
+    title: { zh: "清洁小世界 · Clean a Little", en: "Clean a Little" },
+    description: {
+      zh: "拖动卡赫清洁设备洗净庭院、窗户、厨房与沙发，让原色与风景逐渐显现。",
+      en: "Clean courtyards, windows, kitchens and sofas with Kärcher tools to reveal their colors.",
+    },
+    source: "https://github.com/dandan1232/WaytoAGI-games",
+    thumbnail: "clean-a-little",
+    badge: { zh: "WaytoAGI黑客松", en: "WaytoAGI Hackathon" },
+  },
+  {
+    title: { zh: "我靠洗地飞起来了", en: "Pressure Washer Flight" },
+    description: {
+      zh: "用水枪反冲力爬上摩天楼，洗亮窗户、发现住户秘密，登顶生成专属海报。",
+      en: "Climb a skyscraper with water-jet recoil, clean windows, uncover secrets and make a summit poster.",
+    },
+    source: "https://github.com/dandan1232/WaytoAGI-fly-games",
+    thumbnail: "pressure-washer-flight",
+    badge: { zh: "WaytoAGI黑客松", en: "WaytoAGI Hackathon" },
+  },
+  {
+    title: { zh: "WaytoAGI 短剧", en: "WaytoAGI Short-form Drama" },
+    description: {
+      zh: "围绕生活误会创作短剧，整理剧本、分镜与镜头提示词。仓库保持私有。",
+      en: "A short comedy project with a script, storyboards and shot prompts. The repository remains private.",
+    },
+    source: "https://github.com/dandan1232/WaytoAGI-Short-formdrama",
+    thumbnail: "waytoagi-short-drama",
+    badge: { zh: "WaytoAGI黑客松", en: "WaytoAGI Hackathon" },
+  },
 ] satisfies CollectionProject[];

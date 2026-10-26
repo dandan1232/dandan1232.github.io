@@ -64,6 +64,15 @@ const NOTES_GROUPS = [
     ]
   },
   {
+    id: "games",
+    label: "游戏 / 交互",
+    items: [
+      { title: "洞庭山泉 · 山泉弹珠台", href: "./waytoagi-mountain-spring-pinball.html" },
+      { title: "清洁小世界 · Clean a Little", href: "./waytoagi-clean-a-little.html" },
+      { title: "我靠洗地飞起来了", href: "./waytoagi-pressure-washer-flight.html" }
+    ]
+  },
+  {
     id: "ip",
     label: "IP / 软著",
     items: [{ title: "软件著作权与专利清单", href: "./software-copyrights.html" }]

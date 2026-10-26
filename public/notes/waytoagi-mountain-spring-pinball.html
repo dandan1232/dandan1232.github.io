@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>洞庭山泉 · 山泉弹珠台：把一滴山泉送进生活 | Echo Notes</title>
+  <meta name="description" content="WaytoAGI黑客松项目：以江南山城为背景，用弹珠玩法完成从地下岩层、源头灌装到生活杯子的送水旅程。">
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/waytoagi-mountain-spring-pinball.html">
+  <meta property="og:title" content="洞庭山泉 · 山泉弹珠台：把一滴山泉送进生活 | Echo Notes">
+  <meta property="og:description" content="WaytoAGI黑客松项目：一滴山泉，三阶段旅程，在浏览器里完成一次送水。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://dandan1232.github.io/notes/waytoagi-mountain-spring-pinball.html">
+  <meta property="og:image" content="https://dandan1232.github.io/notes/images/waytoagi/mountain-spring-pinball.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://dandan1232.github.io/notes/images/waytoagi/mountain-spring-pinball.png">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+      <p class="meta">2026-10-26 · 游戏 / 交互 · WaytoAGI黑客松</p>
+      <h1>洞庭山泉 · 山泉弹珠台：把一滴山泉送进生活</h1>
+      <p>一滴来自地下 180 米的山泉，怎样抵达生活中的杯子？这个浏览器弹珠小游戏把出泉、灌装和配送串成一局旅程：你用左右挡板控制水滴，在江南山城的球台上撞响机关，最后把它送往茶山、办公室或球场。</p>
+      <p><a href="https://mountain-spring-pinball.vercel.app" target="_blank" rel="noreferrer">在线游玩 ↗</a> · <a href="https://github.com/dandan1232/WaytoAGI-MountainSpringPinball-games" target="_blank" rel="noreferrer">查看 GitHub 源码 ↗</a></p>
+      <figure class="article-media">
+        <a href="./images/waytoagi/mountain-spring-pinball.png">
+          <img src="./images/waytoagi/mountain-spring-pinball.png" alt="山泉弹珠台桌面界面，山林球台旁展示计分、操作和三种配送目的地" loading="eager">
+        </a>
+        <figcaption>项目 README 中的实际桌面截图：竖向球台与侧边操作区。</figcaption>
+      </figure>
+      <h2>一局送水怎么完成</h2>
+      <p>点击“开始送水”或按空格发射。每次击中金色岩层机关上升 60 米，累计 180 米后，中央灌装站亮起；再击中灌装站，才会开启配送入口。选择目的地后，让水滴进入发光岔路，就完成了从山泉到杯子的送达。</p>
+      <p>一局最长 72 秒，并提供 3 次掉落救援。茶山茶杯、加班水杯和球场运动杯可以在游玩时切换；结算后也能切换展示场景，本局分数、耗时与已送达杯数保持不变。</p>
+      <h2>球台、声音与输入</h2>
+      <p>游戏使用 TypeScript、Vite、Canvas 2D 和 Web Audio。物理以固定时间步推进，让重力、斜轨碰撞和挡板模拟与画面渲染分开；山林与商品使用真实图片，村落、轨道和水滴由 Canvas / SVG 绘制。碰撞产生音符，进杯时组成水声旋律。</p>
+      <p>桌面可用方向键或 A、D 操作挡板，手机按钮支持同时按住左右两侧。球台等比缩放，并提供放大、暂停、静音和减少动态效果设置。最高分、最快耗时与杯子收集只保存在当前浏览器，不跨设备同步。</p>
+      <h2>继续了解</h2>
+      <p>项目为纯前端应用，无需后端服务。完整操作表、运行方式和素材说明见 <a href="https://github.com/dandan1232/WaytoAGI-MountainSpringPinball-games#readme" target="_blank" rel="noreferrer">项目 README</a>。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+</body>
+</html>

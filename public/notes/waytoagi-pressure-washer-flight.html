@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我靠洗地飞起来了：用水枪反冲力爬上摩天楼 | Echo Notes</title>
+  <meta name="description" content="WaytoAGI黑客松项目：用水枪反冲力登楼，在水量、飞行与清洁之间取舍，发现住户秘密并生成登顶海报。">
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/waytoagi-pressure-washer-flight.html">
+  <meta property="og:title" content="我靠洗地飞起来了：用水枪反冲力爬上摩天楼 | Echo Notes">
+  <meta property="og:description" content="WaytoAGI黑客松项目：一把水枪、一箱水，边飞边洗亮窗户，登顶后留下专属海报。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://dandan1232.github.io/notes/waytoagi-pressure-washer-flight.html">
+  <meta property="og:image" content="https://dandan1232.github.io/notes/images/waytoagi/pressure-washer-flight.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://dandan1232.github.io/notes/images/waytoagi/pressure-washer-flight.png">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+      <p class="meta">2026-10-26 · 游戏 / 交互 · WaytoAGI黑客松</p>
+      <h1>我靠洗地飞起来了：用水枪反冲力爬上摩天楼</h1>
+      <p>水往下，人往上。游戏里没有跳跃键，只有一把水枪和一箱水：向左下喷水，人就会往右上飞。同一股水流还能清除墙面污渍。飞得更高，还是多洗亮一扇窗，取决于你如何分配有限的水量。</p>
+      <p><a href="https://waytoagi-fly-games.vercel.app" target="_blank" rel="noreferrer">在线起飞 ↗</a> · <a href="https://github.com/dandan1232/WaytoAGI-fly-games" target="_blank" rel="noreferrer">查看 GitHub 源码 ↗</a></p>
+      <figure class="article-media">
+        <a href="./images/waytoagi/pressure-washer-flight.png">
+          <img src="./images/waytoagi/pressure-washer-flight.png" alt="我靠洗地飞起来了游戏画面，角色用水枪反冲力沿摩天楼飞行" loading="eager">
+        </a>
+        <figcaption>项目 README 中的飞行截图：用水枪反冲力沿楼宇向上探索。</figcaption>
+      </figure>
+      <h2>喷水、补水，再向上</h2>
+      <p>用鼠标瞄准并按住左键，或用方向键选择水流方向、空格喷水；手机通过右下摇杆操作。途中需要绕开空调外机，落在黄色平台上停止喷水来补水。整栋楼安排了 7 个补水点、6 个空调障碍和 6 个泥团，路线选择与剩余水量紧密相关。</p>
+      <p>空中断水和侧面擦碰不会立刻结束游戏，空水落到黄色平台仍可补水；水用尽后落在空调顶部才会失败。飞行中的救援保留清洁区域，失败后重新开始新局。</p>
+      <h2>洗亮窗户，也发现故事</h2>
+      <p>局部清洁会逐渐露出四位住户，还有一扇写着“请勿打扰”的窗。发现内容可以解锁隐藏成就。登上天台后，镜头拉远揭晓全楼画作，并生成本局专属 PNG 海报；最终洁净度仍按照实际清除的污渍计算。</p>
+      <h2>让飞行与判定各司其职</h2>
+      <p>项目使用 TypeScript、Vite 和 Canvas 2D，以原生 HTML/CSS 构建界面，Web Audio 合成音效。物理按固定的 1/120 秒时间步推进，渲染与碰撞、清洁和胜负判定分开，避免把画面刷新直接当作游戏规则的时钟。</p>
+      <p>个人最佳与成就保存在当前浏览器，无需账号；音效默认关闭。完整操作、运行方式与素材说明见 <a href="https://github.com/dandan1232/WaytoAGI-fly-games#readme" target="_blank" rel="noreferrer">项目 README</a>。水枪飞行为游戏的幻想设定。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+</body>
+</html>

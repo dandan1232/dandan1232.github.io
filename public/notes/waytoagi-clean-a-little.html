@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>清洁小世界 · Clean a Little：拖动机器，洗亮四个小场景 | Echo Notes</title>
+  <meta name="description" content="WaytoAGI黑客松项目：用四款卡赫设备清洁庭院、窗边、厨房和客厅，记录 Three.js 局部污渍、清洁反馈与浏览器进度保存。">
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/waytoagi-clean-a-little.html">
+  <meta property="og:title" content="清洁小世界 · Clean a Little：拖动机器，洗亮四个小场景 | Echo Notes">
+  <meta property="og:description" content="WaytoAGI黑客松项目：在浏览器里拖动机器，看原色和风景随着清洁逐渐显现。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://dandan1232.github.io/notes/waytoagi-clean-a-little.html">
+  <meta property="og:image" content="https://dandan1232.github.io/notes/images/waytoagi/clean-a-little.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://dandan1232.github.io/notes/images/waytoagi/clean-a-little.png">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+      <p class="meta">2026-10-26 · 游戏 / 交互 · WaytoAGI黑客松</p>
+      <h1>清洁小世界 · Clean a Little：拖动机器，洗亮四个小场景</h1>
+      <p>拖动一台机器，让被污渍盖住的颜色慢慢回来。清洁小世界是一款浏览器 3D 清洁游戏，用四款卡赫设备连接庭院、窗边、厨房与客厅。没有倒计时、体力或购买限制，可以按自己的节奏完成一小片清洁，再去看看下一个场景。</p>
+      <p><a href="https://clean-a-little.vercel.app/" target="_blank" rel="noreferrer">在线试玩 ↗</a> · <a href="https://github.com/dandan1232/WaytoAGI-games" target="_blank" rel="noreferrer">查看 GitHub 源码 ↗</a></p>
+      <figure class="article-media">
+        <a href="./images/waytoagi/clean-a-little.png">
+          <img src="./images/waytoagi/clean-a-little.png" alt="清洁小世界三维庭院，包含单车、长椅、地砖和清洁设备" loading="eager">
+        </a>
+        <figcaption>项目 README 中的庭院截图：设备清洁与场景探索放在同一画面。</figcaption>
+      </figure>
+      <h2>四个场景，四种手感</h2>
+      <p>庭院用 KHB AIR 冲洗单车、长椅和地砖；窗边用 WV 2 擦亮三块玻璃，露出后面的花园；厨房用 SC4D 清洁灶台、瓷砖与地面；客厅则用 PUZZI 8-1 喷抽沙发、靠垫和地毯。水流、擦窗、蒸汽与布艺喷抽分别配有粒子和合成音效。</p>
+      <p>每关都有三个任务和独立进度。单项达到 92% 后，程序会清除少量余渍；三项完成后出现结算，可继续下一站。底部选择器也能直接切换场景，重玩只重置当前这一关。</p>
+      <h2>污渍跟着操作消失</h2>
+      <p>项目使用 TypeScript、Three.js 和 Vite。清洁发生在操作命中的三维表面，反复擦过已经干净的位置不会重复增加进度。场景由程序化几何构建，设备使用产品照片；清洁参数属于游戏设定。</p>
+      <p>可以拖动机器，也可直接按住场景清洁，支持鼠标、键盘和触屏。松开操作、切换场景或窗口失焦都会停止清洁。四关痕迹与用时自动保存在浏览器，昼夜、音量和环境动画偏好也能保留；本地与线上存档分别计算。</p>
+      <h2>继续了解</h2>
+      <p>游戏是无需账号和后端的静态前端应用，需使用支持 WebGL 2 的浏览器。完整操作、运行方式及第三方素材说明见 <a href="https://github.com/dandan1232/WaytoAGI-games#readme" target="_blank" rel="noreferrer">项目 README</a>。</p>
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+</body>
+</html>
