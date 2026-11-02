@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New-api 新增腾讯云 MiniMax 视频 V2 适配器 | Echo Notes</title>
+  <meta name="description" content="记录 new-api 接入腾讯云 MiniMax H3 系列视频 V2 协议的适配实现，包括素材转换、规格预扣、异步查询结算和实际页面验收。" />
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/new-api-minimax-video-v2.html" />
+  <meta property="og:title" content="New-api 新增腾讯云 MiniMax 视频 V2 适配器 | Echo Notes" />
+  <meta property="og:description" content="记录 new-api 接入腾讯云 MiniMax H3 系列视频 V2 协议的适配实现，包括素材转换、规格预扣、异步查询结算和实际页面验收。" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://dandan1232.github.io/notes/new-api-minimax-video-v2.html" />
+  <meta property="og:image" content="https://dandan1232.github.io/meta/echo-home-20261013.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://dandan1232.github.io/meta/echo-home-20261013.jpg" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+        <a class="btn" href="./new-api-minimax-video-v2.md" download>Markdown 原文</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+<h1 id="New-api-新增腾讯云-MiniMax-视频-V2-适配器">New-api 新增腾讯云 MiniMax 视频 V2 适配器</h1>
+<p>记录日期：2026-10-22 · 分类：AI 基础设施 / 模型接入 / 视频生成</p>
+<p>完成腾讯云 TokenHub 的 MiniMax H3 系列视频接入，在 new-api 中新增独立 V2 视频适配器，并同步创作应用的分辨率选项与显示标签。现有页面截图已确认：<code>minimax-video-h3</code> 的 5 秒、768P 文生视频请求能够提交、轮询，并展示已完成的视频。</p>
+<p>本次只支持 <code>minimax-video-h3</code>、<code>minimax-video-h3-max</code>，V1 的 <code>minimax-video-v2.3</code>、<code>minimax-video-v2.3-fast</code> 不在此次适配范围内。</p>
+<h2 id="目录">目录</h2>
+<ol>
+<li><a href="#%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF">问题背景</a></li>
+<li><a href="#%E4%B8%89%E4%B8%AA%E9%A1%B9%E7%9B%AE%E7%9A%84%E8%81%8C%E8%B4%A3">三个项目的职责</a></li>
+<li><a href="#%E9%80%82%E9%85%8D%E5%99%A8%E7%9A%84%E4%B8%BB%E8%A6%81%E5%AE%9E%E7%8E%B0">适配器的主要实现</a></li>
+<li><a href="#%E5%90%8E%E5%8F%B0%E4%B8%8E%E5%88%9B%E4%BD%9C%E5%BA%94%E7%94%A8%E7%9A%84%E6%9C%80%E7%BB%88%E9%85%8D%E7%BD%AE">后台与创作应用的最终配置</a></li>
+<li><a href="#%E9%AA%8C%E8%AF%81%E7%BB%93%E6%9E%9C">验证结果</a></li>
+<li><a href="#%E5%85%B3%E9%94%AE%E4%BB%A3%E7%A0%81%E4%BD%8D%E7%BD%AE">关键代码位置</a></li>
+<li><a href="#%E4%BA%A4%E4%BB%98%E8%AE%B0%E5%BD%95">交付记录</a></li>
+<li><a href="#%E7%8E%B0%E5%9C%BA%E6%88%AA%E5%9B%BE">现场截图</a></li>
+<li><a href="#%E5%85%B3%E8%81%94%E8%AE%B0%E5%BD%95">关联记录</a></li>
+</ol>
+<h2 id="问题背景">问题背景</h2>
+<p>最初在平台调用 H3、H3-Max 时，遇到以下错误：</p>
+<pre><code class="language-json">{
+  &quot;code&quot;: &quot;fail_to_fetch_task&quot;,
+  &quot;message&quot;: &quot;{\&quot;Type\&quot;:2,\&quot;Code\&quot;:1001,\&quot;Msg\&quot;:\&quot;Invalid param\&quot;,\&quot;Desc\&quot;:\&quot;\&quot;}&quot;,
+  &quot;data&quot;: null
+}
+</code></pre>
+<p>排查发现，腾讯云为 MiniMax 视频提供了两套协议：旧版 v2.3 系列使用 V1 的扁平参数，H3 系列使用 V2 的 <code>content</code> 数组，提交端点、查询端点和返回结构均不同。旧的通用视频转发没有处理这套 V2 差异，因此仅修改模型配置中的接口路径，不能完成接入。</p>
+<p>还曾出现 <code>Invalid URL (POST /v1/wand/minimax-video-v2/generation)</code>：腾讯云的原生地址被填入平台对外端点后，前端请求会先进入平台自身，而平台没有直接开放这个原生路径。正确做法是保留平台统一接口，由适配器在内部转换并调用腾讯云。</p>
+<p>错误码也应结合 HTTP 状态和完整响应判断。原始响应中的 <code>Code: 1001</code>、<code>Msg: Invalid param</code>，不能只凭数字就认定为另一张错误码表中的“缺少 Authorization”。</p>
+<p>接口依据：<a href="https://cloud.tencent.cn/document/product/1823/135737">腾讯云 MiniMax 生视频调用指南</a>。</p>
+<h2 id="三个项目的职责">三个项目的职责</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>本次改动</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>new-api</td>
+<td>新增 Tencent MiniMax V2 视频适配器，补齐模型能力和分辨率定价选项</td>
+<td>参数转换、上游提交与查询、任务管理、计费和错误处理</td>
+</tr>
+<tr>
+<td>创作应用</td>
+<td>新增 768P、2K 选项，并统一显示标签</td>
+<td>用户选择模型、规格，提交任务并展示生成结果</td>
+</tr>
+<tr>
+<td>转发服务</td>
+<td>无代码改动，沿用既有转发与资产处理流程</td>
+<td>转发平台视频请求和查询结果</td>
+</tr>
+</tbody></table>
+<p>new-api 的“游乐场”和独立的“创作应用”是两个不同入口。本笔记中的实际生成截图来自“创作应用 → 视频”。</p>
+<figure class="article-media"><svg role="img" aria-labelledby="minimax-flow-title minimax-flow-desc" viewBox="0 0 800 140" width="800" height="140" style="display:block;width:100%;height:auto;background:#1b1713;border-radius:12px"><title id="minimax-flow-title">MiniMax V2 视频接入链路</title><desc id="minimax-flow-desc">创作应用通过转发服务访问 new-api，再由适配器使用腾讯云 V2 协议提交和轮询任务。</desc><defs><marker id="minimax-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#c4b6a7"/></marker></defs><g stroke="#c4b6a7" stroke-width="2" marker-end="url(#minimax-arrow)"><path d="M166 71H214"/><path d="M372 71H420"/><path d="M578 71H626"/></g><g fill="#f6efe7" font-size="16" text-anchor="middle" font-family="sans-serif"><rect x="16" y="36" width="150" height="70" rx="10" fill="#2f2721" stroke="#ff9838"/><text x="91" y="67">创作应用</text><text x="91" y="90" font-size="12">提交与展示</text>
+<rect x="222" y="36" width="150" height="70" rx="10" fill="#2f2721" stroke="#ff9838"/><text x="297" y="67">转发服务</text><text x="297" y="90" font-size="12">沿用既有流程</text>
+<rect x="428" y="36" width="150" height="70" rx="10" fill="#2f2721" stroke="#ff9838"/><text x="503" y="67">new-api</text><text x="503" y="90" font-size="12">MiniMax V2 适配器</text>
+<rect x="634" y="36" width="150" height="70" rx="10" fill="#2f2721" stroke="#ff9838"/><text x="709" y="67">腾讯云 TokenHub</text><text x="709" y="90" font-size="12">V2 提交与轮询</text></g></svg><figcaption>MiniMax V2 视频接入链路：创作应用 → 转发服务 → new-api → 腾讯云 TokenHub</figcaption></figure><h2 id="适配器的主要实现">适配器的主要实现</h2>
+<h3 id="1-按渠道和映射后的模型选择-V2-协议">1. 按渠道和映射后的模型选择 V2 协议</h3>
+<p>在 OpenAI 类型渠道、腾讯云官方 Base URL 下，模型经过渠道映射后为下列名称时，切换到独立适配器：</p>
+<ul>
+<li><code>minimax-video-h3</code></li>
+<li><code>minimax-video-h3-max</code></li>
+</ul>
+<p>这样可以支持平台模型别名，同时避免将其他上游的同名模型误送到腾讯云 V2 协议。同一腾讯云渠道中的其他模型继续使用原有处理流程。</p>
+<h3 id="2-保留统一视频接口-内部转换上游协议">2. 保留统一视频接口，内部转换上游协议</h3>
+<table>
+<thead>
+<tr>
+<th>用途</th>
+<th>平台公开接口</th>
+<th>腾讯云上游接口</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>提交</td>
+<td><code>POST /v1/video/generations</code> 或 <code>POST /v1/videos</code></td>
+<td><code>POST /v1/wand/minimax-video-v2/generation</code></td>
+</tr>
+<tr>
+<td>查询</td>
+<td><code>GET /v1/video/generations/{公开任务ID}</code> 或 <code>GET /v1/videos/{公开任务ID}</code></td>
+<td><code>GET /v1/wand/minimax-video-v2/tasks/{上游任务ID}</code></td>
+</tr>
+</tbody></table>
+<p>适配器使用渠道 Key 构造 <code>Authorization: Bearer ...</code>，并发送 JSON 请求。平台的公开任务 ID 与腾讯云真实任务 ID 分开保存，查询时使用内部保存的上游 ID。</p>
+<p>提交时将任务绑定到内部平台标记 <code>tencent-minimax-v2</code>，后台轮询据此选择相同适配器，确保提交和查询始终使用同一套 V2 协议。复用已有任务存储结构，无需新增数据库表或字段。</p>
+<h3 id="3-转换文字-首尾帧和参考素材">3. 转换文字、首尾帧和参考素材</h3>
+<ul>
+<li>将平台已有的 <code>prompt</code>、图片、视频字段转换为腾讯云要求的 <code>content</code> 数组，也接受原生 <code>content</code> 输入。</li>
+<li>支持文字、首帧/尾帧图片，以及图片、视频、音频参考。高级组合通过接口中的 <code>content</code> 数组使用，创作应用沿用现有素材入口。</li>
+<li>校验素材角色、数量及 URL/Base64 格式；首尾帧与参考模式互斥，音频参考需要搭配参考图片或视频。</li>
+<li><code>metadata</code> 可提供默认参数，顶层字段优先；显式传入的 <code>aigc_watermark: false</code> 会保留。</li>
+<li>H3-Max 支持 <code>extra.prompt_expansion_mode</code>；此次 V2 适配采用 JSON 素材地址/Base64 输入，不支持直接上传二进制文件或 remix。</li>
+</ul>
+<h3 id="4-在预扣费前处理实际生效的规格">4. 在预扣费前处理实际生效的规格</h3>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>原生分辨率</th>
+<th>兼容输入的处理</th>
+<th>上游时长规则</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>minimax-video-h3</td>
+<td>768P、2K</td>
+<td>1080P → 768P；4K → 2K</td>
+<td>整数 4～15 秒，超出范围回落为 5 秒</td>
+</tr>
+<tr>
+<td>minimax-video-h3-max</td>
+<td>480P、768P</td>
+<td>1080P、2K、4K → 768P</td>
+<td>整数 5～15 秒，超出范围回落为 5 秒</td>
+</tr>
+</tbody></table>
+<p>缺少必填时长、非整数时长，以及互相冲突的 <code>duration</code>/<code>seconds</code> 会被拒绝；720P 不会自动当作 768P。</p>
+<p>请求值与生效值分别留存。预扣费使用生效后的时长和分辨率，避免请求 20 秒、实际按 5 秒生成，却仍按 20 秒预扣。消费日志中增加 <code>video_parameters</code>，记录 <code>requested_duration</code>、<code>effective_duration</code>、<code>requested_resolution</code>、<code>effective_resolution</code>，便于排查规格变化。</p>
+<h3 id="5-接入既有异步结算与错误处理">5. 接入既有异步结算与错误处理</h3>
+<p>将 <code>task.usage.output_seconds</code> 转换为统一的 <code>usage.duration</code>、<code>output_video_duration</code>，保留输入秒数、其他原始用量和 <code>tokenhub_usage.total_tokens</code>。已配置按秒计费、且保存了计费快照的任务，成功后沿用现有差额结算流程。</p>
+<p>实际用量以输出秒数为依据；没有有效输出用量时，不用请求时长或 <code>task.duration</code> 冒充实际用量。</p>
+<p>生成请求发出后禁止自动重提，避免网络异常时自动换 Key 或换渠道再次创建视频。查询请求失败不直接等同于生成任务失败；<code>failed</code>、<code>cancelled</code>、<code>expired</code> 等终态接入现有失败与退款流程，错误中保留 <code>request_id</code>，方便向上游追查。</p>
+<h2 id="后台与创作应用的最终配置">后台与创作应用的最终配置</h2>
+<h3 id="渠道配置">渠道配置</h3>
+<p>在 new-api 中使用现有“腾讯云-原厂直供”渠道：</p>
+<ul>
+<li>渠道类型：OpenAI。</li>
+<li>Base URL：<code>https://tokenhub.tencentmaas.com</code>。</li>
+<li>添加本次支持的两个 H3 系列模型，并配置有效的腾讯云渠道 Key。</li>
+</ul>
+<h3 id="模型端点">模型端点</h3>
+<p>在两个模型的端点配置中保留平台路径：</p>
+<pre><code class="language-json">{
+  &quot;video&quot;: {
+    &quot;path&quot;: &quot;/v1/video/generations&quot;,
+    &quot;method&quot;: &quot;POST&quot;
+  },
+  &quot;openai-video&quot;: {
+    &quot;path&quot;: &quot;/v1/videos&quot;,
+    &quot;method&quot;: &quot;POST&quot;
+  }
+}
+</code></pre>
+<h3 id="视频能力与时长选项">视频能力与时长选项</h3>
+<p>建议分别配置 H3 的 768P、2K，以及 H3-Max 的 480P、768P；本次页面验证先使用 5 秒。两种模型在当前页面中可选择其已配置的 5、10、15 秒。</p>
+<p>最终保留原来的通用秒数选项：</p>
+<table>
+<thead>
+<tr>
+<th>位置</th>
+<th>最终选项</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>new-api 模型能力配置</td>
+<td>5、10、15、20、25、30 秒</td>
+</tr>
+<tr>
+<td>创作应用</td>
+<td>5、10、15、20 秒</td>
+</tr>
+</tbody></table>
+<p>上游合法时长范围、后台可配置选项、前端显示选项是三个层次。接口仍会核对模型能力配置，不能因为上游允许 4～15 秒，就认定当前页面可以逐秒选择。20、25、30 秒是保留给通用模型配置的原有选项，不是 H3 系列的原生生成时长。</p>
+<h3 id="分辨率标签与定价">分辨率标签与定价</h3>
+<p>new-api 模型能力和分辨率价格编辑支持新增的 768P、2K 档位；创作应用按后台返回的模型能力筛选选项，并统一显示为：</p>
+<ul>
+<li><code>1366×768 (768P)</code></li>
+<li><code>2560×1440 (2K)</code></li>
+</ul>
+<p>这两个像素尺寸沿用平台的统一映射，接口实际传值仍为 <code>768P</code>、<code>2K</code>。标签不作为腾讯云实际输出像素尺寸的保证，实际文件规格还应结合模型和画幅核验。</p>
+<h2 id="验证结果">验证结果</h2>
+<h3 id="本地验证">本地验证</h3>
+<p>以下结果来自原始开发记录，本次文章整理未重新运行适配器所在项目的检查。</p>
+<ul>
+<li>MiniMax V2 适配器测试通过，覆盖参数转换、素材角色与数量限制、规格降级、时长回落、状态解析、查询错误和公开任务 ID。</li>
+<li>协议选择与模型映射测试通过，确认仅目标渠道、目标模型切换到 V2。</li>
+<li>本地模拟上游的轮询、两种公开查询格式及按秒差额结算验证通过。</li>
+<li>相关 Go 测试、new-api 后端构建、new-api 默认前端类型/格式/代码检查与生产构建通过。</li>
+<li>创作应用类型检查及现有测试通过；恢复秒数、补齐标签后再次完成类型检查。</li>
+</ul>
+<p>扩大检查时，service、controller 中出现 12 个既有测试失败项；与改动前代码对照后失败项一致。relay/common 另有既有测试初始化问题。因此本次结论是相关检查通过，不将整个仓库描述为“全量测试通过”。</p>
+<h3 id="实际页面验收">实际页面验收</h3>
+<p>现有截图能够确认的一次请求为：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>记录</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>测试入口</td>
+<td>创作应用 → 视频</td>
+</tr>
+<tr>
+<td>模型</td>
+<td>minimax-video-h3</td>
+</tr>
+<tr>
+<td>提示词</td>
+<td>天气突然变冷</td>
+</tr>
+<tr>
+<td>请求时长</td>
+<td>5 秒</td>
+</tr>
+<tr>
+<td>请求分辨率</td>
+<td>768P</td>
+</tr>
+<tr>
+<td>页面结果</td>
+<td>从“生成中 50%”进入“已完成”，出现 5 秒视频播放器与保存入口</td>
+</tr>
+</tbody></table>
+<p>该记录验证了 H3 文生视频的页面提交、异步查询与结果展示。H3-Max、图生视频、多模态参考、失败退款及真实费用核对仍应按各自场景补充实测记录，不能由这一张成功截图推断为全部通过。</p>
+<h2 id="关键代码位置">关键代码位置</h2>
+<table>
+<thead>
+<tr>
+<th>位置</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>V2 请求转换与校验：<code>relay/channel/task/tokenhub/request.go</code></td>
+<td>原生请求构造、素材校验、生效规格处理</td>
+</tr>
+<tr>
+<td>V2 视频适配器：<code>relay/channel/task/tokenhub/adaptor.go</code></td>
+<td>上游提交、查询、状态与用量转换</td>
+</tr>
+<tr>
+<td>任务协议选择：<code>relay/relay_task.go</code></td>
+<td>按渠道与映射模型选择适配器，统一公开查询</td>
+</tr>
+<tr>
+<td>模型能力配置：<code>model/model_meta.go</code></td>
+<td>分辨率和时长选项校验</td>
+</tr>
+<tr>
+<td>任务消费日志：<code>service/task_billing.go</code></td>
+<td>保存请求规格和生效规格</td>
+</tr>
+<tr>
+<td>创作应用视频选项：<code>src/app/dashboard/playground/page.tsx</code></td>
+<td>分辨率标签、秒数选项及提交流程</td>
+</tr>
+</tbody></table>
+<h2 id="交付记录">交付记录</h2>
+<p>以下为原笔记记录的开发交付，整理文章时未重新执行这些测试或核验分支状态：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>提交</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>new-api</td>
+<td><code>76d27b6c1</code></td>
+<td>支持腾讯云 MiniMax H3 系列 V2 视频适配</td>
+</tr>
+<tr>
+<td>创作应用</td>
+<td><code>54edd5e</code></td>
+<td>补齐创作应用的视频分辨率和时长选项</td>
+</tr>
+<tr>
+<td>new-api</td>
+<td><code>5c72e66d0</code></td>
+<td>恢复原有视频时长选项，保留 V2 适配</td>
+</tr>
+<tr>
+<td>创作应用</td>
+<td><code>86e2f86</code></td>
+<td>恢复原有时长选项，并统一 768P、2K 显示标签</td>
+</tr>
+</tbody></table>
+<p>最终交付以恢复原有秒数选项后的版本为准。</p>
+<h2 id="现场截图">现场截图</h2>
+<h3 id="1-腾讯云-V1-V2-协议及-H3-系列规格">1. 腾讯云 V1/V2 协议及 H3 系列规格</h3>
+<figure class="article-media"><a href="images/new-api-minimax-video-v2/protocol-and-model-specs.png" target="_blank" rel="noopener"><img src="images/new-api-minimax-video-v2/protocol-and-model-specs.png" alt="腾讯云 MiniMax V1/V2 协议区别与 H3 系列规格" width="1041" height="657" loading="lazy"></a><figcaption>腾讯云 MiniMax V1/V2 协议区别与 H3 系列规格</figcaption></figure>
+<h3 id="2-new-api-模型能力配置界面">2. new-api 模型能力配置界面</h3>
+<p>截图保留了当时的全选操作；实际模型建议按前文分别配置对应分辨率和 5、10、15 秒。端点路径以本文“模型端点”中的配置为准。</p>
+<figure class="article-media"><a href="images/new-api-minimax-video-v2/video-capability-settings.png" target="_blank" rel="noopener"><img src="images/new-api-minimax-video-v2/video-capability-settings.png" alt="new-api 视频能力配置；截图为当时的全选状态" width="669" height="522" loading="lazy"></a><figcaption>new-api 视频能力配置；截图为当时的全选状态</figcaption></figure>
+<h3 id="3-在现有渠道中添加两个-H3-系列模型">3. 在现有渠道中添加两个 H3 系列模型</h3>
+<figure class="article-media"><a href="images/new-api-minimax-video-v2/channel-model-settings.png" target="_blank" rel="noopener"><img src="images/new-api-minimax-video-v2/channel-model-settings.png" alt="渠道中添加 MiniMax H3 与 H3-Max 模型" width="909" height="459" loading="lazy"></a><figcaption>渠道中添加 MiniMax H3 与 H3-Max 模型</figcaption></figure>
+<h3 id="4-H3-视频生成完成">4. H3 视频生成完成</h3>
+<p>页面显示“已完成”，出现时长 5 秒的视频播放器和保存入口。</p>
+<figure class="article-media"><a href="images/new-api-minimax-video-v2/h3-generation-completed.png" target="_blank" rel="noopener"><img src="images/new-api-minimax-video-v2/h3-generation-completed.png" alt="H3 生成完成，页面展示 5 秒视频和保存入口" width="1482" height="683" loading="lazy"></a><figcaption>H3 生成完成，页面展示 5 秒视频和保存入口</figcaption></figure>
+<h2 id="关联记录">关联记录</h2>
+<ul>
+<li><a href="./new-api-video-duration-reconciliation.html">New-api 视频生成秒数不为整数的扣费问题</a></li>
+<li><a href="./video-model-async-billing-fixes.html">视频模型积分与异步计费链路治理</a></li>
+</ul>
+
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+</body>
+</html>

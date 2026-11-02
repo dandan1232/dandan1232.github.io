@@ -26,6 +26,7 @@ const NOTES_GROUPS = [
     id: "ai-infra",
     label: "AI 基础设施",
     items: [
+      { title: "new-api MiniMax 视频 V2 适配器", href: "./new-api-minimax-video-v2.html" },
       { title: "new-api 视频小数秒差额结算", href: "./new-api-video-duration-reconciliation.html" },
       { title: "Anthropic 渠道 Responses 与 Codex 兼容", href: "./new-api-anthropic-responses-codex.html" },
       { title: "new-api 管理员菜单子角色", href: "./new-api-admin-menu-roles.html" },
