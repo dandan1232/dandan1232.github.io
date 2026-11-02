@@ -2,7 +2,6 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Link from "../../../components/Link.vue";
-import Plus from "../../../components/icons/Plus.vue";
 import ArrowRight from "../../../components/icons/ArrowRight.vue";
 import { projectCollection } from "../../../content/projects/collection";
 import { lenis } from "../../../composables/useScroll";
@@ -10,6 +9,9 @@ import { locale } from "../../../i18n/store";
 import { t } from "../../../i18n/utils/translate";
 
 const isOpen = ref(false);
+const previewCount = 9;
+const remainingCount = Math.max(0, projectCollection.length - previewCount);
+const visibleProjects = computed(() => isOpen.value ? projectCollection : projectCollection.slice(0, previewCount));
 const language = computed(() => (locale.value === "en" ? "en" : "zh"));
 
 const refreshLayout = async () => {
@@ -18,8 +20,8 @@ const refreshLayout = async () => {
   ScrollTrigger.refresh();
 };
 
-const handleToggle = (event: Event) => {
-  isOpen.value = (event.currentTarget as HTMLDetailsElement).open;
+const handleToggle = () => {
+  isOpen.value = !isOpen.value;
   refreshLayout();
 };
 
@@ -27,23 +29,19 @@ watch(language, refreshLayout);
 </script>
 
 <template>
-  <details class="project-collection" @toggle="handleToggle">
-    <summary class="project-collection-summary" data-hoversound="hover" data-sound="click">
+  <section class="project-collection" aria-labelledby="project-collection-title">
+    <div class="project-collection-summary">
       <span class="project-collection-intro">
         <span class="project-collection-heading">
-          <span class="project-collection-title">{{ t("project-collection-title") }}</span>
+          <h3 id="project-collection-title" class="project-collection-title">{{ t("project-collection-title") }}</h3>
           <span class="project-collection-count">{{ t("project-collection-count", { count: projectCollection.length }) }}</span>
         </span>
         <span class="project-collection-description">{{ t("project-collection-description") }}</span>
       </span>
-      <span class="project-collection-action" aria-hidden="true">
-        {{ t(isOpen ? "project-collection-collapse" : "project-collection-expand") }}
-        <Plus class="project-collection-toggle-icon" />
-      </span>
-    </summary>
+    </div>
 
-    <ul v-if="isOpen" class="project-collection-list">
-      <li v-for="project in projectCollection" :key="project.source">
+    <ul id="project-collection-list" class="project-collection-list">
+      <li v-for="project in visibleProjects" :key="project.source">
         <Link
           class="project-collection-link children-unclickable"
           :href="project.source"
@@ -72,7 +70,21 @@ watch(language, refreshLayout);
         </Link>
       </li>
     </ul>
-  </details>
+    <button
+      v-if="remainingCount > 0"
+      type="button"
+      class="project-collection-action"
+      :aria-expanded="isOpen"
+      aria-controls="project-collection-list"
+      data-hoversound="hover"
+      data-sound="click"
+      @click="handleToggle"
+    >
+      {{ t(isOpen ? "project-collection-collapse" : "project-collection-expand") }}
+      <span v-if="!isOpen">({{ t("project-collection-count", { count: remainingCount }) }})</span>
+      <ArrowRight class="project-collection-toggle-icon" aria-hidden="true" />
+    </button>
+  </section>
 </template>
 
 <style scoped lang="scss">
@@ -93,17 +105,7 @@ watch(language, refreshLayout);
     justify-content: space-between;
     gap: var(--space-md);
     padding: var(--space-md);
-    list-style: none;
     border-radius: inherit;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-400);
-      outline-offset: 4px;
-    }
 
     @include mixins.mq("md") {
       padding: var(--space-lg);
@@ -143,18 +145,39 @@ watch(language, refreshLayout);
     align-items: center;
     gap: var(--space-sm);
     flex-shrink: 0;
+    justify-content: center;
+    min-height: 44px;
+    margin: var(--space-xs) auto var(--space-md);
+    padding: var(--space-xs) var(--space-md);
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
     font-size: var(--font-size-sm);
     font-weight: 700;
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-400);
+      outline-offset: 4px;
+    }
+
+    @include mixins.hover {
+      &:hover {
+        background: var(--color-beige-500);
+      }
+    }
   }
 
   &-toggle-icon {
     width: 18px;
     height: 18px;
+    transform: rotate(90deg);
     transition: transform 0.18s var(--ease-power2-out);
   }
 
-  &[open] &-toggle-icon {
-    transform: rotate(45deg);
+  &-action[aria-expanded="true"] &-toggle-icon {
+    transform: rotate(-90deg);
   }
 
   &-list {
