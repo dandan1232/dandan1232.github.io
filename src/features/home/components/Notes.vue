@@ -6,24 +6,24 @@ import { locale } from "../../../i18n/store";
 
 const notes = [
   {
-    title: "Docker Desktop 数据迁移笔记",
-    href: "/notes/docker-desktop-data-migration.html",
-    meta: "Docker / WSL2",
+    title: "Clawith 改造：从智能体工作台到用户环境强制分离",
+    href: "/notes/clawith-user-environment-isolation.html",
+    meta: "Clawith / 用户隔离",
   },
   {
-    title: "RAG 从 0 到 1 落地笔记",
-    href: "/notes/rag-from-0-to-1-practice.html",
-    meta: "RAG / GraphRAG",
+    title: "MiniMax 视频 V2 适配：协议转换与异步结算",
+    href: "/notes/new-api-minimax-video-v2.html",
+    meta: "new-api / 视频模型接入",
   },
   {
-    title: "数字人重复播放问题复盘",
-    href: "/notes/digital-human-repeat-playback.html",
-    meta: "音视频 / 幂等",
+    title: "视频异步计费：小数秒用量与扣费核对",
+    href: "/notes/new-api-video-duration-reconciliation.html",
+    meta: "new-api / 异步计费",
   },
   {
-    title: "AI 接入微信公众号",
-    href: "/notes/ai-wechat-official-account-integration.html",
-    meta: "WeChat / AI",
+    title: "Anthropic 接入 Codex：Responses 协议兼容改造",
+    href: "/notes/new-api-anthropic-responses-codex.html",
+    meta: "Anthropic / Responses",
   },
 ] as const;
 </script>
