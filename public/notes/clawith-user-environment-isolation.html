@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clawith 改造实录：从智能体工作台到用户环境强制分离 | Echo Notes</title>
+  <meta name="description" content="记录 Clawith 从分类工作台、自动提问和个人文件目录，到用户身份、来源追踪、后台审批与禁网容器的改造，以及历史验证和待验收边界。" />
+  <!-- seo-enhanced -->
+  <link rel="canonical" href="https://dandan1232.github.io/notes/clawith-user-environment-isolation.html" />
+  <meta property="og:title" content="Clawith 改造实录：从智能体工作台到用户环境强制分离 | Echo Notes" />
+  <meta property="og:description" content="记录 Clawith 从分类工作台、自动提问和个人文件目录，到用户身份、来源追踪、后台审批与禁网容器的改造，以及历史验证和待验收边界。" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://dandan1232.github.io/notes/clawith-user-environment-isolation.html" />
+  <meta property="og:image" content="https://dandan1232.github.io/meta/echo-home-20261013.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://dandan1232.github.io/meta/echo-home-20261013.jpg" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./theme.css">
+</head>
+<body>
+  <div id="particles-js"></div>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="topbar-actions">
+        <a class="btn" href="./index.html">返回笔记专栏</a>
+        <a class="btn" href="../index.html">返回首页</a>
+      </div>
+      <div class="theme-switcher">
+        <button id="theme-toggle-btn" type="button" title="切换主题">🎨</button>
+      </div>
+    </div>
+    <article class="article long-form">
+<h1 id="clawith">Clawith 改造实录：从智能体工作台到用户环境强制分离</h1>
+<p class="meta">记录日期：2026-11-04 · 分类：AI 应用 / 智能体工程 / 用户隔离</p>
+<p>两个人使用同一个“项目助手”，可以获得相同的技能，但不应该因此共享私人文件、聊天记忆或后台任务。这是我这轮 Clawith 改造最终要守住的边界。</p>
+<p>最初的需求从使用体验出发：智能体多了以后怎么找，新会话第一句话怎么问，上传和生成的文件到哪里找。随着工作台、自动提问和个人文件目录逐步落地，问题也延伸到了服务端：<strong>每次运行到底代表谁，能使用哪些资料，结果应该交给谁？</strong></p>
+<p>本文按“产品体验—架构边界—执行流程—验收与取舍”整理这轮实践。内容依据截至 2026 年 11 月 4 日的项目笔记；历史测试结果会单独标明，不将实现记录当作当前生产环境已全面验证的结论。</p>
+<p>文中收录原笔记的 8 张截图，点击可查看大图。深色遮盖块用于隐去内部组织、地址、账号及业务信息；用户统一标为 A、B，同文件接口对照中的智能体和文件统一标为 AGENT-X、FILE-X。遮盖区文字是脱敏注释，界面布局与 200／404 等关键结果保留原貌。架构和流程图可缩放、拖动查看。</p>
+<h2 id="section">目录</h2>
+<ol>
+<li><a href="#product">从使用体验开始</a></li>
+<li><a href="#architecture">共享智能体定义，分离个人运行状态</a></li>
+<li><a href="#files">身份、路径和存储共同约束文件访问</a></li>
+<li><a href="#context">公共资料发布与上下文来源</a></li>
+<li><a href="#tasks">后台任务和审批继续保留原用户身份</a></li>
+<li><a href="#sandbox">代码执行使用独立禁网容器</a></li>
+<li><a href="#request">把完整请求串起来</a></li>
+<li><a href="#validation">验收证据与仍需补齐的检查</a></li>
+<li><a href="#tradeoffs">兼容性代价与工程收获</a></li>
+<li><a href="#implementation">实现索引与迭代阶段</a></li>
+</ol>
+<h2 id="product">从使用体验开始</h2>
+<h3 id="section-1">工作台：先找到智能体，再开始任务</h3>
+<p>原来的平铺导航在智能体数量增加后变得难找。我将分类管理、使用范围和使用者管理集中到工作台，侧边栏则采用分类与智能体分栏的方式，并衔接历史会话。</p>
+<p>一个智能体可以属于多个分类，例如“数据分析助手”同时出现在“业务分析”和“办公工具”里。删除分类只解除归属关系，不删除智能体；没有分类的智能体回到“未分类”。分类名称在同组织内保持唯一。</p>
+<p>分类编辑还要处理多人维护的情况：页面提交时带上读取到的旧状态，如果其他管理员已经修改成员或名称，服务端返回冲突，避免旧页面覆盖新结果。使用范围保存也核对权限状态，减少多个管理入口相互覆盖。</p>
+<p>分类解决查找问题，访问规则决定能否使用。将智能体放进某个分类，本身不会授予权限。</p>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/admin-workbench.png"><img src="./images/clawith-user-environment-isolation/admin-workbench.png" alt="图 1：管理员工作台。分类、使用人数、设置使用者与调整分类入口集中展示；内部业务名称和账号已遮盖。" loading="lazy" /></a><figcaption>图 1：管理员工作台。分类、使用人数、设置使用者与调整分类入口集中展示；内部业务名称和账号已遮盖。</figcaption></figure>
+<h3 id="section-2">使用范围：能使用，不等于能管理</h3>
+<p>使用范围支持组织成员、指定使用者，以及明确授权的外部人员。全组织可用时，不再要求重复勾选全部组织成员。</p>
+<p>普通使用者可以聊天、上传和查看自己的文件；设置、自我意识、全部文件等管理入口按管理权限显示。页面隐藏入口改善体验，服务端的权限检查负责真正阻止越权。</p>
+<p>管理员进入自己的聊天时，个人文件工具仍然限定在管理员本人的范围。管理权限和个人运行权限分别处理，避免聊天中的模型自动获得整个智能体目录的访问能力。</p>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/member-navigation.png"><img src="./images/clawith-user-environment-isolation/member-navigation.png" alt="图 2：普通使用者界面。原截图红框标出管理工作台入口不再显示的位置；动态正文与账号已遮盖。入口差异只说明交互表现，实际访问仍由服务端判断。" loading="lazy" /></a><figcaption>图 2：普通使用者界面。原截图红框标出管理工作台入口不再显示的位置；动态正文与账号已遮盖。入口差异只说明交互表现，实际访问仍由服务端判断。</figcaption></figure>
+<h3 id="section-3">新会话自动提问：让第一步更明确</h3>
+<p>管理员可以配置一段提问，例如“请介绍你的能力，并说明我需要提供哪些资料”。符合条件的网页个人会话创建后，系统将其作为用户消息发起，再由模型回答。因此它是自动提问，不是写死的欢迎回复。</p>
+<p>难点在重复执行：刷新页面、多窗口打开、断线恢复，都可能再次触发请求。为此，服务端保存创建会话时的提问快照，以及等待、运行、失败、中断、取消等状态，通过会话锁、消息编号和执行尝试编号协调领取。</p>
+<p>同一次待执行状态不能被多个窗口重复领取。执行中记录心跳，恢复时识别中断；重试还需确认原尝试匹配、原消息存在，并且没有后续用户提问，避免旧提问在用户继续聊天后突然重新执行。</p>
+<p>自动提问的状态变化如下。图中的“完成状态”描述正常结束，不额外假定实现中的状态字段名称。</p>
+<figure class="sequence-diagram" data-sequence-diagram><figcaption class="sequence-diagram-header"><strong class="sequence-diagram-title">新会话自动提问的状态流转</strong><span class="sequence-diagram-controls" role="group" aria-label="图表缩放控制"><button type="button" data-diagram-zoom-out aria-label="缩小图表">−</button><output data-diagram-zoom-output aria-live="polite">100%</output><button type="button" data-diagram-zoom-in aria-label="放大图表">+</button><button class="sequence-diagram-reset" type="button" data-diagram-reset aria-label="重置图表缩放">重置</button></span></figcaption><div class="sequence-diagram-viewport" tabindex="0" aria-label="新会话自动提问的状态流转；放大后可拖动查看"><div class="sequence-diagram-stage"><pre class="mermaid">flowchart TB
+    PENDING[&quot;pending：等待开始&quot;] --&gt;|&quot;已有其他消息&quot;| CANCELLED[&quot;cancelled：取消自动发送&quot;]
+    PENDING --&gt;|&quot;成功领取本次执行&quot;| RUNNING[&quot;running：执行中&quot;]
+    RUNNING --&gt;|&quot;正常完成&quot;| DONE[&quot;完成状态&quot;]
+    RUNNING --&gt;|&quot;执行失败&quot;| FAILED[&quot;failed：失败&quot;]
+    RUNNING --&gt;|&quot;心跳过期或结果无法确认&quot;| INTERRUPTED[&quot;interrupted：中断&quot;]
+</pre></div></div><p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看；键盘 + / − 缩放，0 重置</p></figure>
+<h3 id="section-4">我的文件：区分工作过程和最终交付</h3>
+<p>“我的文件”按<strong>当前智能体＋当前用户</strong>汇总多个会话里的上传文件和生成文件，提供预览、下载、删除及状态提示。</p>
+<p>文件目录保存所有者、组织、存储位置、内容版本、状态和来源记录，实际文件仍在存储系统中。上传时登记原件，最终回答中出现的有效交付引用则登记为交付文件；模型提到一个文件名，并不代表文件已经生成。</p>
+<p>最终交付复制为个人快照，避免原工作文件被覆盖后，已交付内容跟着变化。原样返回上传原件时保留上传身份，避免重复登记。目录登记失败可以重放，不应因此再次调用模型生成回答。</p>
+<p>删除按已登记版本处理并保留历史状态，同路径后来出现新文件也不应让旧链接重新生效。办公文件预览以内容提取为主，不承诺完整还原原生排版。中间过程文件也不自动等于最终交付。</p>
+<p>旧文件通过“扫描候选—导出库存—核对来源—补登记”迁移，不能根据文件名猜所有者。补齐目录记录，只解决可追溯管理；能否再次交给模型使用，还需要有效的来源凭据。</p>
+<h2 id="architecture">共享智能体定义，分离个人运行状态</h2>
+<p>这次没有给每个人复制整套智能体服务，也没有重写原有前后端。前端负责展示，FastAPI 提供接口，业务服务执行权限规则，数据库保存结构化状态，存储系统保存文件。</p>
+<p>重点是把三类数据分开：</p>
+<table>
+<thead>
+<tr>
+<th>数据类别</th>
+<th>典型内容</th>
+<th>使用规则</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>智能体配置与草稿</td>
+<td>角色设定、技能草稿、组织资料草稿</td>
+<td>通过管理入口维护，不因放在共享目录就自动进入个人运行</td>
+</tr>
+<tr>
+<td>审核后的公共发布资料</td>
+<td>固定版本的角色、技能和知识资料</td>
+<td>按受众授权只读使用，可以撤销</td>
+</tr>
+<tr>
+<td>个人运行资料</td>
+<td>上传、交付、记忆、历史、任务和审批</td>
+<td>绑定本人，不被其他使用者继承</td>
+</tr>
+</tbody>
+</table>
+<p>这里的“公共”是向指定使用者或组织共享，不是向互联网所有人开放。“强制分离”指服务端执行的数据与能力边界，不代表每人都有独立服务器、数据库或模型。</p>
+<h3 id="section-5">整体架构与执行边界</h3>
+<p>个人访问范围连接文件、记忆、任务和模型上下文；后台任务恢复时重新建立这一范围，再进入同一条来源检查链路。</p>
+<figure class="sequence-diagram" data-sequence-diagram><figcaption class="sequence-diagram-header"><strong class="sequence-diagram-title">Clawith 用户隔离整体架构</strong><span class="sequence-diagram-controls" role="group" aria-label="图表缩放控制"><button type="button" data-diagram-zoom-out aria-label="缩小图表">−</button><output data-diagram-zoom-output aria-live="polite">100%</output><button type="button" data-diagram-zoom-in aria-label="放大图表">+</button><button class="sequence-diagram-reset" type="button" data-diagram-reset aria-label="重置图表缩放">重置</button></span></figcaption><div class="sequence-diagram-viewport" tabindex="0" aria-label="Clawith 用户隔离整体架构；放大后可拖动查看"><div class="sequence-diagram-stage"><pre class="mermaid">flowchart TB
+    UI[&quot;工作台 / 聊天 / 我的文件&quot;] --&gt; API[&quot;服务端接口：登录与访问权限检查&quot;]
+    API --&gt; SCOPE[&quot;可信用户范围：组织 + 智能体 + 用户 + 会话校验&quot;]
+    SCOPE --&gt; PRIVATE[&quot;个人文件 / 个人记忆&quot;]
+    SCOPE --&gt; STATE[&quot;个人任务 / Focus / 触发器 / 审批&quot;]
+    SCOPE --&gt; CONTEXT[&quot;模型上下文与历史来源检查&quot;]
+    PUB[&quot;管理员审核发布的只读快照&quot;] --&gt; CONTEXT
+    PRIVATE --&gt; CONTEXT
+    CONTEXT --&gt; TOOLS[&quot;工具执行：限制路径与允许能力&quot;]
+    TOOLS --&gt; STORE[&quot;受限存储：再次核对访问范围&quot;]
+    TOOLS --&gt; CODE[&quot;独立禁网任务容器&quot;]
+    CODE --&gt; CHECK[&quot;完成后重新检查身份、输入和来源&quot;]
+    CHECK --&gt; OUTPUT[&quot;本人的任务产物与交付记录&quot;]
+    STATE --&gt; DEFER[&quot;后台执行前重建用户范围&quot;]
+    DEFER --&gt; CONTEXT
+</pre></div></div><p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看；键盘 + / − 缩放，0 重置</p></figure>
+<p>这些是职责边界，不意味着每一步都是独立部署的服务。</p>
+<h3 id="section-6">个人目录、公共快照和来源凭据</h3>
+<p>个人工作区与记忆按用户分开，公共资料保留发布快照，来源凭据由服务端单独保存：</p>
+<pre><code class="language-text">&lt;agent_id&gt;/
+  workspace/
+    &lt;user_A_id&gt;/
+      uploads/...
+      runs/&lt;task_id&gt;/...
+    &lt;user_B_id&gt;/
+      uploads/...
+      runs/&lt;task_id&gt;/...
+  user_memories/
+    &lt;user_A_id&gt;.md
+    &lt;user_B_id&gt;.md
+
+_publications/&lt;agent_tenant_id&gt;/&lt;agent_id&gt;/&lt;publication_id&gt;/
+  manifest.json
+  ...发布快照内容...
+  revoked.json                 # 撤销后出现的独立标记
+
+_provenance/&lt;user_tenant_id&gt;/&lt;agent_id&gt;/&lt;user_id&gt;/
+  ...服务端持有的来源凭据...
+</code></pre>
+<p>这是逻辑存储键示意，不是固定的服务器绝对路径。私人文件路径本身没有直接写入组织编号，因此组织隔离还依赖服务端身份校验与数据库记录，不能只看目录结构就认为全部鉴权已经完成。</p>
+<h2 id="files">身份、路径和存储共同约束文件访问</h2>
+<h3 id="section-7">先确定操作者，再处理模型请求</h3>
+<p>核心对象 <code>UserFileScope</code> 可以理解为本次运行的个人访问范围。服务端根据登录状态和数据库记录，确认用户有效、有所属组织、有权使用智能体；提供会话编号时，还要验证会话确实属于这个用户和智能体。</p>
+<p>群聊、跨智能体对话不直接套用个人会话身份。对于明确授权的外部使用者，同时保留用户所属组织与智能体所属组织，避免把“能使用智能体”误解成“能读取它所属组织的全部资料”。</p>
+<p>身份不来自模型填写的 <code>user_id</code>，也不来自用户在对话中自称的身份。必要身份缺失时直接拒绝，不回退为智能体创建者。</p>
+<h3 id="section-8">工具只能使用本人的路径</h3>
+<p>当 A 的模型请求读取：</p>
+<pre><code class="language-text">read_file(&quot;workspace/reports/result.md&quot;)
+</code></pre>
+<p>服务端将访问限定到：</p>
+<pre><code class="language-text">workspace/&lt;user_A_id&gt;/reports/result.md
+</code></pre>
+<p>直接指定 B 的用户目录会被拒绝。路径检查还覆盖上级目录跳转、绝对路径、盘符、混合分隔符、控制字符、歧义编码、尾部空格和尾部点等情况。只处理明确的路径字段，不把文件正文当成身份指令。</p>
+<p>个人记忆限定为本人的 <code>user_memories/&lt;user_id&gt;.md</code>。空目录搜索可以映射到本人工作区，但不能扩大成整个智能体根目录搜索。</p>
+<h3 id="section-9">存储层再检查一次</h3>
+<p><code>ScopedStorageBackend</code> 是只暴露获准目录或文件的存储接口。即使上层工具漏掉某项判断，读、写、删除、列表和版本查询仍需经过这一层。</p>
+<p>它不返回可以绕开检查的实时本地路径，个人下载也通过重新验证身份的应用接口完成，不直接发放对象存储临时直链。文件链接可能把目录内的名称指向目录外，因此本地保护还要检查链接、特殊文件和路径替换，不能仅靠字符串前缀判断。</p>
+<p>这部分本地保护依赖 Linux 的目录文件描述符、禁止跟随链接等能力，能力不足时拒绝操作。不能据此承诺 Windows 原生本地存储或所有远程存储已经完成同等验证。</p>
+<h3 id="section-10">文件编号和下载地址不是访问许可</h3>
+<p>列表、预览、下载和删除同时检查组织、智能体、所有者与文件状态。即使 A 把下载地址发给 B，B 也不能因为使用同一个智能体就取得文件。</p>
+<p>项目笔记记录的双账号观察如下，属于当时接口检查的结果：</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>文件所有者 A</th>
+<th>另一个使用者 B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>下载同一文件</td>
+<td>200，成功</td>
+<td>404，文件不存在</td>
+</tr>
+<tr>
+<td>预览同一文件</td>
+<td>200，成功</td>
+<td>404，文件不存在</td>
+</tr>
+</tbody>
+</table>
+<p>返回 404 可减少对文件是否存在的额外暴露。个人状态响应同时使用私有、禁止缓存等策略，降低切换账号或共享缓存造成混用的风险。</p>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/owner-download.png"><img src="./images/clawith-user-environment-isolation/owner-download.png" alt="图 3：所有者 A 下载文件的原始接口检查，状态码为 200。请求中的资源标识已统一替换为 AGENT-X、FILE-X，状态码未改动。" loading="lazy" /></a><figcaption>图 3：所有者 A 下载文件的原始接口检查，状态码为 200。请求中的资源标识已统一替换为 AGENT-X、FILE-X，状态码未改动。</figcaption></figure>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/owner-download-preview.png"><img src="./images/clawith-user-environment-isolation/owner-download-preview.png" alt="图 4：所有者 A 在“我的文件”中查看上传与交付，右侧对同一文件执行下载、预览，均返回 200。截图中的学习资料与文件失效状态保留，业务文件名已遮盖。" loading="lazy" /></a><figcaption>图 4：所有者 A 在“我的文件”中查看上传与交付，右侧对同一文件执行下载、预览，均返回 200。截图中的学习资料与文件失效状态保留，业务文件名已遮盖。</figcaption></figure>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/other-user-denied.png"><img src="./images/clawith-user-environment-isolation/other-user-denied.png" alt="图 5：用户 B 请求同一文件的下载与预览，均返回 404，正文为“文件不存在”。上方另一目标的无关请求已遮盖，不纳入同文件对照。" loading="lazy" /></a><figcaption>图 5：用户 B 请求同一文件的下载与预览，均返回 404，正文为“文件不存在”。上方另一目标的无关请求已遮盖，不纳入同文件对照。</figcaption></figure>
+<p>这三张截图保留的是当时的双账号观察，不能单独证明所有入口安全，也不能代替当前部署版本的重新验收。</p>
+<h2 id="context">公共资料发布与上下文来源</h2>
+<p>模型上下文，就是一次请求交给模型的材料。文件接口再严格，如果启动时已经注入其他人的记忆，边界仍然失效。因此，检查必须发生在材料进入模型之前。</p>
+<h3 id="section-11">公共资料经过明确发布</h3>
+<p>管理者先预览资料并确认内容哈希，再发布固定版本。哈希可以理解为内容指纹，用于发现审核后文件被替换的情况。</p>
+<p>发布记录包含组织、智能体、发布人、受众、文件大小、路径、版本和内容指纹。允许的来源限制在角色文件、技能和组织资料等规定范围，私人工作区不能成为任意公共来源。</p>
+<p>模型通过以下虚拟只读路径使用快照：</p>
+<pre><code class="language-text">public/&lt;publication_id&gt;/&lt;version&gt;/&lt;file_path&gt;
+</code></pre>
+<p>每次读取仍检查受众、版本、撤销状态和内容指纹。草稿后来修改，不会静默覆盖已经发布的版本；管理员的个人聊天工具也不能直接修改公共快照。</p>
+<h3 id="section-12">历史和衍生内容也要知道来源</h3>
+<p>仅禁止读取原文件还不够。如果之前的总结、记忆或导出文件可以无条件复用，资料撤销仍可能被绕过。</p>
+<p><code>context_provenance.py</code> 保存来源凭据，也就是“这段内容来自哪里、依赖哪些授权资料”的记录。凭据绑定组织、智能体、用户、内容摘要和记录键；聊天记录还绑定会话与角色，公共依赖则保存发布编号和版本。</p>
+<figure class="sequence-diagram" data-sequence-diagram><figcaption class="sequence-diagram-header"><strong class="sequence-diagram-title">来源依赖与授权撤销</strong><span class="sequence-diagram-controls" role="group" aria-label="图表缩放控制"><button type="button" data-diagram-zoom-out aria-label="缩小图表">−</button><output data-diagram-zoom-output aria-live="polite">100%</output><button type="button" data-diagram-zoom-in aria-label="放大图表">+</button><button class="sequence-diagram-reset" type="button" data-diagram-reset aria-label="重置图表缩放">重置</button></span></figcaption><div class="sequence-diagram-viewport" tabindex="0" aria-label="来源依赖与授权撤销；放大后可拖动查看"><div class="sequence-diagram-stage"><pre class="mermaid">flowchart TB
+    PUBLIC[&quot;公共资料 P / 版本 V&quot;] --&gt;|&quot;用户 A 获准使用&quot;| DERIVED[&quot;A 的回答 / 记忆 / 生成文件&quot;]
+    DERIVED --&gt; RECEIPT[&quot;服务端保存来源凭据与依赖关系 P、V&quot;]
+    RECEIPT --&gt; REUSE[&quot;之后再次读取、执行或交付&quot;]
+    REUSE --&gt; CHECK{&quot;版本、授权和撤销状态仍有效？&quot;}
+    CHECK --&gt;|&quot;是&quot;| ALLOW[&quot;允许后续使用&quot;]
+    CHECK --&gt;|&quot;否&quot;| DENY[&quot;阻断依赖该资料的已登记内容&quot;]
+</pre></div></div><p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看；键盘 + / − 缩放，0 重置</p></figure>
+<p>撤销公共版本后，系统阻断依赖它的已登记内容的后续使用。再次写入相同文字也不能直接清空原依赖；凭据放在用户工具不能编辑的服务端区域，模型写一句“已授权”不会获得权限。</p>
+<p>缺少有效凭据的旧历史可以保留，但不会自动注入新请求。旧工具结果、任意摘要或模型思考内容，也不能直接包装成新的用户输入。截图等视觉材料同样需要核对用户和来源，避免共享缓存串入他人的画面。</p>
+<p>这套机制控制系统内的后续读取、执行和交付，不会收回用户已经看到或下载的内容，也不能追踪所有人工复制、改写或线下传播。</p>
+<h2 id="tasks">后台任务和审批继续保留原用户身份</h2>
+<p>个人状态还包括 Focus 工作事项、待办和触发器。它们都加入服务端所有者信息，读取和修改时核对归属；部分内部名称带用户前缀，避免 A、B 的同名任务相互影响。客户端也不能通过提交内部字段替换所有者或路由信息。</p>
+<p>定时执行主要支持可以确认所有者的 cron、interval 和 once，即按规则、按间隔或单次执行。系统触发器、跨智能体消息、webhook 载荷不能直接冒充个人任务输入。</p>
+<p>后台执行通过 <code>deferred_execution.py</code> 重建用户范围，校验个人会话和已登记输入。任务标题、描述、创建者和相关配置被修改后，不能继续用旧凭据代表原任务。执行中继续检查来源，完成后还需确认结果确实来自本次验证过的执行。</p>
+<p>审批也遵循同样规则：批准是对某个动作的业务许可，不能替代个人身份和资源权限。恢复执行仍使用原用户、原会话和原请求，检查参数是否改变、权限是否撤销，并避免同一批准重复执行。批准者的身份不能被借给申请者。</p>
+<p>共享活动、审批摘要和日志还要减少私人提示词、回复、路径及完整错误正文，避免文件访问受到限制，内容却从日志流出。</p>
+<h2 id="sandbox">代码执行使用独立禁网容器</h2>
+<p>脚本能自行打开文件或尝试联网，所以仅限制普通文件工具还不够。专用入口 <code>execute_isolated_code</code> 为每个任务准备独立环境：</p>
+<ol>
+<li>确认本次用户、智能体、会话与可信运行上下文匹配。</li>
+<li>仅接受满足要求且明确标记已完成隔离验收的 Docker 配置。</li>
+<li>从本人范围准备输入快照，公共资料和个人记忆按授权只读提供。</li>
+<li>创建独立临时卷和禁网容器，不挂载宿主机完整工作区。</li>
+<li>使用非 root 用户、只读根文件系统及 CPU、内存、进程数限制，并清理凭据类环境变量。</li>
+<li>运行结束后复查输入版本、内容和授权，只收集规定目录中的普通文件。</li>
+<li>将结果写入本人的新任务目录，校验通过后再交付。</li>
+</ol>
+<p>容器中的工作区是副本，脚本修改副本不等于修改真实原件。输出路径由服务端确定，脚本不能指定其他人的落盘位置；危险路径、链接和特殊文件不能直接导出。</p>
+<p>原记录中的输入准备限制约为 100 个文件、32 MiB 总量，并另有遍历规模和代码长度限制。超时、取消和异常需要清理任务资源，避免子进程继续运行。</p>
+<p><strong>默认 <code>isolation_verified=False</code>，默认配置不会自动满足执行要求。</strong> 具备实现不等于部署后已经启用，安全环境不可用时直接失败，不降级到宿主机执行，也不偷偷换后端重试。</p>
+<p>多文件输出也不是一个整体数据库事务。交付中途失败时可能已有部分文件落盘，需要明确报告部分保存或待核对状态，不能承诺任何失败都会自动回滚全部产物。</p>
+<h2 id="request">把完整请求串起来</h2>
+<p>以 A 上传报表并要求分析为例：服务端先确认 A 有权使用智能体，且会话属于 A；上传文件进入 A 的工作区，并登记归属和来源。模型只接收 A 获准使用的公共资料、个人记忆和可核验历史。</p>
+<p>模型读取文件时，工具和存储共同把路径限制在 A 的范围。若需要代码分析，先检查容器是否达到验收与启用条件，否则明确失败。执行过程中权限、输入或公共资料状态发生变化时，停止后续使用或交付。</p>
+<p>成功结果进入 A 的新任务目录，并登记最终交付。B 即使使用同一个智能体，也不能通过 A 的文件编号、历史或任务结果直接取得资料。</p>
+<p>这里没有任何一步依靠模型自行判断“我大概应该能看”。访问边界由服务端建立，并在真正读取、执行和交付时检查。</p>
+<p>下面的时序图把上传、模型读取和交付前复查放在同一次请求中。图中的允许或停止由实际检查结果决定，不表示所有部署环境已经完成验收。</p>
+<figure class="sequence-diagram" data-sequence-diagram><figcaption class="sequence-diagram-header"><strong class="sequence-diagram-title">上传、读取与交付的请求时序</strong><span class="sequence-diagram-controls" role="group" aria-label="图表缩放控制"><button type="button" data-diagram-zoom-out aria-label="缩小图表">−</button><output data-diagram-zoom-output aria-live="polite">100%</output><button type="button" data-diagram-zoom-in aria-label="放大图表">+</button><button class="sequence-diagram-reset" type="button" data-diagram-reset aria-label="重置图表缩放">重置</button></span></figcaption><div class="sequence-diagram-viewport" tabindex="0" aria-label="上传、读取与交付的请求时序；放大后可拖动查看"><div class="sequence-diagram-stage"><pre class="mermaid">sequenceDiagram
+    participant A as 用户 A
+    participant API as 服务端
+    participant Scope as 身份与来源检查
+    participant LLM as 模型与工具
+    participant Store as 个人存储
+    A-&gt;&gt;API: 上传并分析文件
+    API-&gt;&gt;Scope: 校验用户、智能体和会话
+    Scope--&gt;&gt;API: 当前用户范围
+    API-&gt;&gt;Store: 保存 A 的文件与来源记录
+    API-&gt;&gt;LLM: 提供授权资料与可核验历史
+    LLM-&gt;&gt;Scope: 请求读取或运行
+    Scope-&gt;&gt;Store: 在 A 的目录内访问
+    Store--&gt;&gt;LLM: 允许使用的内容
+    LLM-&gt;&gt;Scope: 返回前复查权限与依赖
+    Scope--&gt;&gt;API: 允许交付或停止
+    API--&gt;&gt;A: 交付结果或明确失败
+</pre></div></div><p class="sequence-diagram-hint">Ctrl / ⌘ + 滚轮缩放，放大后可拖动查看；键盘 + / − 缩放，0 重置</p></figure>
+<h2 id="validation">验收证据与仍需补齐的检查</h2>
+<p>这次博客整理没有重新运行 Clawith 测试、连接线上环境或执行真实 Docker 验收。以下保留项目笔记对证据范围的区分：</p>
+<table>
+<thead>
+<tr>
+<th>证据</th>
+<th>原记录内容</th>
+<th>能说明到哪一步</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>历史自动化测试</td>
+<td>两轮累计 468 项通过、11 项跳过</td>
+<td>未附本次可复核完整日志，不视为本次重跑，也不视为 468 个互不重复用例</td>
+</tr>
+<tr>
+<td>双账号接口检查</td>
+<td>A 下载、预览成功，B 对同一文件收到 404</td>
+<td>支持当时对应请求的观察，不代表所有入口或当前生产版本</td>
+</tr>
+<tr>
+<td>仓库测试文件</td>
+<td>覆盖分类、文件、来源、任务、审批、容器和外部入口</td>
+<td>表明编写了用例，存在文件不等于测试已通过</td>
+</tr>
+<tr>
+<td>真实部署验收</td>
+<td>真实 Docker 隔离及完整后台流程尚待完成</td>
+<td>不能声称生产隔离已全面验证</td>
+</tr>
+</tbody>
+</table>
+<h3 id="section-13">构建记录与环境对照</h3>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/build-record.png"><img src="./images/clawith-user-environment-isolation/build-record.png" alt="图 6：原笔记保存的 Jenkins 构建记录，列出文件路径约束、个人授权、公共资料与上下文隔离等变更。内部构建项目和仓库地址已遮盖。" loading="lazy" /></a><figcaption>图 6：原笔记保存的 Jenkins 构建记录，列出文件路径约束、个人授权、公共资料与上下文隔离等变更。内部构建项目和仓库地址已遮盖。</figcaption></figure>
+<p>构建截图中的时间为 2026 年 11 月 3 日，只展示该次记录中的版本与变更列表，不证明后续提交已部署，也不等于完整测试或真实 Docker 验收通过。</p>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/staging-isolation-comparison.png"><img src="./images/clawith-user-environment-isolation/staging-isolation-comparison.png" alt="图 7：原笔记标注为预发隔离后的环境对照。两个账号的工作区与文件列表不同，前景窗口显示目标文件不在当前用户工作区；内部地址、账号及文件路径已遮盖。" loading="lazy" /></a><figcaption>图 7：原笔记标注为预发隔离后的环境对照。两个账号的工作区与文件列表不同，前景窗口显示目标文件不在当前用户工作区；内部地址、账号及文件路径已遮盖。</figcaption></figure>
+<figure class="article-media"><a href="./images/clawith-user-environment-isolation/before-isolation-comparison.png"><img src="./images/clawith-user-environment-isolation/before-isolation-comparison.png" alt="图 8：原笔记标注为改造前环境的对照。前景账号“我的文件”为空，但聊天仍出现文档内容，用于说明仅限制文件列表不足以约束模型读取。" loading="lazy" /></a><figcaption>图 8：原笔记标注为改造前环境的对照。前景账号“我的文件”为空，但聊天仍出现文档内容，用于说明仅限制文件列表不足以约束模型读取。</figcaption></figure>
+<p>这两张环境对照图使用的资料和请求并不完全相同，也没有完整部署清单，适合说明当时观察到的现象，不能当成严格控制变量的前后回归测试。更直接的同文件访问证据见前文图 3～5；真实隔离能力仍需完整接口、工具、历史、后台任务与容器验收。</p>
+<h3 id="section-14">后续验收矩阵</h3>
+<p>下一轮验收应重点补齐：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>检查重点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>同智能体双账号</td>
+<td>A 上传后，B 的枚举、搜索、预览、下载和工具读取均无法取得 A 的资料</td>
+</tr>
+<tr>
+<td>伪造身份与路径</td>
+<td>他人用户编号、会话编号、上级目录、绝对路径、编码分隔符和链接均不能扩大范围</td>
+</tr>
+<tr>
+<td>资料撤销</td>
+<td>原资料及依赖它的已登记总结、记忆、交付在后续使用时重新检查</td>
+</tr>
+<tr>
+<td>执行中撤权</td>
+<td>停用用户、撤销资料后停止后续执行或交付</td>
+</tr>
+<tr>
+<td>后台任务与审批</td>
+<td>同名任务不混用，修改参数或撤销权限后旧批准不继续生效</td>
+</tr>
+<tr>
+<td>真实容器</td>
+<td>无法访问网络、宿主目录或其他任务卷；取消和超时后清理资源</td>
+</tr>
+<tr>
+<td>自动提问与删除</td>
+<td>多窗口不重复领取执行，旧文件链接不因同路径出现新文件而复活</td>
+</tr>
+</tbody>
+</table>
+<p>其中，默认跳过真实环境测试不能算容器隔离验收通过。</p>
+<h2 id="tradeoffs">兼容性代价与工程收获</h2>
+<h3 id="section-15">无法确认归属的能力暂时停止</h3>
+<p>严格隔离版本采用默认拒绝，意味着部分原有能力暂不可用：</p>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>本轮记录的处理方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>服务 API 密钥、外部即时通信入口</td>
+<td>未完成个人身份和来源衔接时停止执行</td>
+</tr>
+<tr>
+<td>跨智能体执行与发送</td>
+<td>防止私人内容进入另一智能体的共享运行</td>
+</tr>
+<tr>
+<td>MCP、部分网关和远程执行</td>
+<td>未接入相同来源与隔离边界时拒绝调用</td>
+</tr>
+<tr>
+<td>普通运行中未列入许可的工具</td>
+<td>拒绝执行，不在事后补授权</td>
+</tr>
+<tr>
+<td>聊天页面发布</td>
+<td>工具映射仍存在不代表已进入普通运行允许集合</td>
+</tr>
+</tbody>
+</table>
+<p>早期提交实现过接口附件登记，但后续严格边界停止了相应服务调用，不能据此宣称外部附件链路当前端到端可用。恢复能力需要补齐身份、来源、输出归属及撤权检查。</p>
+<h3 id="section-16">上线也涉及资料和历史的整理</h3>
+<p>旧共享目录不会自动变成获准使用的公共资料，管理员需要重新预览、审核和发布。没有来源凭据的旧历史可能仍在界面中，却不再自动进入模型请求，用户可能需要重新提供材料或完成可验证迁移。</p>
+<p>这些影响需要在上线说明中讲清楚。服务器管理员在操作系统层的权限属于另一层信任边界，也不应与应用内的个人运行隔离混为一谈。</p>
+<h3 id="section-17">最值得保留的工程经验</h3>
+<p>这轮改造让我更明确地把“提供同一种智能体能力”和“使用同一份个人数据”分开设计。工作台、自动提问和文件目录让使用路径更清楚，而服务端身份、来源记录和执行复查决定多人共用时能否保持边界。</p>
+<p>下一步应先补齐真实容器、后台审批和部署后的双账号验收，再按同样规则逐项恢复外部能力。描述成果时，也应始终分清已实现、历史验证和仍待验收。</p>
+<h2 id="implementation">实现索引与迭代阶段</h2>
+<p>以下路径来自项目笔记，后端相对路径均位于 <code>backend/app/</code>，便于回到对应版本定位职责：</p>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>关键文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>工作台与使用范围</td>
+<td><code>api/agent_catalog.py</code>、<code>services/agent_catalog.py</code>、<code>services/agent_usage_access.py</code>、<code>core/permissions.py</code></td>
+</tr>
+<tr>
+<td>自动提问</td>
+<td><code>services/auto_start_prompt.py</code>、<code>models/chat_session.py</code></td>
+</tr>
+<tr>
+<td>文件目录与交付</td>
+<td><code>services/workspace_file_catalog.py</code>、<code>services/workspace_file_access.py</code>、<code>services/workspace_deliveries.py</code></td>
+</tr>
+<tr>
+<td>用户范围与存储</td>
+<td><code>services/user_file_scope.py</code>、<code>services/storage_runtime/scoped.py</code>、<code>services/storage_runtime/local_safety.py</code></td>
+</tr>
+<tr>
+<td>公共资料与上下文</td>
+<td><code>services/publications.py</code>、<code>services/agent_context.py</code>、<code>services/context_provenance.py</code></td>
+</tr>
+<tr>
+<td>个人状态与后台执行</td>
+<td><code>services/personal_state.py</code>、<code>services/deferred_execution.py</code>、<code>services/task_executor.py</code></td>
+</tr>
+<tr>
+<td>审批与代码执行</td>
+<td><code>services/autonomy_service.py</code>、<code>services/isolated_execution.py</code>、<code>services/sandbox/local/docker_backend.py</code></td>
+</tr>
+</tbody>
+</table>
+<p>前端主要入口包括 <code>Layout.tsx</code>、<code>AgentCatalog.tsx</code>、<code>AgentDetailPage.tsx</code> 和 <code>UserWorkspaceFilesPanel.tsx</code>。</p>
+<p>原记录将本轮 33 个提交归为以下阶段，日期均为 2026 年：</p>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>日期</th>
+<th>主要结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>开发整理与分类工作台</td>
+<td>10-26～10-28</td>
+<td>启动入口、分类管理和多分类关系</td>
+</tr>
+<tr>
+<td>使用范围与导航</td>
+<td>10-28～10-29</td>
+<td>组织及指定人员授权、外部人员、分栏导航和交互修整</td>
+</tr>
+<tr>
+<td>会话引导与个人文件</td>
+<td>10-29～10-30</td>
+<td>自动提问、失败恢复、上传登记、交付识别及历史核对</td>
+</tr>
+<tr>
+<td>隔离与来源</td>
+<td>11-03</td>
+<td>文件授权、公共资料、上下文、撤销依赖和任务容器</td>
+</tr>
+<tr>
+<td>个人执行加固</td>
+<td>11-04</td>
+<td>任务、审批与外部入口边界</td>
+</tr>
+</tbody>
+</table>
+<p>原需求还提到技能批量及文件夹上传，但记录中没有足够证据将其计为本轮新增成果，本文不将其列入完成项。基线已有的多智能体、渠道和模型接入能力，也不归入本次新增。</p>
+
+    </article>
+  </main>
+  <script src="./theme.js"></script>
+  <script type="module" src="./diagrams.js"></script>
+</body>
+</html>

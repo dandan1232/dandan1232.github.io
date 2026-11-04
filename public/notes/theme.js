@@ -12,6 +12,7 @@ const NOTES_GROUPS = [
     id: "ai",
     label: "AI 应用",
     items: [
+      { title: "Clawith 工作台与用户环境隔离", href: "./clawith-user-environment-isolation.html" },
       { title: "LearnSphere AI 主动回忆学习平台", href: "./learnsphere-ai-active-recall.html" },
       { title: "大模型应用开发基础", href: "./llm-app-dev-fundamentals.html" },
       { title: "RAG 从 0 到 1 落地笔记", href: "./rag-from-0-to-1-practice.html" },
